@@ -1,0 +1,7 @@
+---
+exclude_paths:
+  - plugins/module_utils/objectscale_client/
+  - client/
+  - .ansible/
+skip_list:
+  - sanity[cannot-ignore]

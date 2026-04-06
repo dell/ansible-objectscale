@@ -1,0 +1,6 @@
+templateDir: client/clientgen_utils/templates
+packageName: ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client
+projectName: objectscale-client
+packageVersion: 1.0.0
+packageUrl: https://github.com/dell/ansible-objectscale
+generateSourceCodeOnly: true

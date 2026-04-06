@@ -1,0 +1,42 @@
+from __future__ import annotations
+import json
+
+{{#vendorExtensions.x-py-other-imports}}
+{{{.}}}
+{{/vendorExtensions.x-py-other-imports}}
+{{#vendorExtensions.x-py-model-imports}}
+{{{.}}}
+{{/vendorExtensions.x-py-model-imports}}
+from typing import Optional, Set
+from typing_extensions import Self
+
+class {{classname}}({{#parent}}{{{.}}}{{/parent}}{{^parent}}BaseModel{{/parent}}):
+    """{{#description}}{{{description}}}{{/description}}{{^description}}{{{classname}}}{{/description}}"""
+{{#vars}}
+    {{name}}: {{{vendorExtensions.x-py-typing}}}
+{{/vars}}
+{{#isAdditionalPropertiesTrue}}
+    additional_properties: Dict[str, Any] = {}
+{{/isAdditionalPropertiesTrue}}
+
+    model_config = ConfigDict(
+        validate_by_name=True,
+        validate_by_alias=True,
+        protected_namespaces=(),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return self.model_dump(by_alias=True, exclude_none=True)
+
+    @classmethod
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
+        if obj is None:
+            return None
+        return cls.model_validate(obj)
+
+{{#vendorExtensions.x-py-postponed-model-imports.size}}
+{{#vendorExtensions.x-py-postponed-model-imports}}
+{{{.}}}
+{{/vendorExtensions.x-py-postponed-model-imports}}
+{{classname}}.model_rebuild(raise_errors=False)
+{{/vendorExtensions.x-py-postponed-model-imports.size}}
