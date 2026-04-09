@@ -246,7 +246,7 @@ namespace_details:
         }
 '''
 
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.dellemc.objectscale.plugins.module_utils \
     import utils
@@ -270,30 +270,23 @@ if TYPE_CHECKING:
         NamespaceServiceUpdateNamespaceQuotaRequest,
     )
 
-try:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.namespace_api import NamespaceApi
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_namespace_request import (
-        NamespaceServiceCreateNamespaceRequest,
-    )
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_response import (
-        NamespaceServiceGetNamespaceResponse,
-    )
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_quota_response import (
-        NamespaceServiceGetNamespaceQuotaResponse,
-    )
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_namespace_request import (
-        NamespaceServiceUpdateNamespaceRequest,
-    )
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_namespace_quota_request import (
-        NamespaceServiceUpdateNamespaceQuotaRequest,
-    )
-except (ImportError, Exception):
-    NamespaceApi = None  # type: ignore[assignment,misc]
-    NamespaceServiceCreateNamespaceRequest = None  # type: ignore[assignment,misc]
-    NamespaceServiceGetNamespaceResponse = None  # type: ignore[assignment,misc]
-    NamespaceServiceGetNamespaceQuotaResponse = None  # type: ignore[assignment,misc]
-    NamespaceServiceUpdateNamespaceRequest = None  # type: ignore[assignment,misc]
-    NamespaceServiceUpdateNamespaceQuotaRequest = None  # type: ignore[assignment,misc]
+# Import objectscale client - fail fast if not available
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.namespace_api import NamespaceApi
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_namespace_request import (
+    NamespaceServiceCreateNamespaceRequest,
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_response import (
+    NamespaceServiceGetNamespaceResponse,
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_quota_response import (
+    NamespaceServiceGetNamespaceQuotaResponse,
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_namespace_request import (
+    NamespaceServiceUpdateNamespaceRequest,
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_namespace_quota_request import (
+    NamespaceServiceUpdateNamespaceQuotaRequest,
+)
 
 
 class Namespace(object):
@@ -309,6 +302,7 @@ class Namespace(object):
             supports_check_mode=False
         )
 
+        # Validate dependencies and setup connection
         if not HAS_OBJECTSCALE_CLIENT:
             self.module.exit_json(
                 failed=True,
@@ -318,14 +312,14 @@ class Namespace(object):
 
         try:
             self.api_client = utils.get_objectscale_connection(self.module.params)
-            self.namespace_api: NamespaceApi = NamespaceApi(self.api_client)
+            self.namespace_api = NamespaceApi(self.api_client)
         except Exception as e:
             self.module.exit_json(failed=True, msg="Failed to connect to ObjectScale: %s" % str(e))
 
         self.module.log('Connected to ObjectScale at %s' % self.module.params['objectscale_host'])
 
-    def get_namespace_details(self, namespace_name: str) -> Optional[Dict[str, Any]]:
-        """Get the details of a namespace."""
+    def get_namespace_details(self, namespace_name: str) -> Dict[str, Any]:
+        """Get the details of a namespace. Returns empty dict if namespace not found."""
         try:
             response: NamespaceServiceGetNamespaceResponse = (
                 self.namespace_api.namespace_service_get_namespace(id=namespace_name)
@@ -334,12 +328,12 @@ class Namespace(object):
         except Exception as e:
             status = getattr(e, 'status', None)
             if str(status) in ('404', '400'):
-                return None
+                return {}  # Return empty dict for not found
             error_msg = utils.determine_error(e)
             msg = "Getting namespace %s details failed with error: %s" % (namespace_name, error_msg)
             self.module.exit_json(failed=True, msg=msg)
 
-    def create_namespace(self, namespace_name: str, params: Dict[str, Any]) -> Optional[bool]:
+    def create_namespace(self, namespace_name: str, params: Dict[str, Any]) -> bool:
         """Create a namespace."""
         if not params.get('default_data_services_vpool'):
             self.module.exit_json(
@@ -366,7 +360,7 @@ class Namespace(object):
             msg = "Creating namespace %s failed with error: %s" % (namespace_name, error_msg)
             self.module.exit_json(failed=True, msg=msg)
 
-    def modify_namespace(self, namespace_name: str, params_to_modify: Dict[str, Any]) -> Optional[bool]:
+    def modify_namespace(self, namespace_name: str, params_to_modify: Dict[str, Any]) -> bool:
         """Modify a namespace."""
         try:
             request = NamespaceServiceUpdateNamespaceRequest(
@@ -383,7 +377,7 @@ class Namespace(object):
             msg = "Modifying namespace %s failed with error: %s" % (namespace_name, error_msg)
             self.module.exit_json(failed=True, msg=msg)
 
-    def delete_namespace(self, namespace_name: str) -> Optional[bool]:
+    def delete_namespace(self, namespace_name: str) -> bool:
         """Delete (deactivate) a namespace."""
         try:
             self.namespace_api.namespace_service_deactivate_namespace(
@@ -395,8 +389,8 @@ class Namespace(object):
             msg = "Deleting namespace %s failed with error: %s" % (namespace_name, error_msg)
             self.module.exit_json(failed=True, msg=msg)
 
-    def get_quota_details(self, namespace_name: str) -> Optional[Dict[str, Any]]:
-        """Get quota details for a namespace."""
+    def get_quota_details(self, namespace_name: str) -> Dict[str, Any]:
+        """Get quota details for a namespace. Returns empty dict if quota not available."""
         try:
             response: NamespaceServiceGetNamespaceQuotaResponse = (
                 self.namespace_api.namespace_service_get_namespace_quota(
@@ -406,9 +400,9 @@ class Namespace(object):
             return response.to_dict()
         except Exception as e:
             self.module.warn("Could not get quota for namespace %s: %s" % (namespace_name, str(e)))
-            return None
+            return {}
 
-    def modify_quota(self, namespace_name: str, params: Dict[str, Any]) -> Optional[bool]:
+    def modify_quota(self, namespace_name: str, params: Dict[str, Any]) -> bool:
         """Update quota settings for a namespace."""
         quota_fields: Dict[str, Any] = {}
         field_map = {
@@ -478,9 +472,10 @@ class Namespace(object):
 
         return modify_params
 
-    def is_quota_modified(self, quota_details: Optional[Dict[str, Any]], params: Dict[str, Any]) -> bool:
+    def is_quota_modified(self, quota_details: Dict[str, Any], params: Dict[str, Any]) -> bool:
         """Determine if quota settings need to be modified."""
-        if quota_details is None:
+        # Empty dict means quota not available or not set
+        if not quota_details:
             return False
         for field in ['quota_enabled', 'blocked_quota_size',
                       'notification_quota_size', 'soft_quota_size', 'hard_quota_size']:
@@ -500,13 +495,14 @@ class Namespace(object):
         params = self.module.params
 
         namespace_details = self.get_namespace_details(namespace_name)
+        namespace_exists = bool(namespace_details)  # Empty dict means not found
 
         if state == 'absent':
-            if namespace_details:
+            if namespace_exists:
                 self.delete_namespace(namespace_name)
                 result['changed'] = True
         elif state == 'present':
-            if not namespace_details:
+            if not namespace_exists:
                 self.create_namespace(namespace_name, params)
                 result['changed'] = True
                 namespace_details = self.get_namespace_details(namespace_name)
@@ -523,7 +519,7 @@ class Namespace(object):
                 result['changed'] = True
             elif any(params.get(f) is not None for f in
                      ['quota_enabled', 'blocked_quota_size', 'notification_quota_size',
-                      'soft_quota_size', 'hard_quota_size']) and not namespace_details:
+                      'soft_quota_size', 'hard_quota_size']) and not namespace_exists:
                 self.modify_quota(namespace_name, params)
                 result['changed'] = True
 

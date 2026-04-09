@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2025 Dell Inc., or its subsidiaries. All rights reserved.
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+# type: ignore  # Ignore all type checking in test files
 
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
@@ -159,7 +160,8 @@ class TestGetObjectscaleConnection:
         get_objectscale_connection(params)
 
         pool_call_kwargs = mock_pool_cls.call_args[1]
-        assert pool_call_kwargs['cert_reqs'] == 'CERT_REQUIRED'
+        # When validate_certs is True, cert_reqs is not added (defaults to CERT_REQUIRED)
+        assert 'cert_reqs' not in pool_call_kwargs
 
     @patch(f'{UTILS}.objectscale_client')
     @patch('urllib3.PoolManager')

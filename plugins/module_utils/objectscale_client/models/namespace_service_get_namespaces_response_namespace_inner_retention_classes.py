@@ -32,16 +32,14 @@ try:
     from pydantic import Field
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field  # stub
+
 try:
     from typing_extensions import Self
 except ImportError:
-    try:
-        from typing import Self  # Python 3.11+
-    except ImportError:
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
+    from typing import Self  # Python 3.11+
 
 
-class NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses(BaseModel):
+class NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses(BaseModel):  # type: ignore[reportGeneralTypeIssues]
     """List of retention classes for this tenant"""
     retention_class: Optional[List[NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClassesRetentionClassInner]
                               ] = Field(default=None, description="List of retention classes")
@@ -56,7 +54,7 @@ class NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses(BaseMo
         return self.model_dump(by_alias=True, exclude_none=True)
 
     @classmethod
-    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional["Self"]:
         if obj is None:
             return None
         return cls.model_validate(obj)

@@ -30,7 +30,7 @@ except ImportError:
     try:
         from typing import NotRequired, Self  # Python 3.11+
     except ImportError:
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import NotRequired, Self  # stub
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import NotRequired  # stub
 
 try:
     import urllib3
@@ -231,7 +231,7 @@ conf = ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_
 
     """
 
-    _default: ClassVar[Optional[Self]] = None
+    _default: ClassVar[Optional["Self"]] = None
 
     def __init__(
         self,
@@ -389,7 +389,7 @@ conf = ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_
         """date format
         """
 
-    def __deepcopy__(self, memo: Dict[int, Any]) -> 'Self':
+    def __deepcopy__(self, memo: Dict[int, Any]) -> "Self":
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
@@ -407,7 +407,7 @@ conf = ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_
         object.__setattr__(self, name, value)
 
     @classmethod
-    def set_default(cls, default: Optional[Self]) -> None:
+    def set_default(cls, default: Optional["Self"]) -> None:
         """Set default instance of configuration.
 
         It stores default configuration, which can be
@@ -418,7 +418,7 @@ conf = ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_
         cls._default = default
 
     @classmethod
-    def get_default_copy(cls) -> 'Self':
+    def get_default_copy(cls) -> "Self":
         """Deprecated. Please use `get_default` instead.
 
         Deprecated. Please use `get_default` instead.
@@ -428,7 +428,7 @@ conf = ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_
         return cls.get_default()
 
     @classmethod
-    def get_default(cls) -> 'Self':
+    def get_default(cls) -> "Self":
         """Return the default configuration.
 
         This method returns newly created, based on default constructor,

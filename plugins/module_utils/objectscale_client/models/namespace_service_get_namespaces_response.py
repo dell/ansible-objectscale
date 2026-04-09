@@ -40,16 +40,14 @@ try:
     from pydantic import StrictStr
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
+
 try:
     from typing_extensions import Self
 except ImportError:
-    try:
-        from typing import Self  # Python 3.11+
-    except ImportError:
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
+    from typing import Self  # Python 3.11+
 
 
-class NamespaceServiceGetNamespacesResponse(BaseModel):
+class NamespaceServiceGetNamespacesResponse(BaseModel):  # type: ignore[reportGeneralTypeIssues]
     """NamespaceServiceGetNamespacesResponse"""
     namespace: Optional[List[NamespaceServiceGetNamespacesResponseNamespaceInner]] = Field(default=None, description="A list of namespaces")
     max_namespaces: Optional[StrictInt] = Field(default=None, description="Number of Namespaces requested.", alias="MaxNamespaces")
@@ -67,7 +65,7 @@ class NamespaceServiceGetNamespacesResponse(BaseModel):
         return self.model_dump(by_alias=True, exclude_none=True)
 
     @classmethod
-    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional["Self"]:
         if obj is None:
             return None
         return cls.model_validate(obj)

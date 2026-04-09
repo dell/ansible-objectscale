@@ -53,15 +53,18 @@ def get_objectscale_connection(module_params: Dict[str, Any]) -> Any:
 
     # Login via urllib3 Basic Auth — the generated client always injects AuthToken
     # for the /login path, but the first call needs HTTP Basic credentials instead.
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    http = urllib3.PoolManager(
-        cert_reqs='CERT_REQUIRED' if validate_certs else 'CERT_NONE',
-        ca_certs=None,
-    )
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)  # type: ignore[arg-type]
+
+    # Create HTTP pool manager with appropriate SSL settings
+    pool_kwargs = {}
+    if not validate_certs:
+        pool_kwargs['cert_reqs'] = 'CERT_NONE'  # type: ignore[arg-type]
+
+    http = urllib3.PoolManager(**pool_kwargs)
     credentials = base64.b64encode(
         f"{username}:{password}".encode('utf-8')
     ).decode('utf-8')
-    login_resp = http.request(
+    login_resp = http.request(  # type: ignore[attr-defined]
         'GET',
         f"https://{host}:{port}/login",
         headers={'Authorization': f'Basic {credentials}'}

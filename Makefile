@@ -50,16 +50,18 @@ build_spec: download_openapi
 	python3 ${CLIENTGEN_UTILS_DIR}/main.py --input ${OPENAPI_FULL_PATH} --output ${OPENAPI_FILTERED_PATH}
 
 build_client: build_spec
-	rm -rf ${OPENAPI_GEN_DIR}
+	# Only regenerate APIs and models - NEVER touch supporting files
+	rm -rf ${OPENAPI_GEN_DIR}/api ${OPENAPI_GEN_DIR}/models
 	${OPENAPI_CMD} generate \
 		-i ${OPENAPI_FILTERED_PATH} \
 		-g python \
 		-o ${OPENAPI_GEN_TMPDIR} \
-		--global-property apis,models,supportingFiles,modelTests=false,apiTests=false,modelDocs=false,apiDocs=false \
+		--global-property apis,models,modelTests=false,apiTests=false,modelDocs=false,apiDocs=false \
 		-c ${CLIENTGEN_UTILS_DIR}/config.yaml
 	# The dotted packageName produces a nested directory tree matching the
-	# full import path.  Move only the leaf package into the collection.
-	mv ${OPENAPI_GEN_NESTED} ${OPENAPI_GEN_DIR}
+	# full import path.  Move only API and models, preserve supporting files.
+	mv ${OPENAPI_GEN_NESTED}/api ${OPENAPI_GEN_DIR}/
+	mv ${OPENAPI_GEN_NESTED}/models ${OPENAPI_GEN_DIR}/
 	rm -rf ${OPENAPI_GEN_TMPDIR}
 	# Remove stray artifacts that the generator places inside the package
 	find ${OPENAPI_GEN_DIR} -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
@@ -69,9 +71,9 @@ generate: build_client format_client fix_sanity sanity_ignores
 
 format_client:
 	@echo "Formatting generated client with autoflake + isort + autopep8..."
-	autoflake --in-place --recursive --remove-all-unused-imports $(OPENAPI_GEN_DIR)/
-	isort --profile google $(OPENAPI_GEN_DIR)/
-	autopep8 --in-place --recursive --aggressive --max-line-length 160 $(OPENAPI_GEN_DIR)/
+	autoflake --in-place --recursive --remove-all-unused-imports $(OPENAPI_GEN_DIR)/api $(OPENAPI_GEN_DIR)/models
+	isort --profile google $(OPENAPI_GEN_DIR)/api $(OPENAPI_GEN_DIR)/models
+	autopep8 --in-place --recursive --aggressive --max-line-length 160 $(OPENAPI_GEN_DIR)/api $(OPENAPI_GEN_DIR)/models
 	@echo "Formatting complete"
 
 fix_sanity:
@@ -80,7 +82,7 @@ fix_sanity:
 
 sanity_ignores:
 	@mkdir -p tests/sanity
-	@for ver in 2.16 2.17 2.18 2.19 2.20; do \
+	@for ver in 2.16 2.17; do \
 		ignore="tests/sanity/ignore-$$ver.txt"; \
 		: > "$$ignore"; \
 		case "$$ver" in \

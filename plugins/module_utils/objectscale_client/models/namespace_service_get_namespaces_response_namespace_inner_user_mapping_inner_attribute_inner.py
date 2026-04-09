@@ -33,16 +33,14 @@ try:
     from pydantic import StrictStr
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
+
 try:
     from typing_extensions import Self
 except ImportError:
-    try:
-        from typing import Self  # Python 3.11+
-    except ImportError:
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
+    from typing import Self  # Python 3.11+
 
 
-class NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner(BaseModel):
+class NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner(BaseModel):  # type: ignore[reportGeneralTypeIssues]
     """NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner"""
     key: StrictStr = Field(description="Lookup string for this key-value pair")
     value: List[StrictStr] = Field(description="Lookup result for this key-value pair")
@@ -57,7 +55,7 @@ class NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttribu
         return self.model_dump(by_alias=True, exclude_none=True)
 
     @classmethod
-    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional["Self"]:
         if obj is None:
             return None
         return cls.model_validate(obj)

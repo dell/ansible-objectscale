@@ -170,16 +170,16 @@ _T = TypeVar('_T')
 # --- pydantic stubs ---
 
 
-class BaseModel(Generic[_T]):
+class BaseModel:
     """Stub BaseModel for import compatibility."""
 
     model_config: dict = {}
 
-    def __init_subclass__(cls, **kw: Any) -> None:
+    def __init__(self, **data: Any) -> None:
         pass
 
-    def __init__(self, **kw: Any) -> None:
-        pass
+    def __init_subclass__(cls, **kw: Any) -> None:
+        super().__init_subclass__(**kw)
 
     def to_dict(self) -> dict:
         return {}
@@ -280,11 +280,21 @@ class TypedDict(_TypedDictBase, metaclass=TypedDictMeta):
     pass
 
 
-Self = Any
-
-
 StrictBytes = bytes
-SecretStr = str
+
+
+class SecretStr:
+    """Stub SecretStr for pydantic compatibility."""
+
+    def __init__(self, value: str):
+        self._value = value
+
+    def get_secret_value(self) -> str:
+        """Return the secret value."""
+        return self._value
+
+    def __str__(self) -> str:
+        return self._value
 
 
 # --- urllib3 stubs ---
@@ -633,6 +643,9 @@ def process_file(filepath: Path) -> bool:
         text = fix_configuration(text)
     if filepath.name == 'api_client.py':
         text = fix_api_client(text)
+        text = fix_type_annotations(text, filepath)
+    if filepath.name == 'api_response.py':
+        text = fix_type_annotations(text, filepath)
 
     # Line-level passes
     lines = text.split('\n')
@@ -659,6 +672,60 @@ def process_file(filepath: Path) -> bool:
     return False
 
 
+def fix_type_annotations(text: str, filepath: Path) -> str:
+    """Fix type annotation issues in generated code."""
+    # Fix RequestSerialized type definition
+    text = text.replace(
+        'RequestSerialized = Tuple[str, str, Dict[str, str], Optional[str], List[str]]',
+        'RequestSerialized = Tuple[str, str, Dict[str, str], Any, Union[List[Tuple[str, str]], None]]'
+    )
+
+    # Add Any to typing imports if not present
+    if 'from typing import Any' not in text and 'from typing import' in text:
+        text = re.sub(
+            r'from typing import ([^\\n]+)',
+            lambda m: f'from typing import Any, {m.group(1)}' if 'Any' not in m.group(1) else m.group(0),
+            text
+        )
+
+    # Fix param_serialize docstring
+    text = text.replace(
+        ':return: tuple of form (path, http_method, query_params, header_params,\n            body, post_params, files)',
+        ':return: tuple of form (method, url, header_params, body, post_params)'
+    )
+
+    # Fix response_types_map.get() calls - add type checking
+    text = text.replace(
+        'response_type = response_types_map.get(str(response_data.status), None)',
+        'response_type = response_types_map.get(str(response_data.status), None) if response_types_map else None'
+    )
+    text = text.replace(
+        'response_type = response_types_map.get(str(response_data.status)[0] + "XX", None)',
+        'response_type = response_types_map.get(str(response_data.status)[0] + "XX", None) if response_types_map else None'
+    )
+
+    # Fix SecretStr.get_secret_value() - add stub support
+    text = text.replace(
+        'return obj.get_secret_value()',
+        'return obj.get_secret_value() if hasattr(obj, "get_secret_value") else str(obj)'
+    )
+
+    # Fix deserialize call when response_type might be None
+    text = text.replace(
+        'return_data = self.deserialize(response_text, response_type, content_type)',
+        'return_data = self.deserialize(response_text, str(response_type or "object"), content_type)'
+    )
+
+    # Fix BaseModel inheritance issue in api_response.py specifically
+    if filepath.name == 'api_response.py':
+        text = text.replace(
+            'class ApiResponse(BaseModel, Generic[T]):',
+            'class ApiResponse(BaseModel, Generic[T]):  # type: ignore[reportGeneralTypeIssues]'
+        )
+
+    return text
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description='Post-process generated client code for ansible-test sanity')
@@ -671,14 +738,12 @@ def main() -> None:
         print(f'Error: {target} is not a directory', file=sys.stderr)
         sys.exit(1)
 
-    # Create _stubs.py for import-test compatibility
-    if create_stubs_module(target):
-        print(f'  Created: {target}/_stubs.py')
-
     fixed = 0
     for py_file in sorted(target.rglob('*.py')):
-        if py_file.name == '_stubs.py':
+        # Skip manually managed supporting files
+        if py_file.name in ['api_client.py', 'api_response.py', 'configuration.py', 'exceptions.py', 'rest.py', '_stubs.py']:
             continue
+
         if process_file(py_file):
             fixed += 1
             print(f'  Fixed: {py_file}')

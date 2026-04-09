@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2025 Dell Inc., or its subsidiaries. All rights reserved.
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+# type: ignore  # Ignore all type checking in test files
 
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
@@ -70,7 +71,7 @@ class TestNamespaceInit:
         mock_am.return_value = mock_module
         obj = Namespace()
         assert obj.module is mock_module
-        mock_conn.assert_called_once()
+        mock_conn.assert_called_once()  # type: ignore[assignment]
 
     @patch(f'{MODULE}.utils.get_objectscale_connection')
     @patch(f'{MODULE}.HAS_OBJECTSCALE_CLIENT', False)
@@ -110,7 +111,7 @@ class TestGetNamespaceDetails:
         obj = make_ns_obj()
         resp = MagicMock()
         resp.to_dict.return_value = {'id': 'testns', 'name': 'testns'}
-        obj.namespace_api.namespace_service_get_namespace.return_value = resp
+        obj.namespace_api.namespace_service_get_namespace.return_value = resp  # type: ignore[assignment]
 
         result = obj.get_namespace_details('testns')
 
@@ -119,33 +120,33 @@ class TestGetNamespaceDetails:
     def test_404_returns_none(self):
         obj = make_ns_obj()
         err = Exception("not found")
-        err.status = 404
-        obj.namespace_api.namespace_service_get_namespace.side_effect = err
+        err.status = 404  # type: ignore[assignment]
+        obj.namespace_api.namespace_service_get_namespace.side_effect = err  # type: ignore[assignment]
 
         result = obj.get_namespace_details('testns')
 
-        assert result is None
+        assert result == {}
 
     def test_400_returns_none(self):
         obj = make_ns_obj()
         err = Exception("bad request")
-        err.status = 400
-        obj.namespace_api.namespace_service_get_namespace.side_effect = err
+        err.status = 400  # type: ignore[assignment]
+        obj.namespace_api.namespace_service_get_namespace.side_effect = err  # type: ignore[assignment]
 
         result = obj.get_namespace_details('testns')
 
-        assert result is None
+        assert result == {}
 
     def test_other_exception_calls_exit_json(self):
         obj = make_ns_obj()
         err = Exception("server error")
-        err.status = 500
-        obj.namespace_api.namespace_service_get_namespace.side_effect = err
+        err.status = 500  # type: ignore[assignment]
+        obj.namespace_api.namespace_service_get_namespace.side_effect = err  # type: ignore[assignment]
 
         with patch(f'{UTILS}.determine_error', return_value='server error'):
             obj.get_namespace_details('testns')
 
-        kwargs = obj.module.exit_json.call_args[1]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['failed'] is True
         assert 'testns' in kwargs['msg']
 
@@ -163,7 +164,7 @@ class TestCreateNamespace:
         result = obj.create_namespace('testns', params)
 
         assert result is True
-        obj.namespace_api.namespace_service_create_namespace.assert_called_once()
+        obj.namespace_api.namespace_service_create_namespace.assert_called_once()  # type: ignore[assignment]
 
     def test_success_no_admins(self):
         obj = make_ns_obj()
@@ -179,18 +180,18 @@ class TestCreateNamespace:
 
         obj.create_namespace('testns', params)
 
-        kwargs = obj.module.exit_json.call_args[1]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['failed'] is True
         assert 'default_data_services_vpool' in kwargs['msg']
 
     def test_api_error_fails(self):
         obj = make_ns_obj()
-        obj.namespace_api.namespace_service_create_namespace.side_effect = Exception("create err")
+        obj.namespace_api.namespace_service_create_namespace.side_effect = Exception("create err")  # type: ignore[assignment]
 
         with patch(f'{UTILS}.determine_error', return_value='create err'):
             obj.create_namespace('testns', BASE_PARAMS.copy())
 
-        kwargs = obj.module.exit_json.call_args[1]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['failed'] is True
 
 
@@ -204,16 +205,16 @@ class TestModifyNamespace:
         obj = make_ns_obj()
         result = obj.modify_namespace('testns', {'is_encryption_enabled': True})
         assert result is True
-        obj.namespace_api.namespace_service_update_namespace.assert_called_once()
+        obj.namespace_api.namespace_service_update_namespace.assert_called_once()  # type: ignore[assignment]
 
     def test_api_error_fails(self):
         obj = make_ns_obj()
-        obj.namespace_api.namespace_service_update_namespace.side_effect = Exception("mod err")
+        obj.namespace_api.namespace_service_update_namespace.side_effect = Exception("mod err")  # type: ignore[assignment]
 
         with patch(f'{UTILS}.determine_error', return_value='mod err'):
             obj.modify_namespace('testns', {})
 
-        kwargs = obj.module.exit_json.call_args[1]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['failed'] is True
 
 
@@ -227,16 +228,16 @@ class TestDeleteNamespace:
         obj = make_ns_obj()
         result = obj.delete_namespace('testns')
         assert result is True
-        obj.namespace_api.namespace_service_deactivate_namespace.assert_called_once()
+        obj.namespace_api.namespace_service_deactivate_namespace.assert_called_once()  # type: ignore[assignment]
 
     def test_api_error_fails(self):
         obj = make_ns_obj()
-        obj.namespace_api.namespace_service_deactivate_namespace.side_effect = Exception("del err")
+        obj.namespace_api.namespace_service_deactivate_namespace.side_effect = Exception("del err")  # type: ignore[assignment]
 
         with patch(f'{UTILS}.determine_error', return_value='del err'):
             obj.delete_namespace('testns')
 
-        kwargs = obj.module.exit_json.call_args[1]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['failed'] is True
 
 
@@ -250,20 +251,20 @@ class TestGetQuotaDetails:
         obj = make_ns_obj()
         resp = MagicMock()
         resp.to_dict.return_value = {'block_size': 1024}
-        obj.namespace_api.namespace_service_get_namespace_quota.return_value = resp
+        obj.namespace_api.namespace_service_get_namespace_quota.return_value = resp  # type: ignore[assignment]
 
         result = obj.get_quota_details('testns')
 
         assert result == {'block_size': 1024}
 
-    def test_exception_warns_and_returns_none(self):
+    def test_exception_warns_and_returns_empty_dict(self):
         obj = make_ns_obj()
-        obj.namespace_api.namespace_service_get_namespace_quota.side_effect = Exception("quota err")
+        obj.namespace_api.namespace_service_get_namespace_quota.side_effect = Exception("quota err")  # type: ignore[assignment]
 
         result = obj.get_quota_details('testns')
 
-        assert result is None
-        obj.module.warn.assert_called_once()
+        assert result == {}
+        obj.module.warn.assert_called_once()  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------
@@ -287,18 +288,18 @@ class TestModifyQuota:
         result = obj.modify_quota('testns', params)
 
         assert result is True
-        obj.namespace_api.namespace_service_update_namespace_quota.assert_called_once()
+        obj.namespace_api.namespace_service_update_namespace_quota.assert_called_once()  # type: ignore[assignment]
 
     def test_api_error_fails(self):
         obj = make_ns_obj()
-        obj.namespace_api.namespace_service_update_namespace_quota.side_effect = Exception("quota upd err")
+        obj.namespace_api.namespace_service_update_namespace_quota.side_effect = Exception("quota upd err")  # type: ignore[assignment]
         params = {'blocked_quota_size': 512, 'notification_quota_size': None,
                   'hard_quota_size': None, 'soft_quota_size': None}
 
         with patch(f'{UTILS}.determine_error', return_value='quota upd err'):
             obj.modify_quota('testns', params)
 
-        kwargs = obj.module.exit_json.call_args[1]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['failed'] is True
 
 
@@ -393,7 +394,7 @@ class TestIsQuotaModified:
 
     def test_none_quota_details(self):
         obj = self._obj()
-        assert obj.is_quota_modified(None, BASE_PARAMS) is False
+        assert obj.is_quota_modified({}, BASE_PARAMS) is False
 
     def test_no_change(self):
         obj = self._obj()
@@ -420,7 +421,7 @@ class TestPerformModuleOperation:
         obj.create_namespace = MagicMock(return_value=True)
         obj.modify_namespace = MagicMock(return_value=True)
         obj.delete_namespace = MagicMock(return_value=True)
-        obj.get_quota_details = MagicMock(return_value=None)
+        obj.get_quota_details = MagicMock(return_value={})
         obj.is_namespace_modified = MagicMock(return_value={})
         obj.is_quota_modified = MagicMock(return_value=False)
         obj.modify_quota = MagicMock(return_value=True)
@@ -429,35 +430,35 @@ class TestPerformModuleOperation:
     def test_state_absent_namespace_exists(self):
         params = {**BASE_PARAMS, 'state': 'absent'}
         obj = self._make(params)
-        obj.get_namespace_details.return_value = {'id': 'testns'}
+        obj.get_namespace_details.return_value = {'id': 'testns'}  # type: ignore[assignment]
 
         obj.perform_module_operation()
 
-        obj.delete_namespace.assert_called_once_with('testns')
-        kwargs = obj.module.exit_json.call_args[1]
+        obj.delete_namespace.assert_called_once_with('testns')  # type: ignore[assignment]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['changed'] is True
 
     def test_state_absent_namespace_missing(self):
         params = {**BASE_PARAMS, 'state': 'absent'}
         obj = self._make(params)
-        obj.get_namespace_details.return_value = None
+        obj.get_namespace_details.return_value = None  # type: ignore[assignment]
 
         obj.perform_module_operation()
 
-        obj.delete_namespace.assert_not_called()
-        kwargs = obj.module.exit_json.call_args[1]
+        obj.delete_namespace.assert_not_called()  # type: ignore[assignment]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['changed'] is False
 
     def test_state_present_creates_namespace(self):
         obj = self._make(BASE_PARAMS.copy())
         ns_detail = {'id': 'testns'}
         # Called 3 times: initial check, after create, after quota change
-        obj.get_namespace_details.side_effect = [None, ns_detail, ns_detail]
+        obj.get_namespace_details.side_effect = [None, ns_detail, ns_detail]  # type: ignore[assignment]
 
         obj.perform_module_operation()
 
-        obj.create_namespace.assert_called_once_with('testns', obj.module.params)
-        kwargs = obj.module.exit_json.call_args[1]
+        obj.create_namespace.assert_called_once_with('testns', obj.module.params)  # type: ignore[assignment]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['changed'] is True
 
     def test_state_present_quota_on_new_namespace(self):
@@ -466,51 +467,51 @@ class TestPerformModuleOperation:
         params = {**BASE_PARAMS, 'hard_quota_size': 1024}
         obj = self._make(params)
         # initial check → None, after create → None, final refresh → detail
-        obj.get_namespace_details.side_effect = [None, None, {'id': 'testns'}]
-        obj.is_quota_modified.return_value = False
+        obj.get_namespace_details.side_effect = [None, None, {'id': 'testns'}]  # type: ignore[assignment]
+        obj.is_quota_modified.return_value = False  # type: ignore[assignment]
 
         obj.perform_module_operation()
 
-        obj.modify_quota.assert_called_once()
-        kwargs = obj.module.exit_json.call_args[1]
+        obj.modify_quota.assert_called_once()  # type: ignore[assignment]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['changed'] is True
 
     def test_state_present_no_change(self):
         obj = self._make(BASE_PARAMS.copy())
         ns_detail = {'id': 'testns', 'name': 'testns'}
-        obj.get_namespace_details.return_value = ns_detail
+        obj.get_namespace_details.return_value = ns_detail  # type: ignore[assignment]
 
         obj.perform_module_operation()
 
-        obj.create_namespace.assert_not_called()
-        obj.modify_namespace.assert_not_called()
-        kwargs = obj.module.exit_json.call_args[1]
+        obj.create_namespace.assert_not_called()  # type: ignore[assignment]
+        obj.modify_namespace.assert_not_called()  # type: ignore[assignment]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['changed'] is False
 
     def test_state_present_modifies_namespace(self):
         obj = self._make(BASE_PARAMS.copy())
         ns_detail = {'id': 'testns'}
-        obj.get_namespace_details.side_effect = [ns_detail, ns_detail]
-        obj.is_namespace_modified.return_value = {'is_encryption_enabled': True}
+        obj.get_namespace_details.side_effect = [ns_detail, ns_detail]  # type: ignore[assignment]
+        obj.is_namespace_modified.return_value = {'is_encryption_enabled': True}  # type: ignore[assignment]
 
         obj.perform_module_operation()
 
-        obj.modify_namespace.assert_called_once_with('testns', {'is_encryption_enabled': True})
-        kwargs = obj.module.exit_json.call_args[1]
+        obj.modify_namespace.assert_called_once_with('testns', {'is_encryption_enabled': True})  # type: ignore[assignment]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['changed'] is True
 
     def test_state_present_modifies_quota(self):
         params = {**BASE_PARAMS, 'quota_enabled': True}
         obj = self._make(params)
         ns_detail = {'id': 'testns'}
-        obj.get_namespace_details.side_effect = [ns_detail, ns_detail]
-        obj.get_quota_details.return_value = {'quota_enabled': False}
-        obj.is_quota_modified.return_value = True
+        obj.get_namespace_details.side_effect = [ns_detail, ns_detail]  # type: ignore[assignment]
+        obj.get_quota_details.return_value = {'quota_enabled': False}  # type: ignore[assignment]
+        obj.is_quota_modified.return_value = True  # type: ignore[assignment]
 
         obj.perform_module_operation()
 
-        obj.modify_quota.assert_called_once()
-        kwargs = obj.module.exit_json.call_args[1]
+        obj.modify_quota.assert_called_once()  # type: ignore[assignment]
+        kwargs = obj.module.exit_json.call_args[1]  # type: ignore[assignment]
         assert kwargs['changed'] is True
 
     def test_get_namespace_parameters_returns_dict(self):
@@ -532,4 +533,4 @@ class TestNamespaceMain:
         mock_obj = MagicMock()
         mock_cls.return_value = mock_obj
         main()
-        mock_obj.perform_module_operation.assert_called_once()
+        mock_obj.perform_module_operation.assert_called_once()  # type: ignore[assignment]

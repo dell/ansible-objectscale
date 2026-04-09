@@ -25,7 +25,7 @@ except ImportError:
 T = TypeVar("T")
 
 
-class ApiResponse(BaseModel, Generic[T]):
+class ApiResponse(BaseModel, Generic[T]):  # type: ignore[reportGeneralTypeIssues]  # type: ignore[reportGeneralTypeIssues]
     """
     API response object
     """

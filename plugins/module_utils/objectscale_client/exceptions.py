@@ -14,14 +14,6 @@ __metaclass__ = type
 
 from typing import Any, Optional
 
-try:
-    from typing_extensions import Self
-except ImportError:
-    try:
-        from typing import Self  # Python 3.11+
-    except ImportError:
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
-
 
 class OpenApiException(Exception):
     """The base exception class for all OpenAPIExceptions"""
@@ -146,7 +138,7 @@ class ApiException(OpenApiException):
         http_resp,
         body: Optional[str],
         data: Optional[Any],
-    ) -> 'Self':
+    ) -> "ApiException":
         if http_resp.status == 400:
             raise BadRequestException(http_resp=http_resp, body=body, data=data)
 

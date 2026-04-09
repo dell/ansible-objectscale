@@ -134,7 +134,7 @@ Namespaces:
         ]
 '''
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.dellemc.objectscale.plugins.module_utils \
     import utils
@@ -146,14 +146,11 @@ if TYPE_CHECKING:
         NamespaceServiceGetNamespacesResponse,
     )
 
-try:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.namespace_api import NamespaceApi
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response import (
-        NamespaceServiceGetNamespacesResponse,
-    )
-except (ImportError, Exception):
-    NamespaceApi = None  # type: ignore[assignment,misc]
-    NamespaceServiceGetNamespacesResponse = None  # type: ignore[assignment,misc]
+# Import objectscale client - fail fast if not available
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.namespace_api import NamespaceApi
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response import (
+    NamespaceServiceGetNamespacesResponse,
+)
 
 
 class ObjectScaleInfo(object):
@@ -176,6 +173,7 @@ class ObjectScaleInfo(object):
             supports_check_mode=False
         )
 
+        # Validate dependencies and setup connection
         if not HAS_OBJECTSCALE_CLIENT:
             self.module.exit_json(
                 failed=True,
@@ -185,13 +183,13 @@ class ObjectScaleInfo(object):
 
         try:
             self.api_client = utils.get_objectscale_connection(self.module.params)
-            self.namespace_api: NamespaceApi = NamespaceApi(self.api_client)
+            self.namespace_api = NamespaceApi(self.api_client)
         except Exception as e:
             self.module.exit_json(failed=True, msg="Failed to connect to ObjectScale: %s" % str(e))
 
         self.module.log('Connected to ObjectScale at %s' % self.module.params['objectscale_host'])
 
-    def get_namespaces(self) -> Optional[List[Dict[str, Any]]]:
+    def get_namespaces(self) -> List[Dict[str, Any]]:
         """Get all namespaces from ObjectScale."""
         try:
             response: NamespaceServiceGetNamespacesResponse = (

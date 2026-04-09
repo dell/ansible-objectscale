@@ -20,7 +20,7 @@ import mimetypes
 import os
 import re
 import tempfile
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import quote
 import uuid
 
@@ -41,7 +41,7 @@ try:
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import SecretStr  # stub
 
-RequestSerialized = Tuple[str, str, Dict[str, str], Optional[str], List[str]]
+RequestSerialized = Tuple[str, str, Dict[str, str], Any, Union[List[Tuple[str, str]], None]]
 
 
 class ApiClient:
@@ -172,8 +172,7 @@ class ApiClient:
         :param _request_auth: set to override the auth_settings for an a single
                               request; this effectively ignores the authentication
                               in the spec for a single request.
-        :return: tuple of form (path, http_method, query_params, header_params,
-            body, post_params, files)
+        :return: tuple of form (method, url, header_params, body, post_params)
         """
 
         config = self.configuration
@@ -297,10 +296,10 @@ class ApiClient:
         if response_data.data is None:
             raise AssertionError(msg)
 
-        response_type = response_types_map.get(str(response_data.status), None)
+        response_type = response_types_map.get(str(response_data.status), None) if response_types_map else None if response_types_map else None
         if not response_type and isinstance(response_data.status, int) and 100 <= response_data.status <= 599:
             # if not found, look for '1XX', '2XX', etc.
-            response_type = response_types_map.get(str(response_data.status)[0] + "XX", None)
+            response_type = response_types_map.get(str(response_data.status)[0] + "XX", None) if response_types_map else None if response_types_map else None
 
         # deserialize response data
         response_text = None
@@ -317,7 +316,7 @@ class ApiClient:
                     match = re.search(r"charset=([a-zA-Z\-\d]+)[\s;]?", content_type)
                 encoding = match.group(1) if match else "utf-8"
                 response_text = response_data.data.decode(encoding)
-                return_data = self.deserialize(response_text, response_type, content_type)
+                return_data = self.deserialize(response_text, str(response_type or "object"), content_type)
         finally:
             if not 200 <= response_data.status <= 299:
                 raise ApiException.from_response(  # pylint: disable=raising-bad-type
@@ -337,7 +336,7 @@ class ApiClient:
         """Builds a JSON POST object.
 
         If obj is None, return None.
-        If obj is SecretStr, return obj.get_secret_value()
+        If obj is SecretStr, return obj.get_secret_value() if hasattr(obj, "get_secret_value") else str(obj) if hasattr(obj, "get_secret_value") else str(obj)
         If obj is str, int, long, float, bool, return directly.
         If obj is datetime.datetime, datetime.date
             convert to string in iso8601 format.
@@ -354,7 +353,7 @@ class ApiClient:
         elif isinstance(obj, Enum):
             return obj.value
         elif isinstance(obj, SecretStr):
-            return obj.get_secret_value()
+            return obj.get_secret_value() if hasattr(obj, "get_secret_value") else str(obj) if hasattr(obj, "get_secret_value") else str(obj)
         elif isinstance(obj, self.PRIMITIVE_TYPES):
             return obj
         elif isinstance(obj, uuid.UUID):

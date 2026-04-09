@@ -36,16 +36,14 @@ try:
     from pydantic import StrictStr
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
+
 try:
     from typing_extensions import Self
 except ImportError:
-    try:
-        from typing import Self  # Python 3.11+
-    except ImportError:
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
+    from typing import Self  # Python 3.11+
 
 
-class NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner(BaseModel):
+class NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner(BaseModel):  # type: ignore[reportGeneralTypeIssues]
     """NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner"""
     domain: StrictStr = Field(description="A single-valued attribute indicating the user's IDP domain")
     attribute: Optional[List[NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner]] = None
@@ -61,7 +59,7 @@ class NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner(BaseMo
         return self.model_dump(by_alias=True, exclude_none=True)
 
     @classmethod
-    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional["Self"]:
         if obj is None:
             return None
         return cls.model_validate(obj)

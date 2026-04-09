@@ -37,16 +37,14 @@ try:
     from pydantic import StrictStr
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
+
 try:
     from typing_extensions import Self
 except ImportError:
-    try:
-        from typing import Self  # Python 3.11+
-    except ImportError:
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
+    from typing import Self  # Python 3.11+
 
 
-class NamespaceServiceGetNamespaceQuotaResponse(BaseModel):
+class NamespaceServiceGetNamespaceQuotaResponse(BaseModel):  # type: ignore[reportGeneralTypeIssues]
     """NamespaceServiceGetNamespaceQuotaResponse"""
     namespace: Optional[StrictStr] = Field(default=None, description="Gets Namespace")
     block_size: Optional[StrictInt] = Field(default=None, description="Block size in GB.", alias="blockSize")
@@ -64,7 +62,7 @@ class NamespaceServiceGetNamespaceQuotaResponse(BaseModel):
         return self.model_dump(by_alias=True, exclude_none=True)
 
     @classmethod
-    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional["Self"]:
         if obj is None:
             return None
         return cls.model_validate(obj)

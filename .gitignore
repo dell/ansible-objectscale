@@ -50,6 +50,7 @@ client/src/
 .ansible/
 
 # test
+tests/output
 tests/integration/test_values.yml
 
 # Coverage reports

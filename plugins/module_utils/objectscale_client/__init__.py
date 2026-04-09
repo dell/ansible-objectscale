@@ -1,5 +1,10 @@
 # coding: utf-8
 
+from __future__ import (absolute_import, division, print_function)
+
+__metaclass__ = type
+
+
 # flake8: noqa
 
 """
@@ -12,8 +17,6 @@
 
     Do not edit the class manually.
 """  # noqa: E501
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 
 __version__ = "1.0.0"
@@ -88,23 +91,23 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner import (
     NamespaceServiceGetNamespacesResponseNamespaceInner
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_retention_classes import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_retention_classes import (  # noqa: E501  # noqa: E501  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses  # noqa: E501; noqa: E501
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_retention_classes_retention_class_inner import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClassesRetentionClassInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_retention_classes_retention_class_inner import (  # noqa: E501  # noqa: E501  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClassesRetentionClassInner  # noqa: E501; noqa: E501
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner import (  # noqa: E501  # noqa: E501  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner  # noqa: E501; noqa: E501
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner_attribute_inner import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner_attribute_inner import (  # noqa: E501  # noqa: E501  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner  # noqa: E501; noqa: E501
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_vdc import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerVdc
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_vdc import (  # noqa: E501  # noqa: E501  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerVdc  # noqa: E501; noqa: E501
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_vdc_link import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerVdcLink
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_vdc_link import (  # noqa: E501  # noqa: E501  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerVdcLink  # noqa: E501; noqa: E501
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_retention_class_response import (
     NamespaceServiceGetRetentionClassResponse

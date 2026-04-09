@@ -9,7 +9,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 # pylint: disable=unused-import,too-few-public-methods
 
-from typing import Any, Dict, Generic, TypeVar
+from typing import Any, Dict, Generic, Optional, TypeVar
 
 _T = TypeVar('_T')
 
@@ -17,16 +17,16 @@ _T = TypeVar('_T')
 # --- pydantic stubs ---
 
 
-class BaseModel(Generic[_T]):
+class BaseModel:
     """Stub BaseModel for import compatibility."""
 
     model_config: dict = {}
 
-    def __init_subclass__(cls, **kw: Any) -> None:
+    def __init__(self, **data: Any) -> None:
         pass
 
-    def __init__(self, **kw: Any) -> None:
-        pass
+    def __init_subclass__(cls, **kw: Any) -> None:
+        super().__init_subclass__(**kw)
 
     def to_dict(self) -> dict:
         return {}
@@ -112,7 +112,7 @@ _TypedDictBase = dict
 class TypedDictMeta(type):
     """Metaclass for TypedDict to support both function and class usage."""
 
-    def __call__(cls, name: str = None, fields: Dict[str, Any] = None, total: bool = True, **kw: Any):
+    def __call__(cls: 'TypedDictMeta', name: Optional[str] = None, fields: Optional[Dict[str, Any]] = None, total: bool = True, **kw: Any):
         """Support both TypedDict(name, fields) and TypedDict() for inheritance."""
         if name is not None and fields is not None:
             # Function call: TypedDict(name, fields)
@@ -127,14 +127,35 @@ class TypedDict(_TypedDictBase, metaclass=TypedDictMeta):
     pass
 
 
-Self = Any
-
-
 StrictBytes = bytes
-SecretStr = str
+
+
+# --- typing stubs ---
+
+# Self = Any
+
+
+class SecretStr:
+    """Stub SecretStr for pydantic compatibility."""
+
+    def __init__(self, value: str):
+        self._value = value
+
+    def get_secret_value(self) -> str:
+        """Return the secret value."""
+        return self._value
+
+    def __str__(self) -> str:
+        return self._value
 
 
 # --- urllib3 stubs ---
+
+
+class Timeout:
+    """Stub Timeout class for urllib3 compatibility."""
+    def __init__(self, total=None, connect=None, read=None):
+        pass
 
 
 class _Util:
@@ -152,12 +173,14 @@ class _Urllib3:
     PoolManager = object
     ProxyManager = object
     util = _Util()
+    Timeout = Timeout
 
     class exceptions:  # pylint: disable=invalid-name
         """Stub urllib3.exceptions."""
         InsecureRequestWarning = type(
             "InsecureRequestWarning", (Warning,), {}
         )
+        SSLError = type("SSLError", (Exception,), {})
 
     @staticmethod
     def disable_warnings(*a: Any, **kw: Any) -> None:
