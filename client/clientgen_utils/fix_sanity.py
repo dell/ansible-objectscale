@@ -619,6 +619,26 @@ def fix_third_party_imports(text: str, filepath: Path) -> str:
 # File processor
 # ---------------------------------------------------------------------------
 
+def fix_stub_import_type_ignores(text: str) -> str:
+    """Add type ignore comments to stub imports to fix pyright errors."""
+    lines = text.split('\n')
+    result = []
+    
+    for line in lines:
+        # Add type ignore to stub import lines
+        if 'from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import' in line and '# stub' in line:
+            # Check if type ignore is already present
+            if '# type: ignore' not in line:
+                line = line.rstrip() + '  # type: ignore\n'
+            else:
+                line = line + '\n'
+        else:
+            line = line + '\n'
+        result.append(line)
+    
+    return ''.join(result)
+
+
 def process_file(filepath: Path) -> bool:
     """Process a single Python file. Returns True if modified."""
     original = filepath.read_text(encoding='utf-8')
@@ -637,6 +657,9 @@ def process_file(filepath: Path) -> bool:
 
     # Wrap all third-party imports in try/except with stubs
     text = fix_third_party_imports(text, filepath)
+    
+    # Add type ignore comments to stub imports to fix pyright errors
+    text = fix_stub_import_type_ignores(text)
 
     # File-specific fixes
     if filepath.name == 'configuration.py':

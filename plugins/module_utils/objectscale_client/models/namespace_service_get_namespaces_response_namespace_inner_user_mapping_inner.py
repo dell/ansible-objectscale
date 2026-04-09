@@ -23,24 +23,19 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 try:
     from pydantic import BaseModel
 except ImportError:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import BaseModel  # stub
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import BaseModel  # stub  # type: ignore
 try:
     from pydantic import ConfigDict
 except ImportError:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import ConfigDict  # stub
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import ConfigDict  # stub  # type: ignore
 try:
     from pydantic import Field
 except ImportError:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field  # stub
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field  # stub  # type: ignore
 try:
     from pydantic import StrictStr
 except ImportError:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
-
-try:
-    from typing_extensions import Self
-except ImportError:
-    from typing import Self  # Python 3.11+
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub  # type: ignore
 
 
 class NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner(BaseModel):  # type: ignore[reportGeneralTypeIssues]
@@ -59,7 +54,8 @@ class NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner(BaseMo
         return self.model_dump(by_alias=True, exclude_none=True)
 
     @classmethod
-    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional["Self"]:
+    def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional["NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner"]:
         if obj is None:
             return None
         return cls.model_validate(obj)
+

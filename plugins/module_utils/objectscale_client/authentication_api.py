@@ -12,30 +12,13 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 
-from typing import Any, cast, Dict, List, Optional, Tuple, Union
-
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import ApiClient
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import RequestSerialized
 try:
-    from pydantic import Field
+    from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 except ImportError:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field  # stub  # type: ignore
-try:
-    from pydantic import StrictFloat
-except ImportError:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictFloat  # stub  # type: ignore
-try:
-    from pydantic import StrictInt
-except ImportError:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictInt  # stub  # type: ignore
-try:
-    from pydantic import StrictStr
-except ImportError:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub  # type: ignore
-try:
-    from pydantic import validate_call
-except ImportError:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import validate_call  # stub  # type: ignore
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import (
+        validate_call, Field, StrictFloat, StrictStr, StrictInt  # stub
+    )
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 try:
     from typing_extensions import Annotated
 except ImportError:
@@ -43,6 +26,25 @@ except ImportError:
         from typing import Annotated  # Python 3.11+
     except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Annotated  # stub  # type: ignore
+
+
+try:
+    from pydantic import Field, StrictStr
+except ImportError:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field, StrictStr  # stub  # type: ignore
+from typing import Any, Dict, Optional
+try:
+    from typing_extensions import Annotated
+except ImportError:
+    try:
+        from typing import Annotated  # Python 3.11+
+    except ImportError:
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Annotated  # stub  # type: ignore
+
+
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import ApiClient, RequestSerialized
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_response import ApiResponse
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.rest import RESTResponseType
 
 
 class AuthenticationApi:
@@ -55,8 +57,7 @@ class AuthenticationApi:
     @validate_call
     def authentication_resource_get_login_token(
         self,
-        service: Annotated[Optional[StrictStr], Field(
-            description="Optional query parameter, to specify a URL to redirect to on successful          authentication")] = None,
+        service: Annotated[Optional[StrictStr], Field(description="Optional query parameter, to specify a URL to redirect to on successful          authentication")] = None,  # noqa: E501
         namespace: Annotated[Optional[StrictStr], Field(description="namespaces available for the user.")] = None,
         _request_timeout: Union[
             None,
@@ -99,7 +100,7 @@ class AuthenticationApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """  # noqa: E501
+        """ # noqa: E501
 
         _param = self._authentication_resource_get_login_token_serialize(
             service=service,
@@ -156,13 +157,13 @@ class AuthenticationApi:
         # process the path parameters
         # process the query parameters
         if service is not None:
-
+            
             _query_params.append(('service', service))
-
+            
         if namespace is not None:
-
+            
             _query_params.append(('namespace', namespace))
-
+            
         # process the header parameters
         # process the form parameters
         # process the body parameter
@@ -174,6 +175,7 @@ class AuthenticationApi:
                     'application/json'
                 ]
             )
+
 
         # authentication setting
         _auth_settings: List[str] = [
@@ -195,13 +197,12 @@ class AuthenticationApi:
             _request_auth=_request_auth
         )
 
+
     @validate_call
     def authentication_resource_logout(
         self,
-        force: Annotated[Optional[StrictStr], Field(
-            description="The user with exceeded tokens limit can still call '/logout?force=true' . This will delete all the current logged in session for the user and invalidates all the tokens, (All the tokens are deleted for the user)               Default value: false")] = None,  # noqa: E501
-        username: Annotated[Optional[StrictStr], Field(
-            description="A system administrator ( root ) user can log-out the logged in management-user calling '/logout?username=[USER_ID]'. (In an event of a user exceeded it's token limits, a sysadmin user can logout the user)")] = None,  # noqa: E501
+        force: Annotated[Optional[StrictStr], Field(description="The user with exceeded tokens limit can still call '/logout?force=true' . This will delete all the current logged in session for the user and invalidates all the tokens, (All the tokens are deleted for the user)               Default value: false")] = None,  # noqa: E501
+        username: Annotated[Optional[StrictStr], Field(description="A system administrator ( root ) user can log-out the logged in management-user calling '/logout?username=[USER_ID]'. (In an event of a user exceeded it's token limits, a sysadmin user can logout the user)")] = None,  # noqa: E501
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -243,7 +244,7 @@ class AuthenticationApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """  # noqa: E501
+        """ # noqa: E501
 
         _param = self._authentication_resource_logout_serialize(
             force=force,
@@ -300,13 +301,13 @@ class AuthenticationApi:
         # process the path parameters
         # process the query parameters
         if force is not None:
-
+            
             _query_params.append(('force', force))
-
+            
         if username is not None:
-
+            
             _query_params.append(('username', username))
-
+            
         # process the header parameters
         # process the form parameters
         # process the body parameter
@@ -318,6 +319,7 @@ class AuthenticationApi:
                     'application/json'
                 ]
             )
+
 
         # authentication setting
         _auth_settings: List[str] = [
@@ -338,4 +340,5 @@ class AuthenticationApi:
             _host=_host,
             _request_auth=_request_auth
         )
+
 

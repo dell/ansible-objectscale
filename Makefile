@@ -31,7 +31,6 @@ help:
 	@echo "  build_spec   - Filter the raw OpenAPI spec to only required APIs"
 	@echo "  build_client - Generate Python client into plugins/module_utils/storage/dell/"
 	@echo "  generate     - Full pipeline: build_spec + build_client"
-	@echo "  clean_client - Remove the generated objectscale_client package from module_utils"
 	@echo "  sanity_ignores - Regenerate tests/sanity/ignore-2.20.txt from generated client files"
 	@echo "  lint         - Run ansible-lint on the collection"
 	@echo "  test         - Run unit tests"
@@ -95,13 +94,10 @@ sanity_ignores:
 		echo "Generated $$ignore with $$(wc -l < "$$ignore") ignore entries"; \
 	done
 
-clean_client:
-	rm -rf ${OPENAPI_GEN_DIR}
-
 lint:
 	ansible-lint
 
 test:
 	python -m pytest tests/unit/
 
-.PHONY: default help download_openapi build_spec build_client format_client fix_sanity generate clean_client sanity_ignores lint test
+.PHONY: default help download_openapi build_spec build_client format_client fix_sanity generate sanity_ignores lint test
