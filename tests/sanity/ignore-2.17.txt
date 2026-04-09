@@ -1,3 +1,1 @@
 plugins/module_utils/objectscale_client/__init__.py empty-init!skip # generated client
-plugins/module_utils/objectscale_client/api/__init__.py empty-init!skip # generated client
-plugins/module_utils/objectscale_client/models/__init__.py empty-init!skip # generated client
