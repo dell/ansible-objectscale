@@ -6,7 +6,7 @@ __metaclass__ = type
 import sys
 import pytest
 
-sys.path.insert(0, '/root')
+sys.path.insert(0, '/root/Storage/collections')
 
 # Skip the entire module-level test directory when the generated
 # ObjectScale client cannot be imported (e.g. Python < 3.9 without
