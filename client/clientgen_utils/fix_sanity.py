@@ -622,6 +622,13 @@ def fix_third_party_imports(text: str, filepath: Path) -> str:
 def fix_stub_import_type_ignores(text: str) -> str:
     """Add type ignore comments to stub imports to fix pyright errors."""
     lines = text.split('\n')
+    # Remove the last empty element if text ends with newline
+    if lines and lines[-1] == '':
+        lines = lines[:-1]
+        ends_with_newline = True
+    else:
+        ends_with_newline = False
+    
     result = []
     
     for line in lines:
@@ -629,14 +636,15 @@ def fix_stub_import_type_ignores(text: str) -> str:
         if 'from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import' in line and '# stub' in line:
             # Check if type ignore is already present
             if '# type: ignore' not in line:
-                line = line.rstrip() + '  # type: ignore\n'
-            else:
-                line = line + '\n'
-        else:
-            line = line + '\n'
+                line = line.rstrip() + '  # type: ignore'
         result.append(line)
     
-    return ''.join(result)
+    # Join with newlines, preserving original ending
+    result_text = '\n'.join(result)
+    if ends_with_newline:
+        result_text += '\n'
+    
+    return result_text
 
 
 def process_file(filepath: Path) -> bool:
@@ -749,6 +757,30 @@ def fix_type_annotations(text: str, filepath: Path) -> str:
     return text
 
 
+def create_missing_init_files(target: Path) -> int:
+    """Create missing __init__.py files in api/ and models/ subdirectories."""
+    created = 0
+    init_content = (
+        'from __future__ import (absolute_import, division, print_function)\n'
+        '__metaclass__ = type\n'
+        '# -*- coding: utf-8 -*-\n'
+        '# Copyright (c) 2025 Dell Inc., or its subsidiaries. All rights reserved.\n'
+        '# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n'
+        '\n'
+    )
+    
+    # Create __init__.py in api/ and models/ subdirectories if they don't exist
+    for subdir in ['api', 'models']:
+        init_file = target / subdir / '__init__.py'
+        if not init_file.exists():
+            init_file.parent.mkdir(parents=True, exist_ok=True)
+            init_file.write_text(init_content, encoding='utf-8')
+            created += 1
+            print(f'  Created: {init_file}')
+    
+    return created
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description='Post-process generated client code for ansible-test sanity')
@@ -761,6 +793,9 @@ def main() -> None:
         print(f'Error: {target} is not a directory', file=sys.stderr)
         sys.exit(1)
 
+    # Create missing __init__.py files first
+    init_created = create_missing_init_files(target)
+    
     fixed = 0
     for py_file in sorted(target.rglob('*.py')):
         # Skip manually managed supporting files
@@ -771,7 +806,8 @@ def main() -> None:
             fixed += 1
             print(f'  Fixed: {py_file}')
 
-    print(f'Post-processed {fixed} file(s) in {target}')
+    total = init_created + fixed
+    print(f'Post-processed {total} file(s) in {target} ({init_created} __init__.py files created, {fixed} files fixed)')
 
 
 if __name__ == '__main__':

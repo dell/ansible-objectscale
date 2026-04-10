@@ -54,4 +54,3 @@ class Link(BaseModel):  # type: ignore[reportGeneralTypeIssues]
         if obj is None:
             return None
         return cls.model_validate(obj)
-

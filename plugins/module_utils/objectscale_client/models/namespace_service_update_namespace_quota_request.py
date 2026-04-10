@@ -56,4 +56,3 @@ class NamespaceServiceUpdateNamespaceQuotaRequest(BaseModel):  # type: ignore[re
         if obj is None:
             return None
         return cls.model_validate(obj)
-
