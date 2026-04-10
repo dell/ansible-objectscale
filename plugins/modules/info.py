@@ -229,6 +229,7 @@ class ObjectScaleInfo(object):
                 msg="The objectscale_client Python package is required. "
                     "Install it with: pip install pydantic urllib3 python-dateutil"
             )
+            return
 
         try:
             self.api_client = utils.get_objectscale_connection(self.module.params)
