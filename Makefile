@@ -70,9 +70,9 @@ generate: build_client format_client fix_sanity sanity_ignores
 
 format_client:
 	@echo "Formatting generated client with autoflake + isort + autopep8..."
-	autoflake --in-place --recursive --remove-all-unused-imports $(OPENAPI_GEN_DIR)/api $(OPENAPI_GEN_DIR)/models
-	isort --profile google $(OPENAPI_GEN_DIR)/api $(OPENAPI_GEN_DIR)/models
-	autopep8 --in-place --recursive --aggressive --max-line-length 160 $(OPENAPI_GEN_DIR)/api $(OPENAPI_GEN_DIR)/models
+	autoflake --in-place --recursive --remove-all-unused-imports $(OPENAPI_GEN_DIR)
+	isort $(OPENAPI_GEN_DIR)
+	autopep8 --in-place --recursive --aggressive --max-line-length 160 $(OPENAPI_GEN_DIR)
 	@echo "Formatting complete"
 
 fix_sanity:

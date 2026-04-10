@@ -628,9 +628,9 @@ def fix_stub_import_type_ignores(text: str) -> str:
         ends_with_newline = True
     else:
         ends_with_newline = False
-    
+
     result = []
-    
+
     for line in lines:
         # Add type ignore to stub import lines
         if 'from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import' in line and '# stub' in line:
@@ -638,12 +638,12 @@ def fix_stub_import_type_ignores(text: str) -> str:
             if '# type: ignore' not in line:
                 line = line.rstrip() + '  # type: ignore'
         result.append(line)
-    
+
     # Join with newlines, preserving original ending
     result_text = '\n'.join(result)
     if ends_with_newline:
         result_text += '\n'
-    
+
     return result_text
 
 
@@ -665,7 +665,7 @@ def process_file(filepath: Path) -> bool:
 
     # Wrap all third-party imports in try/except with stubs
     text = fix_third_party_imports(text, filepath)
-    
+
     # Add type ignore comments to stub imports to fix pyright errors
     text = fix_stub_import_type_ignores(text)
 
@@ -768,7 +768,7 @@ def create_missing_init_files(target: Path) -> int:
         '# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n'
         '\n'
     )
-    
+
     # Create __init__.py in api/ and models/ subdirectories if they don't exist
     for subdir in ['api', 'models']:
         init_file = target / subdir / '__init__.py'
@@ -777,7 +777,7 @@ def create_missing_init_files(target: Path) -> int:
             init_file.write_text(init_content, encoding='utf-8')
             created += 1
             print(f'  Created: {init_file}')
-    
+
     return created
 
 
@@ -795,7 +795,7 @@ def main() -> None:
 
     # Create missing __init__.py files first
     init_created = create_missing_init_files(target)
-    
+
     fixed = 0
     for py_file in sorted(target.rglob('*.py')):
         # Skip manually managed supporting files

@@ -17,38 +17,27 @@ from typing import Any, cast, Dict, List, Optional, Tuple, Union
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import ApiClient
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import RequestSerialized
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_namespace_request import (
-    NamespaceServiceCreateNamespaceRequest
-)
+    NamespaceServiceCreateNamespaceRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_namespace_response import (
-    NamespaceServiceCreateNamespaceResponse
-)
+    NamespaceServiceCreateNamespaceResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_retention_class_request import (
-    NamespaceServiceCreateRetentionClassRequest
-)
+    NamespaceServiceCreateRetentionClassRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_quota_response import (
-    NamespaceServiceGetNamespaceQuotaResponse
-)
+    NamespaceServiceGetNamespaceQuotaResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_response import (
-    NamespaceServiceGetNamespaceResponse
-)
+    NamespaceServiceGetNamespaceResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response import (
-    NamespaceServiceGetNamespacesResponse
-)
+    NamespaceServiceGetNamespacesResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_retention_class_response import (
-    NamespaceServiceGetRetentionClassResponse
-)
+    NamespaceServiceGetRetentionClassResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_retention_classes_response import (
-    NamespaceServiceGetRetentionClassesResponse
-)
+    NamespaceServiceGetRetentionClassesResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_namespace_quota_request import (
-    NamespaceServiceUpdateNamespaceQuotaRequest
-)
+    NamespaceServiceUpdateNamespaceQuotaRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_namespace_request import (
-    NamespaceServiceUpdateNamespaceRequest
-)
+    NamespaceServiceUpdateNamespaceRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_retention_class_request import (
-    NamespaceServiceUpdateRetentionClassRequest
-)
+    NamespaceServiceUpdateRetentionClassRequest)
 try:
     from pydantic import Field
 except ImportError:

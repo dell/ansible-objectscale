@@ -10,15 +10,31 @@
 """  # noqa: E501
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+__metaclass__ = type
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+__metaclass__ = type
 
 
 try:
-    from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
+    from pydantic import Field
+    from pydantic import StrictFloat
+    from pydantic import StrictInt
+    from pydantic import StrictStr
+    from pydantic import validate_call
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import (
         validate_call, Field, StrictFloat, StrictStr, StrictInt  # stub
     )
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+
+from typing import Any, cast, Dict, List, Optional, Tuple, Union
+
 try:
     from typing_extensions import Annotated
 except ImportError:
@@ -29,10 +45,13 @@ except ImportError:
 
 
 try:
-    from pydantic import Field, StrictStr
+    from pydantic import Field
+    from pydantic import StrictStr
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field, StrictStr  # stub  # type: ignore
+
 from typing import Any, Dict, Optional
+
 try:
     from typing_extensions import Annotated
 except ImportError:
@@ -41,10 +60,8 @@ except ImportError:
     except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Annotated  # stub  # type: ignore
 
-
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import ApiClient, RequestSerialized
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_response import ApiResponse
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.rest import RESTResponseType
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import ApiClient
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import RequestSerialized
 
 
 class AuthenticationApi:
@@ -100,7 +117,7 @@ class AuthenticationApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._authentication_resource_get_login_token_serialize(
             service=service,
@@ -157,13 +174,13 @@ class AuthenticationApi:
         # process the path parameters
         # process the query parameters
         if service is not None:
-            
+
             _query_params.append(('service', service))
-            
+
         if namespace is not None:
-            
+
             _query_params.append(('namespace', namespace))
-            
+
         # process the header parameters
         # process the form parameters
         # process the body parameter
@@ -175,7 +192,6 @@ class AuthenticationApi:
                     'application/json'
                 ]
             )
-
 
         # authentication setting
         _auth_settings: List[str] = [
@@ -196,7 +212,6 @@ class AuthenticationApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
 
     @validate_call
     def authentication_resource_logout(
@@ -244,7 +259,7 @@ class AuthenticationApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._authentication_resource_logout_serialize(
             force=force,
@@ -301,13 +316,13 @@ class AuthenticationApi:
         # process the path parameters
         # process the query parameters
         if force is not None:
-            
+
             _query_params.append(('force', force))
-            
+
         if username is not None:
-            
+
             _query_params.append(('username', username))
-            
+
         # process the header parameters
         # process the form parameters
         # process the body parameter
@@ -319,7 +334,6 @@ class AuthenticationApi:
                     'application/json'
                 ]
             )
-
 
         # authentication setting
         _auth_settings: List[str] = [
@@ -340,5 +354,3 @@ class AuthenticationApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
-

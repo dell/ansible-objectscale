@@ -18,8 +18,7 @@ __metaclass__ = type
 from typing import Any, Dict, List, Optional
 
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner_attribute_inner import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner
-)
+    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner)
 try:
     from pydantic import BaseModel
 except ImportError:

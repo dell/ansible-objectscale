@@ -8,7 +8,10 @@
 
     Do not edit the class manually.
 """  # noqa: E501
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 __metaclass__ = type
 
 
@@ -31,6 +34,7 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import ApiException
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import ApiValueError
 import ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models
+
 try:
     from dateutil.parser import parse
 except ImportError:

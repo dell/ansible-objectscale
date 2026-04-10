@@ -19,14 +19,11 @@ from typing import Any, Dict, List, Optional
 
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.link import Link
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_retention_classes import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses
-)
+    NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner
-)
+    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_vdc import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerVdc
-)
+    NamespaceServiceGetNamespacesResponseNamespaceInnerVdc)
 try:
     from pydantic import BaseModel
 except ImportError:

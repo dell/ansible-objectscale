@@ -8,7 +8,10 @@
 
     Do not edit the class manually.
 """  # noqa: E501
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 __metaclass__ = type
 
 
@@ -18,11 +21,15 @@ import logging
 from logging import FileHandler
 import multiprocessing
 import sys
+
 try:
     from typing import Any, ClassVar, Dict, List, Literal, Optional, TypedDict, Union
 except ImportError:
     from typing import Any, Dict, List, Optional, Union
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import ClassVar, Literal, TypedDict
+
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import ClassVar
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Literal
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import TypedDict
 
 try:
     from typing_extensions import NotRequired, Self

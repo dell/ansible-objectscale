@@ -10,15 +10,31 @@
 """  # noqa: E501
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+__metaclass__ = type
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+__metaclass__ = type
 
 
 try:
-    from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
+    from pydantic import Field
+    from pydantic import StrictFloat
+    from pydantic import StrictInt
+    from pydantic import StrictStr
+    from pydantic import validate_call
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import (
         validate_call, Field, StrictFloat, StrictStr, StrictInt  # stub
     )
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+
+from typing import Any, cast, Dict, List, Optional, Tuple, Union
+
 try:
     from typing_extensions import Annotated
 except ImportError:
@@ -29,10 +45,13 @@ except ImportError:
 
 
 try:
-    from pydantic import Field, StrictStr
+    from pydantic import Field
+    from pydantic import StrictStr
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field, StrictStr  # stub  # type: ignore
+
 from typing import Any, Dict, Optional
+
 try:
     from typing_extensions import Annotated
 except ImportError:
@@ -41,43 +60,30 @@ except ImportError:
     except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Annotated  # stub  # type: ignore
 
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import ApiClient
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import RequestSerialized
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_namespace_request import (
-    NamespaceServiceCreateNamespaceRequest
-)
+    NamespaceServiceCreateNamespaceRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_namespace_response import (
-    NamespaceServiceCreateNamespaceResponse
-)
+    NamespaceServiceCreateNamespaceResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_retention_class_request import (
-    NamespaceServiceCreateRetentionClassRequest
-)
+    NamespaceServiceCreateRetentionClassRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_quota_response import (
-    NamespaceServiceGetNamespaceQuotaResponse
-)
+    NamespaceServiceGetNamespaceQuotaResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_response import (
-    NamespaceServiceGetNamespaceResponse
-)
+    NamespaceServiceGetNamespaceResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response import (
-    NamespaceServiceGetNamespacesResponse
-)
+    NamespaceServiceGetNamespacesResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_retention_class_response import (
-    NamespaceServiceGetRetentionClassResponse
-)
+    NamespaceServiceGetRetentionClassResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_retention_classes_response import (
-    NamespaceServiceGetRetentionClassesResponse
-)
+    NamespaceServiceGetRetentionClassesResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_namespace_quota_request import (
-    NamespaceServiceUpdateNamespaceQuotaRequest
-)
+    NamespaceServiceUpdateNamespaceQuotaRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_namespace_request import (
-    NamespaceServiceUpdateNamespaceRequest
-)
+    NamespaceServiceUpdateNamespaceRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_retention_class_request import (
-    NamespaceServiceUpdateRetentionClassRequest
-)
-
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import ApiClient, RequestSerialized
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_response import ApiResponse
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.rest import RESTResponseType
+    NamespaceServiceUpdateRetentionClassRequest)
 
 
 class NamespaceApi:
@@ -130,7 +136,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_create_namespace_serialize(
             namespace_service_create_namespace_request=namespace_service_create_namespace_request,
@@ -232,7 +238,6 @@ class NamespaceApi:
             _request_auth=_request_auth
         )
 
-
     @validate_call
     def namespace_service_create_retention_class(
         self,
@@ -279,7 +284,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_create_retention_class_serialize(
             namespace=namespace,
@@ -385,7 +390,6 @@ class NamespaceApi:
             _request_auth=_request_auth
         )
 
-
     @validate_call
     def namespace_service_deactivate_namespace(
         self,
@@ -429,7 +433,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_deactivate_namespace_serialize(
             namespace=namespace,
@@ -497,7 +501,6 @@ class NamespaceApi:
                 ]
             )
 
-
         # authentication setting
         _auth_settings: List[str] = [
             'AuthToken'
@@ -517,7 +520,6 @@ class NamespaceApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
 
     @validate_call
     def namespace_service_get_namespace(
@@ -562,7 +564,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_get_namespace_serialize(
             id=id,
@@ -630,7 +632,6 @@ class NamespaceApi:
                 ]
             )
 
-
         # authentication setting
         _auth_settings: List[str] = [
             'AuthToken'
@@ -650,7 +651,6 @@ class NamespaceApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
 
     @validate_call
     def namespace_service_get_namespace_quota(
@@ -695,7 +695,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_get_namespace_quota_serialize(
             namespace=namespace,
@@ -763,7 +763,6 @@ class NamespaceApi:
                 ]
             )
 
-
         # authentication setting
         _auth_settings: List[str] = [
             'AuthToken'
@@ -783,7 +782,6 @@ class NamespaceApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
 
     @validate_call
     def namespace_service_get_namespaces(
@@ -834,7 +832,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_get_namespaces_serialize(
             limit=limit,
@@ -893,17 +891,17 @@ class NamespaceApi:
         # process the path parameters
         # process the query parameters
         if limit is not None:
-            
+
             _query_params.append(('limit', limit))
-            
+
         if marker is not None:
-            
+
             _query_params.append(('marker', marker))
-            
+
         if name is not None:
-            
+
             _query_params.append(('name', name))
-            
+
         # process the header parameters
         # process the form parameters
         # process the body parameter
@@ -915,7 +913,6 @@ class NamespaceApi:
                     'application/json'
                 ]
             )
-
 
         # authentication setting
         _auth_settings: List[str] = [
@@ -936,7 +933,6 @@ class NamespaceApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
 
     @validate_call
     def namespace_service_get_retention_class(
@@ -984,7 +980,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_get_retention_class_serialize(
             namespace=namespace,
@@ -1056,7 +1052,6 @@ class NamespaceApi:
                 ]
             )
 
-
         # authentication setting
         _auth_settings: List[str] = [
             'AuthToken'
@@ -1076,7 +1071,6 @@ class NamespaceApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
 
     @validate_call
     def namespace_service_get_retention_classes(
@@ -1121,7 +1115,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_get_retention_classes_serialize(
             namespace=namespace,
@@ -1189,7 +1183,6 @@ class NamespaceApi:
                 ]
             )
 
-
         # authentication setting
         _auth_settings: List[str] = [
             'AuthToken'
@@ -1209,7 +1202,6 @@ class NamespaceApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
 
     @validate_call
     def namespace_service_remove_namespace_quota(
@@ -1254,7 +1246,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_remove_namespace_quota_serialize(
             namespace=namespace,
@@ -1322,7 +1314,6 @@ class NamespaceApi:
                 ]
             )
 
-
         # authentication setting
         _auth_settings: List[str] = [
             'AuthToken'
@@ -1342,7 +1333,6 @@ class NamespaceApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
 
     @validate_call
     def namespace_service_update_namespace(
@@ -1390,7 +1380,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_update_namespace_serialize(
             namespace=namespace,
@@ -1496,7 +1486,6 @@ class NamespaceApi:
             _request_auth=_request_auth
         )
 
-
     @validate_call
     def namespace_service_update_namespace_quota(
         self,
@@ -1543,7 +1532,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_update_namespace_quota_serialize(
             namespace=namespace,
@@ -1649,7 +1638,6 @@ class NamespaceApi:
             _request_auth=_request_auth
         )
 
-
     @validate_call
     def namespace_service_update_retention_class(
         self,
@@ -1699,7 +1687,7 @@ class NamespaceApi:
                             in the spec for a single request.
         :type _host_index: int, optional
         :return: Returns the result object.
-        """ # noqa: E501
+        """  # noqa: E501
 
         _param = self._namespace_service_update_retention_class_serialize(
             namespace=namespace,
@@ -1808,5 +1796,3 @@ class NamespaceApi:
             _host=_host,
             _request_auth=_request_auth
         )
-
-
