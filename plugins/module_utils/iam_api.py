@@ -138,9 +138,29 @@ class IamApi(object):
         # type: (ET.Element, str) -> Optional[str]
         """Return the text content of the first child matching *tag*."""
         child = element.find(_ns(tag))
+        if child is None:
+            child = element.find(tag)
         if child is not None and child.text is not None:
             return child.text
         return None
+
+    @staticmethod
+    def _find_descendant(element, tag):
+        # type: (ET.Element, str) -> Optional[ET.Element]
+        """Find a descendant element, trying IAM namespace first, then bare tag."""
+        result = element.find('.//' + _ns(tag))
+        if result is None:
+            result = element.find('.//' + tag)
+        return result
+
+    @staticmethod
+    def _findall_children(element, tag):
+        # type: (ET.Element, str) -> List[ET.Element]
+        """Find all child elements, trying IAM namespace first, then bare tag."""
+        results = element.findall(_ns(tag))
+        if not results:
+            results = element.findall(tag)
+        return results
 
     def _extract_group(self, group_element):
         # type: (ET.Element) -> Dict[str, Optional[str]]
@@ -184,12 +204,12 @@ class IamApi(object):
 
             root = self._parse_xml(body)
 
-            result_el = root.find('.//' + _ns(result_tag))
+            result_el = self._find_descendant(root, result_tag)
             if result_el is not None:
-                for member in result_el.findall(_ns('member')):
+                for member in self._findall_children(result_el, 'member'):
                     results.append(extractor(member))
 
-            is_truncated_el = root.find('.//' + _ns('IsTruncated'))
+            is_truncated_el = self._find_descendant(root, 'IsTruncated')
             is_truncated = (
                 is_truncated_el is not None
                 and is_truncated_el.text is not None
@@ -197,7 +217,7 @@ class IamApi(object):
             )
 
             if is_truncated:
-                marker_el = root.find('.//' + _ns('Marker'))
+                marker_el = self._find_descendant(root, 'Marker')
                 if marker_el is not None and marker_el.text:
                     page_params['Marker'] = marker_el.text
                 else:
@@ -222,7 +242,7 @@ class IamApi(object):
             self._handle_error(status, body, 'CreateGroup')
 
         root = self._parse_xml(body)
-        group_el = root.find('.//' + _ns('Group'))
+        group_el = self._find_descendant(root, 'Group')
         if group_el is None:
             self._handle_error(status, body, 'CreateGroup')
             raise AssertionError("unreachable")
@@ -250,16 +270,16 @@ class IamApi(object):
 
         root = self._parse_xml(body)
 
-        group_el = root.find('.//' + _ns('Group'))
+        group_el = self._find_descendant(root, 'Group')
         if group_el is None:
             return None
 
         group = self._extract_group(group_el)
 
         users = []  # type: List[Dict[str, Optional[str]]]
-        users_el = root.find('.//' + _ns('Users'))
+        users_el = self._find_descendant(root, 'Users')
         if users_el is not None:
-            for member in users_el.findall(_ns('member')):
+            for member in self._findall_children(users_el, 'member'):
                 users.append(self._extract_user(member))
         group['Users'] = users  # type: ignore[assignment]
 
@@ -413,7 +433,7 @@ class IamApi(object):
 
         root = self._parse_xml(body)
 
-        result_el = root.find('.//' + _ns('GetGroupPolicyResult'))
+        result_el = self._find_descendant(root, 'GetGroupPolicyResult')
         if result_el is None:
             return None
 

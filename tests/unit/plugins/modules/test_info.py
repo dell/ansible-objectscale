@@ -18,6 +18,7 @@ PARAMS = dict(
     validate_certs=False,
     timeout=30,
     gather_subset=['namespace'],
+    namespace=None,
 )
 
 
@@ -35,21 +36,24 @@ def make_info_obj(params=None, has_client=True, conn_raises=None):
          patch(f'{MODULE}.utils.get_objectscale_connection',
                side_effect=conn_raises if conn_raises else None,
                return_value=api_client_mock), \
-         patch(f'{MODULE}.NamespaceApi'):
+         patch(f'{MODULE}.NamespaceApi'), \
+         patch(f'{MODULE}.IamApi'):
         obj = ObjectScaleInfo()
 
     obj.module = module_mock
     obj.namespace_api = MagicMock()
+    obj.iam_api = MagicMock()
     return obj
 
 
 class TestObjectScaleInfoInit:
 
+    @patch(f'{MODULE}.IamApi')
     @patch(f'{MODULE}.NamespaceApi')
     @patch(f'{MODULE}.utils.get_objectscale_connection')
     @patch(f'{MODULE}.HAS_OBJECTSCALE_CLIENT', True)
     @patch(f'{MODULE}.AnsibleModule')
-    def test_init_success(self, mock_am, mock_conn, mock_ns_api):
+    def test_init_success(self, mock_am, mock_conn, mock_ns_api, mock_iam_api):
         from ansible_collections.dellemc.objectscale.plugins.modules.info import ObjectScaleInfo
         mock_module = MagicMock()
         mock_module.params = PARAMS.copy()
@@ -149,6 +153,92 @@ class TestObjectScaleInfoPerformModuleOperation:
 
         obj.get_namespaces.assert_not_called()
         obj.module.exit_json.assert_called_once_with(changed=False)
+
+    def test_perform_with_iam_group_subset(self):
+        obj = make_info_obj()
+        obj.module.params = {**PARAMS, 'gather_subset': ['iam_group'], 'namespace': 'ns1'}
+        obj.get_iam_groups = MagicMock(return_value=[{'GroupName': 'devs'}])
+
+        obj.perform_module_operation()
+
+        obj.get_iam_groups.assert_called_once_with('ns1')
+        obj.module.exit_json.assert_called_once_with(
+            changed=False, IamGroups=[{'GroupName': 'devs'}]
+        )
+
+    def test_perform_with_iam_group_subset_missing_namespace(self):
+        obj = make_info_obj()
+        obj.module.params = {**PARAMS, 'gather_subset': ['iam_group'], 'namespace': None}
+
+        obj.perform_module_operation()
+
+        obj.module.exit_json.assert_called_once()
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'namespace' in kwargs['msg']
+
+    def test_perform_with_both_subsets(self):
+        obj = make_info_obj()
+        obj.module.params = {**PARAMS, 'gather_subset': ['namespace', 'iam_group'], 'namespace': 'ns1'}
+        obj.get_namespaces = MagicMock(return_value=[{'id': 'ns1'}])
+        obj.get_iam_groups = MagicMock(return_value=[{'GroupName': 'devs'}])
+
+        obj.perform_module_operation()
+
+        obj.get_namespaces.assert_called_once()
+        obj.get_iam_groups.assert_called_once_with('ns1')
+        obj.module.exit_json.assert_called_once_with(
+            changed=False, Namespaces=[{'id': 'ns1'}], IamGroups=[{'GroupName': 'devs'}]
+        )
+
+
+class TestObjectScaleInfoGetIamGroups:
+
+    def test_get_iam_groups_success(self):
+        obj = make_info_obj()
+        obj.iam_api.list_groups.return_value = [
+            {'GroupName': 'devs', 'GroupId': 'AGPA1'},
+            {'GroupName': 'ops', 'GroupId': 'AGPA2'},
+        ]
+
+        result = obj.get_iam_groups('ns1')
+
+        obj.iam_api.list_groups.assert_called_once_with('ns1')
+        assert result == [
+            {'GroupName': 'devs', 'GroupId': 'AGPA1'},
+            {'GroupName': 'ops', 'GroupId': 'AGPA2'},
+        ]
+
+    def test_get_iam_groups_empty(self):
+        obj = make_info_obj()
+        obj.iam_api.list_groups.return_value = []
+
+        result = obj.get_iam_groups('ns1')
+
+        assert result == []
+
+    def test_get_iam_groups_api_error(self):
+        obj = make_info_obj()
+        obj.iam_api.list_groups.side_effect = Exception("IAM error")
+
+        with patch(f'{UTILS}.determine_error', return_value='IAM error'):
+            obj.get_iam_groups('ns1')
+
+        obj.module.exit_json.assert_called_once()
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'IAM error' in kwargs['msg']
+
+    def test_get_iam_groups_no_iam_api(self):
+        obj = make_info_obj()
+        obj.iam_api = None
+
+        obj.get_iam_groups('ns1')
+
+        obj.module.exit_json.assert_called_once()
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'IamApi' in kwargs['msg']
 
 
 class TestInfoMain:

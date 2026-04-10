@@ -7,7 +7,7 @@
     objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('objectscale.example.com', true) }}"
     objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('admin', true) }}"
     objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('password', true) }}"
-    namespace: "test-namespace"
+    objectscale_namespace: "test-namespace"
 
   tasks:
     - name: Create an IAM group
@@ -16,8 +16,8 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        group_name: developers
-        namespace: "{{ namespace }}"
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
         state: present
       register: create_result
 
@@ -27,11 +27,11 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        group_name: developers
-        namespace: "{{ namespace }}"
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
         users:
-          - alice
-          - bob
+          - test-user
+          - user_001
         user_state: present-in-group
         state: present
 
@@ -41,8 +41,8 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        group_name: developers
-        namespace: "{{ namespace }}"
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
         policies:
           - "urn:ecs:iam:::policy/ECSS3ReadOnlyAccess"
         policy_state: present-in-group
@@ -54,8 +54,8 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        group_name: developers
-        namespace: "{{ namespace }}"
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
         inline_policies:
           - name: AllowListBuckets
             document: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:ListAllMyBuckets","Resource":"*"}]}'
@@ -68,10 +68,10 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        group_name: developers
-        namespace: "{{ namespace }}"
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
         users:
-          - bob
+          - user_001
         user_state: absent-in-group
         state: present
 
@@ -83,7 +83,7 @@
         validate_certs: false
         gather_subset:
           - iam_group
-        namespace: "{{ namespace }}"
+        namespace: "{{ objectscale_namespace }}"
       register: group_info
 
     - name: Display groups
@@ -96,6 +96,6 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        group_name: developers
-        namespace: "{{ namespace }}"
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
         state: absent

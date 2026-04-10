@@ -574,3 +574,364 @@ class TestPerformWithModifications:
             mock_cls.return_value = mock_obj
             main()
             mock_obj.perform_module_operation.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Inline policy idempotency (is_group_modified)
+# ---------------------------------------------------------------------------
+
+class TestInlinePolicyIdempotency:
+
+    def test_inline_present_already_exists(self):
+        """Inline policies that already exist should still be marked for put (current behavior)."""
+        params = {**BASE_PARAMS,
+                  'inline_policies': [{'name': 'InlinePolicy1', 'document': '{}'}],
+                  'inline_policy_state': 'present-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS, 'inline_policies': ['InlinePolicy1']}
+        result = obj.is_group_modified(current)
+        # Current behavior: always re-puts inline policies (known idempotency gap)
+        assert len(result['inline_to_put']) == 1
+
+    def test_inline_present_new_policy(self):
+        """A new inline policy should be marked for put."""
+        params = {**BASE_PARAMS,
+                  'inline_policies': [{'name': 'NewPolicy', 'document': '{}'}],
+                  'inline_policy_state': 'present-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS, 'inline_policies': ['InlinePolicy1']}
+        result = obj.is_group_modified(current)
+        assert result['is_modified'] is True
+        assert any(p['name'] == 'NewPolicy' for p in result['inline_to_put'])
+
+    def test_inline_absent_exists(self):
+        """An existing inline policy marked absent should be deleted."""
+        params = {**BASE_PARAMS,
+                  'inline_policies': [{'name': 'InlinePolicy1'}],
+                  'inline_policy_state': 'absent-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS, 'inline_policies': ['InlinePolicy1']}
+        result = obj.is_group_modified(current)
+        assert result['is_modified'] is True
+        assert 'InlinePolicy1' in result['inline_to_delete']
+
+    def test_inline_absent_not_exists(self):
+        """Removing an inline policy that doesn't exist should be a no-op."""
+        params = {**BASE_PARAMS,
+                  'inline_policies': [{'name': 'DoesNotExist'}],
+                  'inline_policy_state': 'absent-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS, 'inline_policies': ['InlinePolicy1']}
+        result = obj.is_group_modified(current)
+        assert result['is_modified'] is False
+        assert result['inline_to_delete'] == []
+
+    def test_inline_none_is_noop(self):
+        """When inline_policies is None, no modifications should be detected."""
+        params = {**BASE_PARAMS, 'inline_policies': None}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS, 'inline_policies': ['InlinePolicy1']}
+        result = obj.is_group_modified(current)
+        assert result['inline_to_put'] == []
+        assert result['inline_to_delete'] == []
+
+    def test_inline_empty_list_is_noop(self):
+        """When inline_policies is an empty list, no modifications should be detected."""
+        params = {**BASE_PARAMS, 'inline_policies': []}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS, 'inline_policies': ['InlinePolicy1']}
+        result = obj.is_group_modified(current)
+        assert result['inline_to_put'] == []
+        assert result['inline_to_delete'] == []
+        assert result['is_modified'] is False
+
+    def test_inline_policy_without_name_skipped(self):
+        """Inline policy dicts missing 'name' key should be skipped."""
+        params = {**BASE_PARAMS,
+                  'inline_policies': [{'document': '{}'}],
+                  'inline_policy_state': 'present-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS}
+        result = obj.is_group_modified(current)
+        assert result['inline_to_put'] == []
+        assert result['is_modified'] is False
+
+    def test_multiple_inline_policies_mixed(self):
+        """Multiple inline policies: some new, some existing."""
+        params = {**BASE_PARAMS,
+                  'inline_policies': [
+                      {'name': 'InlinePolicy1', 'document': '{}'},
+                      {'name': 'NewPolicy', 'document': '{"new": true}'},
+                  ],
+                  'inline_policy_state': 'present-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS, 'inline_policies': ['InlinePolicy1']}
+        result = obj.is_group_modified(current)
+        assert result['is_modified'] is True
+        names = [p['name'] for p in result['inline_to_put']]
+        assert 'NewPolicy' in names
+
+
+# ---------------------------------------------------------------------------
+# Extended is_group_modified tests
+# ---------------------------------------------------------------------------
+
+class TestIsGroupModifiedExtended:
+
+    def test_all_params_none_no_change(self):
+        """When users, policies, inline_policies are all None, no change."""
+        params = {**BASE_PARAMS, 'users': None, 'policies': None, 'inline_policies': None}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS}
+        result = obj.is_group_modified(current)
+        assert result['is_modified'] is False
+
+    def test_users_present_already_in_group(self):
+        """Adding a user already in the group should be a no-op."""
+        params = {**BASE_PARAMS, 'users': ['alice'], 'user_state': 'present-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS, 'users': ['alice']}
+        result = obj.is_group_modified(current)
+        assert result['users_to_add'] == []
+        assert result['is_modified'] is False
+
+    def test_users_absent_not_in_group(self):
+        """Removing a user not in the group should be a no-op."""
+        params = {**BASE_PARAMS, 'users': ['charlie'], 'user_state': 'absent-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS, 'users': ['alice']}
+        result = obj.is_group_modified(current)
+        assert result['users_to_remove'] == []
+        assert result['is_modified'] is False
+
+    def test_policies_present_already_attached(self):
+        """Attaching a policy already attached should be a no-op."""
+        params = {**BASE_PARAMS,
+                  'policies': ['urn:ecs:iam:::policy/ReadOnly'],
+                  'policy_state': 'present-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS}
+        result = obj.is_group_modified(current)
+        assert result['policies_to_attach'] == []
+        assert result['is_modified'] is False
+
+    def test_policies_absent_not_attached(self):
+        """Detaching a policy not attached should be a no-op."""
+        params = {**BASE_PARAMS,
+                  'policies': ['urn:ecs:iam:::policy/DoesNotExist'],
+                  'policy_state': 'absent-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS}
+        result = obj.is_group_modified(current)
+        assert result['policies_to_detach'] == []
+        assert result['is_modified'] is False
+
+    def test_policies_to_detach(self):
+        """Detaching an attached policy."""
+        params = {**BASE_PARAMS,
+                  'policies': ['urn:ecs:iam:::policy/ReadOnly'],
+                  'policy_state': 'absent-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS}
+        result = obj.is_group_modified(current)
+        assert result['is_modified'] is True
+        assert 'urn:ecs:iam:::policy/ReadOnly' in result['policies_to_detach']
+
+    def test_mixed_user_and_policy_changes(self):
+        """Simultaneous user add and policy attach."""
+        params = {**BASE_PARAMS,
+                  'users': ['alice', 'bob'], 'user_state': 'present-in-group',
+                  'policies': ['urn:new-policy'], 'policy_state': 'present-in-group'}
+        obj = make_iam_group_obj(params=params)
+        current = {**SAMPLE_GROUP_DETAILS, 'users': ['alice']}
+        result = obj.is_group_modified(current)
+        assert result['is_modified'] is True
+        assert 'bob' in result['users_to_add']
+        assert 'urn:new-policy' in result['policies_to_attach']
+
+
+# ---------------------------------------------------------------------------
+# Check mode with modifications
+# ---------------------------------------------------------------------------
+
+class TestCheckModeModifications:
+
+    def test_check_mode_modify_users(self):
+        """Check mode with user additions should report changed but not call API."""
+        params = {**BASE_PARAMS, 'users': ['alice', 'bob']}
+        obj = make_iam_group_obj(params=params)
+        obj.module.check_mode = True
+        obj.get_group_details = MagicMock(return_value=SAMPLE_GROUP_DETAILS.copy())
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+        obj.iam_api.add_user_to_group.assert_not_called()
+
+    def test_check_mode_modify_policies(self):
+        """Check mode with policy attach should report changed but not call API."""
+        params = {**BASE_PARAMS, 'policies': ['urn:new-policy']}
+        obj = make_iam_group_obj(params=params)
+        obj.module.check_mode = True
+        obj.get_group_details = MagicMock(return_value=SAMPLE_GROUP_DETAILS.copy())
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+        obj.iam_api.attach_group_policy.assert_not_called()
+
+    def test_check_mode_modify_inline_policies(self):
+        """Check mode with inline policy put should report changed but not call API."""
+        params = {**BASE_PARAMS,
+                  'inline_policies': [{'name': 'NewInline', 'document': '{}'}]}
+        obj = make_iam_group_obj(params=params)
+        obj.module.check_mode = True
+        obj.get_group_details = MagicMock(return_value=SAMPLE_GROUP_DETAILS.copy())
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+        obj.iam_api.put_group_policy.assert_not_called()
+
+    def test_check_mode_remove_users(self):
+        """Check mode with user removal should report changed but not call API."""
+        params = {**BASE_PARAMS, 'users': ['alice'], 'user_state': 'absent-in-group'}
+        obj = make_iam_group_obj(params=params)
+        obj.module.check_mode = True
+        obj.get_group_details = MagicMock(return_value=SAMPLE_GROUP_DETAILS.copy())
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+        obj.iam_api.remove_user_from_group.assert_not_called()
+
+    def test_check_mode_create_with_users(self):
+        """Check mode for group creation with users should not call any API."""
+        params = {**BASE_PARAMS, 'users': ['alice']}
+        obj = make_iam_group_obj(params=params)
+        obj.module.check_mode = True
+        obj.get_group_details = MagicMock(return_value=None)
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+        obj.iam_api.create_group.assert_not_called()
+        obj.iam_api.add_user_to_group.assert_not_called()
+
+    def test_check_mode_no_refresh(self):
+        """In check mode, group details should not be refreshed after create."""
+        params = {**BASE_PARAMS}
+        obj = make_iam_group_obj(params=params)
+        obj.module.check_mode = True
+        obj.get_group_details = MagicMock(return_value=None)
+
+        obj.perform_module_operation()
+
+        # get_group_details called only once (initial fetch), not again for refresh
+        obj.get_group_details.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Diff mode with modifications
+# ---------------------------------------------------------------------------
+
+class TestDiffModeModifications:
+
+    def test_diff_on_modify_users(self):
+        """Diff should show before/after state when adding users."""
+        params = {**BASE_PARAMS, 'users': ['alice', 'bob']}
+        obj = make_iam_group_obj(params=params)
+        obj.module._diff = True
+
+        modified_details = {**SAMPLE_GROUP_DETAILS, 'users': ['alice', 'bob']}
+        obj.get_group_details = MagicMock(side_effect=[
+            SAMPLE_GROUP_DETAILS.copy(), modified_details.copy()])
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert 'diff' in kwargs
+        assert kwargs['diff']['before']['users'] == ['alice']
+        assert sorted(kwargs['diff']['after']['users']) == ['alice', 'bob']
+
+    def test_diff_on_modify_policies(self):
+        """Diff should show before/after state when attaching policies."""
+        params = {**BASE_PARAMS, 'policies': ['urn:new-policy']}
+        obj = make_iam_group_obj(params=params)
+        obj.module._diff = True
+
+        modified_details = {**SAMPLE_GROUP_DETAILS,
+                            'attached_policies': [
+                                {'PolicyName': 'ReadOnly', 'PolicyArn': 'urn:ecs:iam:::policy/ReadOnly'},
+                                {'PolicyName': 'NewPolicy', 'PolicyArn': 'urn:new-policy'},
+                            ]}
+        obj.get_group_details = MagicMock(side_effect=[
+            SAMPLE_GROUP_DETAILS.copy(), modified_details.copy()])
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert 'diff' in kwargs
+        assert 'before' in kwargs['diff']
+        assert 'after' in kwargs['diff']
+        assert len(kwargs['diff']['after']['attached_policies']) == 2
+
+    def test_diff_no_change(self):
+        """Diff should show identical before/after when nothing changes."""
+        obj = make_iam_group_obj()
+        obj.module._diff = True
+        obj.get_group_details = MagicMock(return_value=SAMPLE_GROUP_DETAILS.copy())
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert 'diff' in kwargs
+        assert kwargs['diff']['before'] == kwargs['diff']['after']
+        assert kwargs['changed'] is False
+
+    def test_diff_absent_nonexistent(self):
+        """Diff for deleting a group that doesn't exist should show empty before/after."""
+        params = {**BASE_PARAMS, 'state': 'absent'}
+        obj = make_iam_group_obj(params=params)
+        obj.module._diff = True
+        obj.get_group_details = MagicMock(return_value=None)
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['diff']['before'] == {}
+        assert kwargs['diff']['after'] == {}
+
+    def test_diff_structure_has_expected_keys(self):
+        """Diff snapshot should have group_name, users, attached_policies, inline_policies."""
+        obj = make_iam_group_obj()
+        obj.module._diff = True
+        obj.get_group_details = MagicMock(side_effect=[None, SAMPLE_GROUP_DETAILS.copy()])
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        after = kwargs['diff']['after']
+        assert 'group_name' in after
+        assert 'users' in after
+        assert 'attached_policies' in after
+        assert 'inline_policies' in after
+
+    def test_diff_with_check_mode_on_modify(self):
+        """Diff in check mode should still show what would change."""
+        params = {**BASE_PARAMS, 'users': ['alice', 'bob']}
+        obj = make_iam_group_obj(params=params)
+        obj.module._diff = True
+        obj.module.check_mode = True
+        obj.get_group_details = MagicMock(return_value=SAMPLE_GROUP_DETAILS.copy())
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert 'diff' in kwargs
+        assert kwargs['changed'] is True
