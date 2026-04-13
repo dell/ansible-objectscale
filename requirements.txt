@@ -1,0 +1,10 @@
+packaging
+# Runtime dependencies of the vendored objectscale_client package (openapi-generator 7.x)
+urllib3~=1.26.7
+certifi>=14.5.14
+frozendict~=2.3.4
+python-dateutil~=2.7.0
+typing_extensions>=4.6.1
+pydantic>=2.0.0
+# objectscale_client is vendored in plugins/module_utils/storage/dell/objectscale_client/
+# Regenerate it with: make generate  (runs build_spec + build_client + vendor_client)
