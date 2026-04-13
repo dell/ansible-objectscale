@@ -17,6 +17,12 @@ __metaclass__ = type
 
 from typing import Any, Dict, Optional
 
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_add_user_to_group_response_response_metadata import (
+    IamServiceAddUserToGroupResponseResponseMetadata
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_create_role_response_result import (
+    IamServiceCreateRoleResponseResult
+)
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -30,10 +36,6 @@ try:
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field  # stub
 try:
-    from pydantic import StrictStr
-except ImportError:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
-try:
     from typing_extensions import Self
 except ImportError:
     try:
@@ -42,10 +44,10 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class NamespaceServiceGetNamespacesResponseNamespaceInnerVdcLink(BaseModel):
-    """Hyperlink to the related object"""
-    rel: Optional[StrictStr] = Field(default=None, description="Relationship type of the hyperlink")
-    href: Optional[StrictStr] = Field(default=None, description="Hyperlink URL to the related resource")
+class IamServiceUpdateRoleResponse(BaseModel):
+    """IamServiceUpdateRoleResponse"""
+    result: Optional[IamServiceCreateRoleResponseResult] = Field(default=None, alias="Result")
+    response_metadata: Optional[IamServiceAddUserToGroupResponseResponseMetadata] = Field(default=None, alias="ResponseMetadata")
 
     model_config = ConfigDict(
         validate_by_name=True,

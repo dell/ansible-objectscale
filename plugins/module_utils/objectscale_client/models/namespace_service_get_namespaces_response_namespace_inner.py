@@ -24,8 +24,8 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner import (  # noqa: E501
     NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_vdc import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerVdc
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.zone_info_service_get_vdc_by_name_response_vdc import (
+    ZoneInfoServiceGetVdcByNameResponseVdc
 )
 try:
     from pydantic import BaseModel
@@ -96,7 +96,7 @@ class NamespaceServiceGetNamespacesResponseNamespaceInner(BaseModel):
         description="Indicates whether the resource is inactive. When a user removes  a resource, the resource is put in this state before  it is removed from the ECS database.")  # noqa: E501
     var_global: Optional[StrictBool] = Field(default=None, description="Indicates whether the resource is global.", alias="global")
     remote: Optional[StrictBool] = Field(default=None, description="Indicates whether the resource is remote.")
-    vdc: Optional[NamespaceServiceGetNamespacesResponseNamespaceInnerVdc] = None
+    vdc: Optional[ZoneInfoServiceGetVdcByNameResponseVdc] = None
     internal: Optional[StrictBool] = Field(default=None, description="Indicated whether the resource is an internal resource")
 
     model_config = ConfigDict(

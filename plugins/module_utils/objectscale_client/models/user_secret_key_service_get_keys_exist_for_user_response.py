@@ -15,8 +15,11 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_secret_key_service_get_keys_for_user_response_link import (
+    UserSecretKeyServiceGetKeysForUserResponseLink
+)
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -30,6 +33,10 @@ try:
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field  # stub
 try:
+    from pydantic import StrictBool
+except ImportError:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictBool  # stub
+try:
     from pydantic import StrictStr
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
@@ -42,10 +49,19 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner(BaseModel):
-    """NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner"""
-    key: StrictStr = Field(description="Lookup string for this key-value pair")
-    value: List[StrictStr] = Field(description="Lookup result for this key-value pair")
+class UserSecretKeyServiceGetKeysExistForUserResponse(BaseModel):
+    """UserSecretKeyServiceGetKeysExistForUserResponse"""
+    secret_key_1: Optional[StrictStr] = Field(default=None, description="First secret key")
+    secret_key_1_exist: Optional[StrictBool] = Field(default=None, description="First secret key exist")
+    key_timestamp_1: Optional[StrictStr] = Field(default=None, description="First key creation timestamp in ISO-8601 format")
+    key_expiry_timestamp_1: Optional[StrictStr] = Field(default=None, description="First key expiration timestamp in ISO-8601 format")
+    secret_key_2: Optional[StrictStr] = Field(default=None, description="Second secret key")
+    secret_key_2_exist: Optional[StrictBool] = Field(default=None, description="Second secret key exist")
+    key_timestamp_2: Optional[StrictStr] = Field(default=None, description="Second key creation timestamp in ISO-8601 format")
+    key_expiry_timestamp_2: Optional[StrictStr] = Field(default=None, description="Second key expiry timestamp in ISO-8601 format")
+    link: Optional[UserSecretKeyServiceGetKeysForUserResponseLink] = None
+    secret_key_1_id: Optional[StrictStr] = Field(default=None, description="SHA-256 hash for secret key 1")
+    secret_key_2_id: Optional[StrictStr] = Field(default=None, description="SHA-256 hash for secret key 2")
 
     model_config = ConfigDict(
         validate_by_name=True,
