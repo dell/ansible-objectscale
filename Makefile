@@ -79,9 +79,9 @@ generate: build_client format_client fix_sanity sanity_ignores
 
 format_client:
 	@echo "Formatting generated client with autoflake + isort + autopep8..."
-	find $(OPENAPI_GEN_DIR) -name '*.py' ! -name 'api_client.py' ! -name 'api_response.py' -print0 | xargs -0 autoflake --in-place --remove-all-unused-imports
-	find $(OPENAPI_GEN_DIR) -name '*.py' ! -name 'api_client.py' ! -name 'api_response.py' -print0 | xargs -0 isort
-	find $(OPENAPI_GEN_DIR) -name '*.py' ! -name 'api_client.py' ! -name 'api_response.py' -print0 | xargs -0 autopep8 --in-place --aggressive --max-line-length 160
+	find $(OPENAPI_GEN_DIR) -name '*.py' ! -name '_stubs.py' ! -name 'api_client.py' ! -name 'api_response.py' ! -name 'configuration.py' ! -name 'exceptions.py' ! -name 'rest.py' ! -name '__init__.py' -print0 | xargs -0 autoflake --in-place --remove-all-unused-imports
+	find $(OPENAPI_GEN_DIR) -name '*.py' ! -name '_stubs.py' ! -name 'api_client.py' ! -name 'api_response.py' ! -name 'configuration.py' ! -name 'exceptions.py' ! -name 'rest.py' ! -name '__init__.py' -print0 | xargs -0 isort
+	find $(OPENAPI_GEN_DIR) -name '*.py' ! -name '_stubs.py' ! -name 'api_client.py' ! -name 'api_response.py' ! -name 'configuration.py' ! -name 'exceptions.py' ! -name 'rest.py' ! -name '__init__.py' -print0 | xargs -0 autopep8 --in-place --aggressive --max-line-length 160
 	@echo "Formatting complete"
 
 fix_sanity:
