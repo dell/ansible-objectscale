@@ -1,0 +1,7 @@
+---
+- name: "Cleanup - Delete IAM group {{ cleanup_group_name }}"
+  dellemc.objectscale.iam_group:
+    group_name: "{{ cleanup_group_name }}"
+    namespace: "{{ objectscale_namespace }}"
+    state: absent
+  ignore_errors: true

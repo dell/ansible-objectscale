@@ -1,0 +1,246 @@
+# Functional tests for dellemc.objectscale.iam_group — CREATE operations
+# Copyright (C) 2025 Dell Inc. or its subsidiaries. All Rights Reserved.
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+---
+- name: Test that we have required variables
+  ansible.builtin.fail:
+    msg: "Please define the following variables: objectscale_host, objectscale_username, objectscale_password, objectscale_namespace."
+  when: >-
+    objectscale_host is not defined or
+    objectscale_username is not defined or
+    objectscale_password is not defined or
+    objectscale_namespace is not defined
+
+# =====================================================================
+# TC-01  Create a basic IAM group
+# =====================================================================
+- block:
+    # ---- Pre-req: ensure group does not exist ----
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+    # ---- Phase 1: Check mode — changes expected ----
+    - name: TC-01 Create IAM group (check mode - changes expected)
+      dellemc.objectscale.iam_group: &create_basic
+        group_name: "{{ group_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+      check_mode: true
+      register: cm_changes
+
+    # ---- Phase 2: Normal mode — apply change ----
+    - name: TC-01 Create IAM group (normal mode)
+      dellemc.objectscale.iam_group:
+        <<: *create_basic
+      register: result
+
+    # ---- Phase 3: Check mode — no changes expected ----
+    - name: TC-01 Create IAM group (check mode - no changes expected)
+      dellemc.objectscale.iam_group:
+        <<: *create_basic
+      check_mode: true
+      register: cm_no_changes
+
+    # ---- Phase 4: Idempotence ----
+    - name: TC-01 Create IAM group (idempotence)
+      dellemc.objectscale.iam_group:
+        <<: *create_basic
+      register: idempotence
+
+    # ---- Verify with info module ----
+    - name: TC-01 Gather IAM group info
+      dellemc.objectscale.info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        objectscale_port: "{{ objectscale_port }}"
+        validate_certs: "{{ validate_certs }}"
+        gather_subset:
+          - iam_group
+        namespace: "{{ objectscale_namespace }}"
+      register: group_info
+
+    # ---- Assertions ----
+    - name: TC-01 Verify create results
+      ansible.builtin.assert:
+        that:
+          - cm_changes.changed
+          - result.changed
+          - result.iam_group_details is defined
+          - result.iam_group_details.group_name == group_name
+          - result.iam_group_details.path == '/'
+          - result.iam_group_details.users | length == 0
+          - result.iam_group_details.attached_policies | length == 0
+          - result.iam_group_details.inline_policies | length == 0
+          - not cm_no_changes.changed
+          - not idempotence.changed
+          - group_info.IamGroups | selectattr('GroupName', 'equalto', group_name) | list | length == 1
+
+  always:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+  module_defaults:
+    dellemc.objectscale.iam_group:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+
+# =====================================================================
+# TC-02  Create a group with a custom path
+# =====================================================================
+- block:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name_with_path }}"
+
+    # ---- Check mode ----
+    - name: TC-02 Create IAM group with path (check mode - changes expected)
+      dellemc.objectscale.iam_group: &create_with_path
+        group_name: "{{ group_name_with_path }}"
+        namespace: "{{ objectscale_namespace }}"
+        path: "{{ group_path }}"
+        state: present
+      check_mode: true
+      register: cm_changes
+
+    # ---- Normal mode ----
+    - name: TC-02 Create IAM group with path (normal mode)
+      dellemc.objectscale.iam_group:
+        <<: *create_with_path
+      register: result
+
+    # ---- Idempotence ----
+    - name: TC-02 Create IAM group with path (idempotence)
+      dellemc.objectscale.iam_group:
+        <<: *create_with_path
+      register: idempotence
+
+    # ---- Assertions ----
+    - name: TC-02 Verify create with path results
+      ansible.builtin.assert:
+        that:
+          - cm_changes.changed
+          - result.changed
+          - result.iam_group_details.group_name == group_name_with_path
+          - result.iam_group_details.path == group_path
+          - not idempotence.changed
+
+  always:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name_with_path }}"
+
+  module_defaults:
+    dellemc.objectscale.iam_group:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+
+# =====================================================================
+# TC-03  Create a group with users, policies and inline policies in one shot
+# =====================================================================
+- block:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+    # ---- Check mode ----
+    - name: TC-03 Create IAM group with all options (check mode - changes expected)
+      dellemc.objectscale.iam_group: &create_full
+        group_name: "{{ group_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+        users:
+          - "{{ test_user_1 }}"
+        user_state: present-in-group
+        policies:
+          - "{{ managed_policy_arn }}"
+        policy_state: present-in-group
+        inline_policies:
+          - name: "{{ inline_policy_name }}"
+            document: "{{ inline_policy_document }}"
+        inline_policy_state: present-in-group
+      check_mode: true
+      register: cm_changes
+
+    # ---- Normal mode ----
+    - name: TC-03 Create IAM group with all options (normal mode)
+      dellemc.objectscale.iam_group:
+        <<: *create_full
+      register: result
+
+    # ---- Idempotence (check mode — no changes expected) ----
+    - name: TC-03 Create IAM group with all options (check mode - no changes expected)
+      dellemc.objectscale.iam_group:
+        <<: *create_full
+      check_mode: true
+      register: cm_no_changes
+
+    # ---- Assertions ----
+    - name: TC-03 Verify create with all options
+      ansible.builtin.assert:
+        that:
+          - cm_changes.changed
+          - result.changed
+          - result.iam_group_details.group_name == group_name
+          - test_user_1 in result.iam_group_details.users
+          - result.iam_group_details.attached_policies | length >= 1
+          - inline_policy_name in result.iam_group_details.inline_policies
+
+  always:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+  module_defaults:
+    dellemc.objectscale.iam_group:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+
+# =====================================================================
+# TC-04  Create a group with diff mode enabled
+# =====================================================================
+- block:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+    - name: TC-04 Create IAM group (diff mode)
+      dellemc.objectscale.iam_group:
+        group_name: "{{ group_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+      diff: true
+      register: result_diff
+
+    - name: TC-04 Verify diff output on create
+      ansible.builtin.assert:
+        that:
+          - result_diff.changed
+          - result_diff.diff is defined
+          - result_diff.diff.before | length == 0
+          - result_diff.diff.after | length > 0
+          - result_diff.diff.after.group_name == group_name
+
+  always:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+  module_defaults:
+    dellemc.objectscale.iam_group:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"

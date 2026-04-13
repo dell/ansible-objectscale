@@ -1,0 +1,295 @@
+# Functional tests for dellemc.objectscale.iam_group — USER MEMBERSHIP operations
+# Copyright (C) 2025 Dell Inc. or its subsidiaries. All Rights Reserved.
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+---
+- name: Test that we have required variables
+  ansible.builtin.fail:
+    msg: "Please define the following variables: objectscale_host, objectscale_username, objectscale_password, objectscale_namespace."
+  when: >-
+    objectscale_host is not defined or
+    objectscale_username is not defined or
+    objectscale_password is not defined or
+    objectscale_namespace is not defined
+
+# =====================================================================
+# TC-05  Add users to an existing group
+# =====================================================================
+- block:
+    # ---- Setup: create a bare group ----
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_create_group.yaml"
+      vars:
+        helper_group_name: "{{ group_name }}"
+
+    # ---- Phase 1: Check mode — add user (changes expected) ----
+    - name: TC-05 Add user to group (check mode - changes expected)
+      dellemc.objectscale.iam_group: &add_user
+        group_name: "{{ group_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+        users:
+          - "{{ test_user_1 }}"
+        user_state: present-in-group
+      check_mode: true
+      register: cm_changes
+
+    # ---- Phase 2: Normal mode ----
+    - name: TC-05 Add user to group (normal mode)
+      dellemc.objectscale.iam_group:
+        <<: *add_user
+      register: result
+
+    # ---- Phase 3: Check mode — no changes expected ----
+    - name: TC-05 Add user to group (check mode - no changes expected)
+      dellemc.objectscale.iam_group:
+        <<: *add_user
+      check_mode: true
+      register: cm_no_changes
+
+    # ---- Phase 4: Idempotence ----
+    - name: TC-05 Add user to group (idempotence)
+      dellemc.objectscale.iam_group:
+        <<: *add_user
+      register: idempotence
+
+    # ---- Assertions ----
+    - name: TC-05 Verify add user results
+      ansible.builtin.assert:
+        that:
+          - cm_changes.changed
+          - result.changed
+          - test_user_1 in result.iam_group_details.users
+          - not cm_no_changes.changed
+          - not idempotence.changed
+
+  always:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+  module_defaults:
+    dellemc.objectscale.iam_group:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+
+# =====================================================================
+# TC-06  Add multiple users at once
+# =====================================================================
+- block:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_create_group.yaml"
+      vars:
+        helper_group_name: "{{ group_name }}"
+
+    - name: TC-06 Add multiple users (check mode - changes expected)
+      dellemc.objectscale.iam_group: &add_multi_users
+        group_name: "{{ group_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+        users:
+          - "{{ test_user_1 }}"
+          - "{{ test_user_2 }}"
+        user_state: present-in-group
+      check_mode: true
+      register: cm_changes
+
+    - name: TC-06 Add multiple users (normal mode)
+      dellemc.objectscale.iam_group:
+        <<: *add_multi_users
+      register: result
+
+    - name: TC-06 Add multiple users (idempotence)
+      dellemc.objectscale.iam_group:
+        <<: *add_multi_users
+      register: idempotence
+
+    - name: TC-06 Verify multiple users added
+      ansible.builtin.assert:
+        that:
+          - cm_changes.changed
+          - result.changed
+          - test_user_1 in result.iam_group_details.users
+          - test_user_2 in result.iam_group_details.users
+          - result.iam_group_details.users | length >= 2
+          - not idempotence.changed
+
+  always:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+  module_defaults:
+    dellemc.objectscale.iam_group:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+
+# =====================================================================
+# TC-07  Remove a user from a group
+# =====================================================================
+- block:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+    # Setup: create group and add both users
+    - name: TC-07 Setup - Create group with two users
+      dellemc.objectscale.iam_group:
+        group_name: "{{ group_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+        users:
+          - "{{ test_user_1 }}"
+          - "{{ test_user_2 }}"
+        user_state: present-in-group
+
+    # ---- Check mode — remove user (changes expected) ----
+    - name: TC-07 Remove user from group (check mode - changes expected)
+      dellemc.objectscale.iam_group: &remove_user
+        group_name: "{{ group_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+        users:
+          - "{{ test_user_2 }}"
+        user_state: absent-in-group
+      check_mode: true
+      register: cm_changes
+
+    # ---- Normal mode ----
+    - name: TC-07 Remove user from group (normal mode)
+      dellemc.objectscale.iam_group:
+        <<: *remove_user
+      register: result
+
+    # ---- Check mode — no changes expected ----
+    - name: TC-07 Remove user from group (check mode - no changes expected)
+      dellemc.objectscale.iam_group:
+        <<: *remove_user
+      check_mode: true
+      register: cm_no_changes
+
+    # ---- Idempotence ----
+    - name: TC-07 Remove user from group (idempotence)
+      dellemc.objectscale.iam_group:
+        <<: *remove_user
+      register: idempotence
+
+    # ---- Assertions ----
+    - name: TC-07 Verify user removal
+      ansible.builtin.assert:
+        that:
+          - cm_changes.changed
+          - result.changed
+          - test_user_1 in result.iam_group_details.users
+          - test_user_2 not in result.iam_group_details.users
+          - not cm_no_changes.changed
+          - not idempotence.changed
+
+  always:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+  module_defaults:
+    dellemc.objectscale.iam_group:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+
+# =====================================================================
+# TC-08  Remove a user that is not in the group (no-op)
+# =====================================================================
+- block:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_create_group.yaml"
+      vars:
+        helper_group_name: "{{ group_name }}"
+
+    - name: TC-08 Remove non-member user (no-op expected)
+      dellemc.objectscale.iam_group:
+        group_name: "{{ group_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+        users:
+          - "{{ test_user_1 }}"
+        user_state: absent-in-group
+      register: result
+
+    - name: TC-08 Verify no changes
+      ansible.builtin.assert:
+        that:
+          - not result.changed
+
+  always:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+  module_defaults:
+    dellemc.objectscale.iam_group:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+
+# =====================================================================
+# TC-09  User modification with diff mode
+# =====================================================================
+- block:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_create_group.yaml"
+      vars:
+        helper_group_name: "{{ group_name }}"
+
+    - name: TC-09 Add user with diff mode
+      dellemc.objectscale.iam_group:
+        group_name: "{{ group_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+        users:
+          - "{{ test_user_1 }}"
+        user_state: present-in-group
+      diff: true
+      register: result_diff
+
+    - name: TC-09 Verify diff output on user add
+      ansible.builtin.assert:
+        that:
+          - result_diff.changed
+          - result_diff.diff is defined
+          - result_diff.diff.before is defined
+          - result_diff.diff.after is defined
+          - test_user_1 in result_diff.diff.after.users
+
+  always:
+    - ansible.builtin.include_tasks: "{{ role_path }}/tests/_helper_cleanup.yaml"
+      vars:
+        cleanup_group_name: "{{ group_name }}"
+
+  module_defaults:
+    dellemc.objectscale.iam_group:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"

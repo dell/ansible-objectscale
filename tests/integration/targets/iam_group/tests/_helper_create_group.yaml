@@ -1,0 +1,7 @@
+---
+- name: "Helper - Create IAM group {{ helper_group_name }}"
+  dellemc.objectscale.iam_group:
+    group_name: "{{ helper_group_name }}"
+    namespace: "{{ objectscale_namespace }}"
+    state: present
+  register: helper_create_result
