@@ -5,3 +5,5 @@ exclude_paths:
   - .ansible/
 skip_list:
   - sanity[cannot-ignore]
+mock_roles:
+  - iam_user

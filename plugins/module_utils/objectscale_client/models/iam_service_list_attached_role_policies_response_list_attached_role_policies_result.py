@@ -44,7 +44,8 @@ except ImportError:
 
 class IamServiceListAttachedRolePoliciesResponseListAttachedRolePoliciesResult(BaseModel):
     """IamServiceListAttachedRolePoliciesResponseListAttachedRolePoliciesResult"""
-    attached_policies: Optional[List[StrictStr]] = Field(default=None, alias="AttachedPolicies")
+    attached_policies: Optional[List[Any]] = Field(default=None, alias="AttachedPolicies")
+    is_truncated: Optional[bool] = Field(default=None, alias="IsTruncated")
     marker: Optional[StrictStr] = Field(
         default=None,
         description="When IsTruncated is true, this element is present and contains the value to use for the Marker parameter in a subsequent pagination request.",  # noqa: E501

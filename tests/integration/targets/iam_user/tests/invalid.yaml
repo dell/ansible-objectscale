@@ -1,0 +1,63 @@
+---
+# ============================================================================
+# invalid.yaml — Negative / invalid-input tests
+# TC-09: Missing required user_name (validated by Ansible framework)
+# TC-10: Invalid namespace
+# ============================================================================
+
+- module_defaults:
+    dellemc.objectscale.iam_user:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+  block:
+    # ==================================================================
+    # TC-09: Missing required user_name
+    # Ansible validates required params at framework level. Use
+    # block/rescue to verify the expected failure.
+    # ==================================================================
+    - block:
+        - name: "TC-09 — Attempt to create user without user_name"
+          dellemc.objectscale.iam_user:
+            namespace_name: "{{ objectscale_namespace }}"
+            state: present
+
+        - name: "TC-09 — Should not reach here"
+          ansible.builtin.fail:
+            msg: "TC-09 FAILED: module should have failed for missing user_name"
+      rescue:
+        - name: "TC-09 — Assert expected failure"
+          ansible.builtin.assert:
+            that:
+              - "'user_name' in ansible_failed_result.msg"
+            fail_msg: "TC-09 FAILED: unexpected error message"
+            success_msg: "TC-09 PASSED"
+
+    # ==================================================================
+    # TC-10: Invalid namespace
+    # ==================================================================
+    - block:
+        - name: "TC-10 — Attempt to create user in non-existent namespace"
+          dellemc.objectscale.iam_user:
+            user_name: "{{ user_name }}"
+            namespace_name: "namespace_does_not_exist_tc10"
+            state: present
+
+        - name: "TC-10 — Should not reach here"
+          ansible.builtin.fail:
+            msg: "TC-10 FAILED: module should have failed for invalid namespace"
+      rescue:
+        - name: "TC-10 — Assert expected failure"
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.msg is defined
+            fail_msg: "TC-10 FAILED: unexpected error"
+            success_msg: "TC-10 PASSED"
+
+  always:
+    - name: "Cleanup — Ensure no leftover users"
+      ansible.builtin.include_tasks: _helper_cleanup.yaml
+      vars:
+        cleanup_user_name: "{{ user_name }}"
