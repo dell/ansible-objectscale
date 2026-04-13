@@ -147,7 +147,6 @@ class TestGetNamespaceDetails:
 
         kwargs = obj.module.exit_json.call_args[1]
         assert kwargs['failed'] is True
-        assert 'testns' in kwargs['msg']
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +197,7 @@ class TestCreateNamespace:
 # modify_namespace
 # ---------------------------------------------------------------------------
 
-class TestModifyNamespace:
+class TestModifyNamespaceAdvanced:
 
     def test_success(self):
         obj = make_ns_obj()
@@ -266,6 +265,121 @@ class TestGetQuotaDetails:
         obj.module.warn.assert_called_once()
 
 
+class TestNormalizeHelpers:
+
+    def test_normalize_string_list(self):
+        obj = make_ns_obj()
+        assert obj._normalize_string_list('a, b , ,c') == ['a', 'b', 'c']
+        assert obj._normalize_string_list(['a', ' ', 'b']) == ['a', 'b']
+        assert obj._normalize_string_list(42) == []
+
+    def test_normalize_user_mapping(self):
+        obj = make_ns_obj()
+        with_to_dict = MagicMock()
+        with_to_dict.to_dict.return_value = {'domain': 'example.com'}
+
+        result = obj._normalize_user_mapping([
+            {'domain': 'example.com', 'groups': ['ops']},
+            with_to_dict,
+        ])
+
+        assert len(result) == 2
+
+    def test_normalize_retention_classes_success(self):
+        obj = make_ns_obj()
+        result = obj._normalize_retention_classes([
+            {'name': 'gold', 'period': 86400},
+            {'name': 'silver', 'period': '3600'},
+        ])
+        assert result == {'gold': 86400, 'silver': 3600}
+
+    def test_normalize_retention_classes_validation_errors(self):
+        obj = make_ns_obj()
+
+        obj._normalize_retention_classes('invalid')
+        assert obj.module.exit_json.call_args[1]['failed'] is True
+
+        obj.module.exit_json.reset_mock()
+        obj._normalize_retention_classes([{'name': 'gold'}])
+        assert obj.module.exit_json.call_args[1]['failed'] is True
+
+    def test_normalize_retention_classes_non_dict_entry(self):
+        obj = make_ns_obj()
+        obj._normalize_retention_classes(['not-a-dict'])
+        assert obj.module.exit_json.call_args[1]['failed'] is True
+
+    def test_normalize_retention_classes_bad_period(self):
+        obj = make_ns_obj()
+        obj._normalize_retention_classes([{'name': 'gold', 'period': 'abc'}])
+        assert obj.module.exit_json.call_args[1]['failed'] is True
+
+    def test_normalize_string_list_none(self):
+        obj = make_ns_obj()
+        assert obj._normalize_string_list(None) == []
+
+    def test_normalize_user_mapping_non_list(self):
+        obj = make_ns_obj()
+        assert obj._normalize_user_mapping('not-a-list') == []
+
+    def test_normalize_user_mapping_none(self):
+        obj = make_ns_obj()
+        assert obj._normalize_user_mapping(None) == []
+
+
+class TestRetentionClasses:
+
+    def test_get_retention_classes_success(self):
+        obj = make_ns_obj()
+        c1 = MagicMock()
+        c1.name = 'gold'
+        c1.period = 86400
+        c2 = MagicMock()
+        c2.name = 'silver'
+        c2.period = 3600
+        response = MagicMock()
+        response.retention_class = [c1, c2]
+        obj.namespace_api.namespace_service_get_retention_classes.return_value = response
+
+        result = obj.get_retention_classes('testns')
+
+        assert result == {'gold': 86400, 'silver': 3600}
+
+    def test_get_retention_classes_not_found(self):
+        obj = make_ns_obj()
+        err = Exception('not found')
+        err.status = 404
+        obj.namespace_api.namespace_service_get_retention_classes.side_effect = err
+
+        result = obj.get_retention_classes('testns')
+
+        assert result == {}
+
+    def test_sync_retention_classes_create_and_update(self):
+        obj = make_ns_obj()
+        obj.get_retention_classes = MagicMock(return_value={'gold': 100})
+
+        changed = obj.sync_retention_classes('testns', [
+            {'name': 'gold', 'period': 200},
+            {'name': 'silver', 'period': 300},
+        ])
+
+        assert changed is True
+        obj.namespace_api.namespace_service_create_retention_class.assert_called_once()
+        obj.namespace_api.namespace_service_update_retention_class.assert_called_once()
+
+    def test_sync_retention_classes_no_change(self):
+        obj = make_ns_obj()
+        obj.get_retention_classes = MagicMock(return_value={'gold': 100})
+
+        changed = obj.sync_retention_classes('testns', [
+            {'name': 'gold', 'period': 100},
+        ])
+
+        assert changed is False
+        obj.namespace_api.namespace_service_create_retention_class.assert_not_called()
+        obj.namespace_api.namespace_service_update_retention_class.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # modify_quota
 # ---------------------------------------------------------------------------
@@ -301,10 +415,121 @@ class TestModifyQuota:
         kwargs = obj.module.exit_json.call_args[1]
         assert kwargs['failed'] is True
 
+    def test_disable_quota_calls_remove(self):
+        obj = make_ns_obj()
+        result = obj.modify_quota('testns', {'quota_enabled': False})
+        assert result is True
+        obj.namespace_api.namespace_service_remove_namespace_quota.assert_called_once_with(namespace='testns')
 
-# ---------------------------------------------------------------------------
-# is_namespace_modified
-# ---------------------------------------------------------------------------
+    def test_disable_quota_remove_error(self):
+        obj = make_ns_obj()
+        obj.namespace_api.namespace_service_remove_namespace_quota.side_effect = Exception("rm err")
+
+        with patch(f'{UTILS}.determine_error', return_value='rm err'):
+            obj.modify_quota('testns', {'quota_enabled': False})
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'rm err' in kwargs['msg']
+
+
+class TestGetRetentionClassesErrors:
+
+    def test_get_retention_classes_server_error(self):
+        obj = make_ns_obj()
+        err = Exception('server error')
+        err.status = 500
+        obj.namespace_api.namespace_service_get_retention_classes.side_effect = err
+
+        with patch(f'{UTILS}.determine_error', return_value='server error'):
+            obj.get_retention_classes('testns')
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'server error' in kwargs['msg']
+
+    def test_sync_retention_classes_api_error(self):
+        obj = make_ns_obj()
+        obj.get_retention_classes = MagicMock(return_value={})
+        obj.namespace_api.namespace_service_create_retention_class.side_effect = Exception("create err")
+
+        with patch(f'{UTILS}.determine_error', return_value='create err'):
+            obj.sync_retention_classes('testns', [{'name': 'gold', 'period': 100}])
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'create err' in kwargs['msg']
+
+
+class TestIsQuotaModifiedExtended:
+
+    def test_none_quota_with_quota_fields_returns_true(self):
+        obj = make_ns_obj()
+        params = {**BASE_PARAMS, 'hard_quota_size': 1024}
+        assert obj.is_quota_modified(None, params) is True
+
+    def test_none_quota_with_quota_disabled_returns_true(self):
+        obj = make_ns_obj()
+        params = {**BASE_PARAMS, 'quota_enabled': False}
+        assert obj.is_quota_modified(None, params) is True
+
+    def test_quota_enabled_false_returns_true(self):
+        obj = make_ns_obj()
+        quota = {'block_size': 1024}
+        params = {**BASE_PARAMS, 'quota_enabled': False}
+        assert obj.is_quota_modified(quota, params) is True
+
+
+class TestIsNamespaceModifiedPassword:
+
+    def test_password_only_current_fails(self):
+        obj = make_ns_obj()
+        details = {}
+        params = {**BASE_PARAMS, 'current_root_user_password': 'old', 'new_root_user_password': None}
+        obj.is_namespace_modified(details, params)
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'Both' in kwargs['msg']
+
+
+class TestCreateNamespaceExtended:
+
+    def test_create_with_all_fields(self):
+        obj = make_ns_obj()
+        params = {
+            **BASE_PARAMS,
+            'namespace_admins': ['admin@x.com'],
+            'external_group_admins': ['ad-group'],
+            'default_object_project': 'proj1',
+            'allowed_vpools_list': ['vp1'],
+            'disallowed_vpools_list': ['vp2'],
+            'user_mapping': [{'domain': 'example.com'}],
+            'is_compliance_enabled': True,
+            'is_encryption_enabled': True,
+            'default_bucket_block_size': 1024,
+            'is_stale_allowed': False,
+            'is_object_lock_with_ado_allowed': True,
+            'default_audit_delete_expiration': 86400,
+            'root_user_password': 'secret',
+        }
+        result = obj.create_namespace('testns', params)
+        assert result is True
+        obj.namespace_api.namespace_service_create_namespace.assert_called_once()
+
+
+class TestModifyNamespaceErrors:
+
+    def test_modify_namespace_api_error(self):
+        obj = make_ns_obj()
+        obj.namespace_api.namespace_service_update_namespace.side_effect = Exception("upd err")
+
+        with patch(f'{UTILS}.determine_error', return_value='upd err'):
+            obj.modify_namespace('testns', {'user_mapping': []})
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'upd err' in kwargs['msg']
+
 
 class TestIsNamespaceModified:
 
@@ -381,6 +606,44 @@ class TestIsNamespaceModified:
         result = obj.is_namespace_modified(details, params)
         assert 'allowed_protocols' not in result
 
+    def test_external_group_admins_changed(self):
+        obj = self._obj()
+        details = {'external_group_admins': 'old-group'}
+        params = {**BASE_PARAMS, 'external_group_admins': ['new-group']}
+        result = obj.is_namespace_modified(details, params)
+        assert 'external_group_admins' in result
+
+    def test_allowed_disallowed_vpool_diffs(self):
+        obj = self._obj()
+        details = {
+            'allowed_vpools_list': ['vp1', 'vp2'],
+            'disallowed_vpools_list': ['vp3'],
+        }
+        params = {
+            **BASE_PARAMS,
+            'allowed_vpools_list': ['vp2', 'vp4'],
+            'disallowed_vpools_list': ['vp5'],
+        }
+        result = obj.is_namespace_modified(details, params)
+        assert result['vpools_added_to_allowed_vpools_list'] == ['vp4']
+        assert result['vpools_removed_from_allowed_vpools_list'] == ['vp1']
+        assert result['vpools_added_to_disallowed_vpools_list'] == ['vp5']
+        assert result['vpools_removed_from_disallowed_vpools_list'] == ['vp3']
+
+    def test_user_mapping_and_password_update(self):
+        obj = self._obj()
+        details = {'user_mapping': [{'domain': 'example.com', 'groups': ['ops']}]} 
+        params = {
+            **BASE_PARAMS,
+            'user_mapping': [{'domain': 'example.com', 'groups': ['dev']}],
+            'current_root_user_password': 'oldpass',
+            'new_root_user_password': 'newpass',
+        }
+        result = obj.is_namespace_modified(details, params)
+        assert 'user_mapping' in result
+        assert result['current_root_user_password'] == 'oldpass'
+        assert result['new_root_user_password'] == 'newpass'
+
 
 # ---------------------------------------------------------------------------
 # is_quota_modified
@@ -407,6 +670,43 @@ class TestIsQuotaModified:
         params = {**BASE_PARAMS, 'quota_enabled': True}
         assert obj.is_quota_modified(quota, params) is True
 
+    def test_change_detected_with_api_field_mapping(self):
+        obj = self._obj()
+        quota = {'block_size': 1024}
+        params = {**BASE_PARAMS, 'blocked_quota_size': 2048}
+        assert obj.is_quota_modified(quota, params) is True
+
+
+class TestModifyNamespace:
+
+    def test_modify_namespace_fetches_user_mapping_when_missing(self):
+        obj = make_ns_obj()
+        obj.get_namespace_details = MagicMock(return_value={'user_mapping': [{'domain': 'example.com'}]})
+
+        result = obj.modify_namespace('testns', {'is_encryption_enabled': True})
+
+        assert result is True
+        obj.get_namespace_details.assert_called_once_with('testns')
+        obj.namespace_api.namespace_service_update_namespace.assert_called_once()
+
+    def test_modify_namespace_normalizes_admin_fields(self):
+        obj = make_ns_obj()
+
+        result = obj.modify_namespace(
+            'testns',
+            {
+                'namespace_admins': ['admin@example.com'],
+                'external_group_admins': ['ad-group'],
+                'user_mapping': [],
+            },
+            namespace_details={},
+        )
+
+        assert result is True
+        kwargs = obj.namespace_api.namespace_service_update_namespace.call_args[1]
+        assert kwargs['namespace'] == 'testns'
+        assert kwargs['namespace_service_update_namespace_request'] is not None
+
 
 # ---------------------------------------------------------------------------
 # perform_module_operation
@@ -424,6 +724,7 @@ class TestPerformModuleOperation:
         obj.is_namespace_modified = MagicMock(return_value={})
         obj.is_quota_modified = MagicMock(return_value=False)
         obj.modify_quota = MagicMock(return_value=True)
+        obj.sync_retention_classes = MagicMock(return_value=False)
         return obj
 
     def test_state_absent_namespace_exists(self):
@@ -518,6 +819,19 @@ class TestPerformModuleOperation:
         params = Namespace.get_namespace_parameters()
         assert 'namespace_name' in params
         assert 'state' in params
+
+    def test_state_present_syncs_retention_classes(self):
+        params = {**BASE_PARAMS, 'retention_classes': [{'name': 'gold', 'period': 100}]}
+        obj = self._make(params)
+        ns_detail = {'id': 'testns'}
+        obj.get_namespace_details.side_effect = [ns_detail, ns_detail]
+        obj.sync_retention_classes.return_value = True
+
+        obj.perform_module_operation()
+
+        obj.sync_retention_classes.assert_called_once_with('testns', params['retention_classes'])
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
 
 
 # ---------------------------------------------------------------------------

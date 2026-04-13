@@ -40,6 +40,7 @@ venv.bak/
 *.log
 logs/
 tmp/
+tests/output
 
 # OpenAPI generator artifacts
 openapi-generator-cli-*.jar

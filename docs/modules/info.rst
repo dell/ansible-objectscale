@@ -14,7 +14,12 @@ dellemc.objectscale.info module
 Synopsis
 --------
 
-This module gathers information about the ObjectScale system, including system details, capacity, nodes, and other system-wide information.
+This module gathers information about ObjectScale entities.
+Currently, it supports namespace discovery:
+
+* List all namespaces
+* Get a namespace by name
+* Filter namespace list by name prefix/wildcard
 
 Parameters
 ----------
@@ -117,6 +122,22 @@ Parameters
 
 .. raw:: html
 
+   <tr>
+       <td>gather_subset</td>
+       <td><ul><li>namespace</li></ul></td>
+       <td>List of entities to gather. Use C(namespace) to gather namespace information.</td>
+   </tr>
+
+.. raw:: html
+
+   <tr>
+       <td>query_parameters</td>
+       <td></td>
+       <td>Optional query parameters for namespace lookup. Supports C(namespace.name), C(namespace.match), C(namespace.limit), and C(namespace.marker).</td>
+   </tr>
+
+.. raw:: html
+
    </table>
 
 
@@ -124,8 +145,8 @@ Notes
 -----
 
 * This module does not modify the ObjectScale system configuration.
-* Requires administrative credentials to retrieve system information.
-* The module uses the ObjectScale REST API to gather information.
+* Requires administrative credentials to retrieve information.
+* Namespace list/get operations are supported through C(gather_subset: [namespace]).
 
 
 Examples
@@ -133,21 +154,44 @@ Examples
 
 .. code-block:: yaml
 
-    - name: Gather ObjectScale system information
+    - name: Gather all namespaces
       dellemc.objectscale.info:
         objectscale_host: "{{ objectscale_host }}"
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
+        gather_subset:
+          - namespace
       register: objectscale_info
 
-    - name: Display system capacity
+    - name: Display namespaces
       debug:
-        var: objectscale_info.system_info.capacity
+        var: objectscale_info.Namespaces
 
-    - name: Display node information
-      debug:
-        var: objectscale_info.system_info.nodes
+    - name: Get a namespace by name
+      dellemc.objectscale.info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        gather_subset:
+          - namespace
+        query_parameters:
+          namespace:
+            name: "finance-namespace"
+      register: namespace_info
+
+    - name: List namespaces by prefix
+      dellemc.objectscale.info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        gather_subset:
+          - namespace
+        query_parameters:
+          namespace:
+            match: "team-*"
 
 
 Return Values
@@ -192,9 +236,9 @@ Return Values
 .. raw:: html
 
    <tr>
-       <td>system_info</td>
+       <td>Namespaces</td>
        <td>success</td>
-       <td>Dictionary containing ObjectScale system information including capacity, nodes, and configuration details</td>
+       <td>List of namespace dictionaries with namespace properties returned from ObjectScale.</td>
    </tr>
 
 .. raw:: html
