@@ -62,7 +62,7 @@ RequiredAPIs = [
     "/iam?Action=TagUser",
     "/iam?Action=PutUserPermissionsBoundary",
     "/iam?Action=DeleteUserPermissionsBoundary",
-    
+
     "/iam?Action=ListRoles",
     "/iam?Action=GetRole",
     "/iam?Action=CreateRole",
@@ -70,7 +70,7 @@ RequiredAPIs = [
     "/iam?Action=GetRole",
     "/iam?Action=ListRolePolicies",
     "/iam?Action=GetRolePolicy",
-    "/iam?Action=ListRoleTags",  
+    "/iam?Action=ListRoleTags",
     "/iam?Action=UpdateRole",
     "/iam?Action=UpdateAssumeRolePolicy",
     "/iam?Action=PutRolePolicy",
@@ -80,7 +80,7 @@ RequiredAPIs = [
     "/iam?Action=TagRole",
     "/iam?Action=UntagRole",
     "/iam?Action=DeleteRole",
-    
+
     # Bucket API endpoints
     "/object/bucket",
     "/object/bucket/{bucketName}/deactivate",
@@ -113,12 +113,12 @@ RequiredAPIs = [
     "/object/bucket/{bucketName}/set-local-object-metadata-reads",
     "/object/bucket/{bucketName}/versioning",
     "/object/bucket/{bucketName}/notification",
-    
+
     # Access Key API endpoints
     "/iam?Action=CreateAccessKey",
     "/iam?Action=DeleteAccessKey",
     "/iam?Action=UpdateAccessKey",
-    
+
     # Policy API endpoints
     "/iam?Action=GetPolicy",
     "/iam?Action=ListPolicies",
@@ -148,7 +148,7 @@ RequiredAPIs = [
     # storage pools
     "/vdc/data-services/varrays/{id}",
     "/vdc/data-services/varrays",
-    
+
     # Object User API endpoints
     "/object/users*",
     "/object/user-secret-keys/*",
