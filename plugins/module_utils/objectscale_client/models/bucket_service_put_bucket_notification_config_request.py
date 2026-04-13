@@ -17,9 +17,6 @@ __metaclass__ = type
 
 from typing import Any, Dict, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_vdc_link import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerVdcLink
-)
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -45,10 +42,9 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class NamespaceServiceGetNamespacesResponseNamespaceInnerVdc(BaseModel):
-    """NamespaceServiceGetNamespacesResponseNamespaceInnerVdc"""
-    id: Optional[StrictStr] = Field(default=None, description="ECS Id of the related object")
-    link: Optional[NamespaceServiceGetNamespacesResponseNamespaceInnerVdcLink] = None
+class BucketServicePutBucketNotificationConfigRequest(BaseModel):
+    """BucketServicePutBucketNotificationConfigRequest"""
+    topic_configuration: Optional[StrictStr] = Field(default=None, alias="TopicConfiguration")
 
     model_config = ConfigDict(
         validate_by_name=True,
