@@ -5,9 +5,7 @@ This module is now manually maintained in this collection.
 Generation automation must not overwrite or auto-format this file.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
