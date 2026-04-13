@@ -11,7 +11,7 @@ from __future__ import print_function
 
 __metaclass__ = type
 
-from typing import Any, Generic, Mapping, Optional, TypeVar
+from typing import Generic, Mapping, Optional, TypeVar
 
 try:
     from pydantic import BaseModel

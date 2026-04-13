@@ -71,38 +71,38 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 # import models into sdk package
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.link import Link
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_namespace_request import (
-    NamespaceServiceCreateNamespaceRequest as NamespaceServiceCreateNamespaceRequest)
+    NamespaceServiceCreateNamespaceRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_namespace_response import (
-    NamespaceServiceCreateNamespaceResponse as NamespaceServiceCreateNamespaceResponse)
+    NamespaceServiceCreateNamespaceResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_retention_class_request import (
-    NamespaceServiceCreateRetentionClassRequest as NamespaceServiceCreateRetentionClassRequest)
+    NamespaceServiceCreateRetentionClassRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_quota_response import (
-    NamespaceServiceGetNamespaceQuotaResponse as NamespaceServiceGetNamespaceQuotaResponse)
+    NamespaceServiceGetNamespaceQuotaResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_response import (
-    NamespaceServiceGetNamespaceResponse as NamespaceServiceGetNamespaceResponse)
+    NamespaceServiceGetNamespaceResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response import (
-    NamespaceServiceGetNamespacesResponse as NamespaceServiceGetNamespacesResponse)
+    NamespaceServiceGetNamespacesResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner import (
-    NamespaceServiceGetNamespacesResponseNamespaceInner as NamespaceServiceGetNamespacesResponseNamespaceInner)
+    NamespaceServiceGetNamespacesResponseNamespaceInner)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_retention_classes import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses as NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses)  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses)  # noqa: E501
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_retention_classes_retention_class_inner import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClassesRetentionClassInner as NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClassesRetentionClassInner)  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClassesRetentionClassInner)  # noqa: E501
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner as NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner)  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner)  # noqa: E501
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner_attribute_inner import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner as NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner)  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner)  # noqa: E501
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_vdc import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerVdc as NamespaceServiceGetNamespacesResponseNamespaceInnerVdc)  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerVdc)  # noqa: E501
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_vdc_link import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerVdcLink as NamespaceServiceGetNamespacesResponseNamespaceInnerVdcLink)  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerVdcLink)  # noqa: E501
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_retention_class_response import (
-    NamespaceServiceGetRetentionClassResponse as NamespaceServiceGetRetentionClassResponse)
+    NamespaceServiceGetRetentionClassResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_retention_classes_response import (
-    NamespaceServiceGetRetentionClassesResponse as NamespaceServiceGetRetentionClassesResponse)
+    NamespaceServiceGetRetentionClassesResponse)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_namespace_quota_request import (
-    NamespaceServiceUpdateNamespaceQuotaRequest as NamespaceServiceUpdateNamespaceQuotaRequest)
+    NamespaceServiceUpdateNamespaceQuotaRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_namespace_request import (
-    NamespaceServiceUpdateNamespaceRequest as NamespaceServiceUpdateNamespaceRequest)
+    NamespaceServiceUpdateNamespaceRequest)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_retention_class_request import (
-    NamespaceServiceUpdateRetentionClassRequest as NamespaceServiceUpdateRetentionClassRequest)
+    NamespaceServiceUpdateRetentionClassRequest)

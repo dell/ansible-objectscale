@@ -8,10 +8,7 @@
 
     Do not edit the class manually.
 """  # noqa: E501
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 
@@ -19,7 +16,6 @@ from typing import Any, cast, Dict, List, Optional, Tuple, Union
 
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import ApiClient
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api_client import RequestSerialized
-
 try:
     from pydantic import Field
 except ImportError:

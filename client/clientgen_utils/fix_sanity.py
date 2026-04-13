@@ -114,6 +114,12 @@ def fix_redundant_alias(line: str) -> str:
         r'^(\s*from\s+\S+\s+import\s+)(\w+)\s+as\s+(\w+)\s*$', line)
     if m and m.group(2) == m.group(3):
         return f'{m.group(1)}{m.group(2)}'
+
+    # Also handle parenthesized multi-line import entries emitted by isort:
+    #     Foo as Foo)
+    m = re.match(r'^(\s*)(\w+)\s+as\s+(\w+)(\s*[,)\n]?\s*(?:#.*)?)$', line)
+    if m and m.group(2) == m.group(3):
+        return f'{m.group(1)}{m.group(2)}{m.group(4)}'
     return line
 
 
@@ -130,6 +136,16 @@ def fix_long_import(line: str) -> str:
 
     # Split multiple imports by comma
     imports = [n.strip() for n in names.split(',')]
+
+    # Drop redundant aliases (e.g. ``Foo as Foo``) introduced by templates.
+    cleaned_imports = []
+    for imp in imports:
+        alias_match = re.match(r'^(\w+)\s+as\s+(\w+)$', imp)
+        if alias_match and alias_match.group(1) == alias_match.group(2):
+            cleaned_imports.append(alias_match.group(1))
+        else:
+            cleaned_imports.append(imp)
+    imports = cleaned_imports
 
     # If there's only one import and it's too long, keep it as is with noqa
     if len(imports) == 1:
