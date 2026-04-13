@@ -127,10 +127,25 @@ def fix_long_import(line: str) -> str:
     indent, module, names = m.group(1), m.group(2), m.group(3).rstrip()
     if names.startswith('('):
         return line
+
+    # Split multiple imports by comma
+    imports = [n.strip() for n in names.split(',')]
+
+    # If there's only one import and it's too long, keep it as is with noqa
+    if len(imports) == 1:
+        return line.rstrip() + '  # noqa: E501'
+
+    # Build multi-line import
     from_line = f'{indent}from {module} import ('
     if len(from_line) > MAX_LINE_LENGTH:
         from_line += '  # noqa: E501'
-    return f'{from_line}\n{indent}    {names}\n{indent})'
+
+    result = [from_line]
+    for imp in imports:
+        result.append(f'{indent}    {imp}')
+    result.append(f'{indent})')
+
+    return '\n'.join(result)
 
 
 def fix_long_line(line: str) -> str:
@@ -362,6 +377,7 @@ def add_ansible_boilerplate(text: str) -> str:
     - Has ``from __future__ import annotations``: merge into combined form.
     - No future import: insert boilerplate after the module docstring.
     """
+    # Check for single-line format with parentheses
     if 'from __future__ import (absolute_import, division, print_function' in text:
         if '__metaclass__ = type' not in text:
             text = text.replace(
@@ -369,6 +385,21 @@ def add_ansible_boilerplate(text: str) -> str:
                 'from __future__ import (absolute_import, division, print_function)\n'
                 '__metaclass__ = type\n',
             )
+        return text
+
+    # Check for multi-line format (isort may split it)
+    if 'from __future__ import absolute_import' in text and 'from __future__ import division' in text:
+        # Already has __future__ imports, ensure __metaclass__ is present
+        if '__metaclass__ = type' not in text:
+            # Find the last __future__ import and add __metaclass__ after it
+            lines = text.split('\n')
+            last_future_idx = -1
+            for i, line in enumerate(lines):
+                if line.strip().startswith('from __future__ import'):
+                    last_future_idx = i
+            if last_future_idx >= 0:
+                lines.insert(last_future_idx + 1, '__metaclass__ = type')
+                text = '\n'.join(lines)
         return text
 
     # File already uses 'from __future__ import annotations' — combine all
@@ -380,54 +411,12 @@ def add_ansible_boilerplate(text: str) -> str:
         text = text.replace('from __future__ import annotations', combined)
         return text
 
-    # No future import at all — insert boilerplate after module docstring
+    # No future import at all — insert boilerplate after the module docstring
     m = re.search(r'""".*?"""(?:\s*#[^\n]*)?\n', text, re.DOTALL)
     if m:
         pos = m.end()
         return text[:pos] + ANSIBLE_BOILERPLATE + text[pos:]
     return ANSIBLE_BOILERPLATE + text
-
-
-def fix_self_annotation(text: str) -> str:
-    """Remove modern typing annotations for Python 3.9 compatibility.
-
-    Python 3.9 doesn't support:
-    - typing.Self (added in 3.11)
-    - Generic types like ApiResponse[ApiResponseT] (needs typing_extensions)
-    - from typing import Self
-    """
-    # Only process files that contain problematic typing
-    if 'Self' not in text and '[' not in text:
-        return text
-
-    # Remove all Self imports and references
-    text = re.sub(r'from typing_extensions import Self.*$', '', text, flags=re.MULTILINE)
-    text = re.sub(r'from typing import Self.*$', '', text, flags=re.MULTILINE)
-    text = re.sub(r',\s*Self\b', '', text)
-    text = re.sub(r'Self\b,\s*', '', text)
-
-    # Extract class name for Self replacements
-    class_match = re.search(r'^class (\w+)', text, re.MULTILINE)
-    class_name = class_match.group(1) if class_match else 'Any'
-
-    # Replace Self type annotations with string equivalents
-    text = re.sub(r'\) -> Self:', f") -> '{class_name}':", text)
-    text = re.sub(r'Optional\[Self\]', f"Optional['{class_name}']", text)
-    text = re.sub(r'List\[Self\]', f"List['{class_name}']", text)
-    text = re.sub(r'Dict\[str, Self\]', f"Dict[str, '{class_name}']", text)
-    text = re.sub(r'\bSelf\b', f"'{class_name}'", text)
-
-    # Remove generic type annotations that don't work in Python 3.9
-    # Replace things like -> ApiResponse[ApiResponseT]: with -> Any:
-    text = re.sub(r'\) -> \w+\[[^\]]*\]:', ') -> Any:', text)
-    text = re.sub(r': \w+\[[^\]]*\]', ': Any', text)
-    text = re.sub(r'Optional\[\w+\[[^\]]*\]\]', 'Optional[Any]', text)
-    text = re.sub(r'List\[\w+\[[^\]]*\]\]', 'List[Any]', text)
-    text = re.sub(r'Dict\[str, \w+\[[^\]]*\]\]', 'Dict[str, Any]', text)
-    text = re.sub(r'Union\[\w+\[[^\]]*\]', 'Union[Any]', text)
-    text = re.sub(r'Union\[\w+, \w+\[[^\]]*\]\]', 'Union[Any, Any]', text)
-
-    return text
 
 
 def fix_typing_extensions_import(text: str) -> str:
@@ -444,6 +433,10 @@ def fix_typing_extensions_import(text: str) -> str:
         return text
     orig_line = m.group(1)
     names = orig_line.replace('from typing_extensions import ', '').strip()
+    normalized_names = [n.strip() for n in names.split(',') if n.strip() and n.strip() != 'Self']
+    if not normalized_names:
+        return text.replace(orig_line, '')
+    names = ', '.join(normalized_names)
     replacement = (
         f'try:\n'
         f'    from typing_extensions import {names}\n'
@@ -454,14 +447,6 @@ def fix_typing_extensions_import(text: str) -> str:
         f'        from {stubs_pkg} import {names}  # stub\n'
     )
     return text.replace(orig_line, replacement)
-
-
-def fix_self_type_annotations(text: str) -> str:
-    """Replace Self in type annotations with a string fallback for Python 3.8."""
-    # Only replace Self in return type annotations (-> Self)
-    # Don't replace in import statements or variable names
-    text = re.sub(r'->\s*Self\b', "-> 'Self'", text)
-    return text
 
 
 def fix_configuration(text: str) -> str:
@@ -500,14 +485,31 @@ def fix_configuration(text: str) -> str:
             )
             text = text.replace(orig_line, replacement)
 
-    # 1. Ensure urllib3.util is explicitly imported
+    # 1. Remove Self in favor of concrete Configuration annotations.
+    text = text.replace('from typing_extensions import NotRequired, Self', 'from typing_extensions import NotRequired')
+    text = text.replace('from typing import NotRequired, Self  # Python 3.11+', 'from typing import NotRequired  # Python 3.11+')
+    text = text.replace('from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import NotRequired, Self  # stub',
+                        'from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import NotRequired  # stub')
+    text = text.replace('from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import NotRequired, Self',
+                        'from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import NotRequired')
+    text = re.sub(
+        r'^\s*from ansible_collections\.dellemc\.objectscale\.plugins\.module_utils\.objectscale_client\._stubs import Self(?:\s+#.*)?\s*$',
+        '',
+        text,
+        flags=re.MULTILINE,
+    )
+    text = text.replace('Optional[Self]', "Optional['Configuration']")
+    text = text.replace("-> 'Self'", "-> 'Configuration'")
+    text = text.replace('-> Self', "-> 'Configuration'")
+
+    # 2. Ensure urllib3.util is explicitly imported
     if 'import urllib3\n' in text and 'import urllib3.util' not in text:
         text = text.replace(
             'import urllib3\n',
             'import urllib3\nimport urllib3.util\n',
         )
 
-    # 2. Add missing 'enum_values' to HostSettingVariable dicts.
+    # 3. Add missing 'enum_values' to HostSettingVariable dicts.
     lines = text.split('\n')
     new_lines: list[str] = []
     for i, line in enumerate(lines):
@@ -518,9 +520,18 @@ def fix_configuration(text: str) -> str:
                 new_lines.append(f"{indent.group(1)}'enum_values': [],")
     text = '\n'.join(new_lines)
 
-    # 3. Rename disallowed loop variable '_' to '_unused'
+    # 4. Rename disallowed loop variable '_' to '_unused'
     text = text.replace('for _, logger in', 'for _unused, logger in')
 
+    return text
+
+
+def fix_exceptions(text: str) -> str:
+    """Remove Self in generated exceptions.py and use concrete ApiException types."""
+    text = text.replace('from typing_extensions import Self\n', '')
+    text = text.replace('from typing import Self\n', '')
+    text = text.replace(') -> Self:', ") -> 'ApiException':")
+    text = text.replace("-> 'Self'", "-> 'ApiException'")
     return text
 
 
@@ -657,9 +668,6 @@ def process_file(filepath: Path) -> bool:
     # Add Ansible boilerplate (future-import-boilerplate + metaclass-boilerplate)
     text = add_ansible_boilerplate(text)
 
-    # Replace Self in type annotations for Python 3.8 compatibility
-    text = fix_self_type_annotations(text)
-
     # Wrap typing_extensions imports in try/except (fixes import test)
     text = fix_typing_extensions_import(text)
 
@@ -677,6 +685,8 @@ def process_file(filepath: Path) -> bool:
         text = fix_type_annotations(text, filepath)
     if filepath.name == 'api_response.py':
         text = fix_type_annotations(text, filepath)
+    if filepath.name == 'exceptions.py':
+        text = fix_exceptions(text)
 
     # Line-level passes
     lines = text.split('\n')
@@ -766,7 +776,6 @@ def create_missing_init_files(target: Path) -> int:
         '# -*- coding: utf-8 -*-\n'
         '# Copyright (c) 2025 Dell Inc., or its subsidiaries. All rights reserved.\n'
         '# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n'
-        '\n'
     )
 
     # Create __init__.py in api/ and models/ subdirectories if they don't exist
@@ -798,8 +807,8 @@ def main() -> None:
 
     fixed = 0
     for py_file in sorted(target.rglob('*.py')):
-        # Skip manually managed supporting files
-        if py_file.name in ['api_client.py', 'api_response.py', 'configuration.py', 'exceptions.py', 'rest.py', '_stubs.py']:
+        # _stubs.py is generated by this script and should not be re-processed.
+        if py_file.name in ['_stubs.py', 'api_client.py', 'api_response.py']:
             continue
 
         if process_file(py_file):

@@ -49,7 +49,16 @@ build_spec: download_openapi
 	python3 ${CLIENTGEN_UTILS_DIR}/main.py --input ${OPENAPI_FULL_PATH} --output ${OPENAPI_FILTERED_PATH}
 
 build_client: build_spec
-	# Only regenerate APIs and models - NEVER touch supporting files
+	# Remove all generated files except manually maintained ones.
+	# The COMPLETE list of manually maintained files are:
+	# - _stubs.py
+	# - api_client.py
+	# - api_response.py
+	# - configuration.py
+	# - exceptions.py
+	# - rest.py
+	# - __init__.py (managed by fix_sanity.py in api/ and models/ subdirectories)
+	find ${OPENAPI_GEN_DIR} -name "*.py" ! -name "_stubs.py" ! -name "api_client.py" ! -name "api_response.py" ! -name "configuration.py" ! -name "exceptions.py" ! -name "rest.py" ! -name "__init__.py" -delete
 	rm -rf ${OPENAPI_GEN_DIR}/api ${OPENAPI_GEN_DIR}/models
 	${OPENAPI_CMD} generate \
 		-i ${OPENAPI_FILTERED_PATH} \
@@ -70,9 +79,9 @@ generate: build_client format_client fix_sanity sanity_ignores
 
 format_client:
 	@echo "Formatting generated client with autoflake + isort + autopep8..."
-	autoflake --in-place --recursive --remove-all-unused-imports $(OPENAPI_GEN_DIR)
-	isort $(OPENAPI_GEN_DIR)
-	autopep8 --in-place --recursive --aggressive --max-line-length 160 $(OPENAPI_GEN_DIR)
+	find $(OPENAPI_GEN_DIR) -name '*.py' ! -name 'api_client.py' ! -name 'api_response.py' -print0 | xargs -0 autoflake --in-place --remove-all-unused-imports
+	find $(OPENAPI_GEN_DIR) -name '*.py' ! -name 'api_client.py' ! -name 'api_response.py' -print0 | xargs -0 isort
+	find $(OPENAPI_GEN_DIR) -name '*.py' ! -name 'api_client.py' ! -name 'api_response.py' -print0 | xargs -0 autopep8 --in-place --aggressive --max-line-length 160
 	@echo "Formatting complete"
 
 fix_sanity:
