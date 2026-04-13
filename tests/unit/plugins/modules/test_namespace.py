@@ -632,7 +632,7 @@ class TestIsNamespaceModified:
 
     def test_user_mapping_and_password_update(self):
         obj = self._obj()
-        details = {'user_mapping': [{'domain': 'example.com', 'groups': ['ops']}]} 
+        details = {'user_mapping': [{'domain': 'example.com', 'groups': ['ops']}]}
         params = {
             **BASE_PARAMS,
             'user_mapping': [{'domain': 'example.com', 'groups': ['dev']}],

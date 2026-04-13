@@ -7,8 +7,6 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-import json
-
 DOCUMENTATION = r'''
 ---
 module: namespace
@@ -189,19 +187,16 @@ options:
     description:
     - Password for namespace virtual root user when creating a namespace.
     type: str
-    no_log: true
 
   current_root_user_password:
     description:
     - Current password for namespace virtual root user.
     type: str
-    no_log: true
 
   new_root_user_password:
     description:
     - New password for namespace virtual root user.
     type: str
-    no_log: true
 
   state:
     description:
@@ -329,6 +324,8 @@ namespace_details:
             "default_replication_factor": 1
         }
 '''
+
+import json
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from ansible.module_utils.basic import AnsibleModule
