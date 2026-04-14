@@ -5,8 +5,6 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-import pytest
-import json
 from unittest.mock import MagicMock, patch
 
 from ansible_collections.dellemc.objectscale.tests.unit.plugins.module_utils.mock_iam_policy_api import (
