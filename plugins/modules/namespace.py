@@ -333,6 +333,16 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils \
     import utils
 from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import HAS_OBJECTSCALE_CLIENT
 
+try:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import api_client as objectscale_api_client
+except (ImportError, Exception):
+    objectscale_api_client = None
+
+try:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import _stubs as objectscale_client_stubs
+except (ImportError, Exception):
+    objectscale_client_stubs = None
+
 if TYPE_CHECKING:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.namespace_api import NamespaceApi
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_create_namespace_request import (
@@ -401,6 +411,55 @@ except (ImportError, Exception):
 class Namespace(object):
     """Class with operations on ObjectScale namespace"""
 
+    @staticmethod
+    def _ensure_client_stub_compatibility() -> None:
+        """Patch generated stubs for runtime compatibility when pydantic is absent.
+
+        In environments without pydantic, generated stubs may map SecretStr to str.
+        In that case, ApiClient treats normal strings as SecretStr and calls
+        get_secret_value() on them, which fails. This runtime guard keeps behavior
+        compatible without modifying generated module_utils code.
+        """
+        if objectscale_api_client is not None:
+            secret_str_cls = getattr(objectscale_api_client, 'SecretStr', None)
+            if secret_str_cls is str:
+                class _CompatSecretStr(str):
+                    def get_secret_value(self) -> str:
+                        return str(self)
+
+                objectscale_api_client.SecretStr = _CompatSecretStr
+
+        if objectscale_client_stubs is not None:
+            base_model_cls = getattr(objectscale_client_stubs, 'BaseModel', None)
+            if base_model_cls is not None and not hasattr(base_model_cls, 'model_dump'):
+                def _model_dump(self, *args, **kwargs):  # type: ignore[no-redef]
+                    data = getattr(self, '__dict__', None)
+                    if isinstance(data, dict):
+                        return dict(data)
+                    return {}
+
+                base_model_cls.model_dump = _model_dump
+
+    @staticmethod
+    def _build_api_payload(model_cls: Any, payload: Dict[str, Any]) -> Any:
+        """Build API payload compatible with real pydantic models and stub mode.
+
+        When generated client falls back to _stubs.BaseModel, model instances do
+        not preserve fields and produce empty payloads. In that mode, pass plain
+        dictionaries to the generated API client.
+        """
+        if model_cls is None:
+            return {k: v for k, v in payload.items() if v is not None}
+
+        base_cls = model_cls.__mro__[1] if len(model_cls.__mro__) > 1 else None
+        if base_cls is not None and base_cls.__module__.endswith('objectscale_client._stubs'):
+            return {k: v for k, v in payload.items() if v is not None}
+
+        try:
+            return model_cls.model_validate(payload)
+        except Exception:
+            return model_cls(**payload)
+
     def __init__(self) -> None:
         """Define all parameters required by this module."""
         self.module_params = utils.get_objectscale_management_host_parameters()
@@ -427,6 +486,7 @@ class Namespace(object):
         namespace_api_cls = NamespaceApi
 
         try:
+            self._ensure_client_stub_compatibility()
             self.api_client = utils.get_objectscale_connection(self.module.params)
             self.namespace_api = namespace_api_cls(self.api_client)
         except Exception as e:
@@ -531,29 +591,30 @@ class Namespace(object):
 
         namespace_admins = self._normalize_string_list(params.get('namespace_admins'))
         external_group_admins = self._normalize_string_list(params.get('external_group_admins'))
+        payload = dict(
+            namespace=namespace_name,
+            default_object_project=params.get('default_object_project'),
+            default_data_services_vpool=params['default_data_services_vpool'],
+            allowed_vpools_list=params.get('allowed_vpools_list'),
+            disallowed_vpools_list=params.get('disallowed_vpools_list'),
+            namespace_admins=(
+                ','.join(namespace_admins) if namespace_admins else None
+            ),
+            user_mapping=params.get('user_mapping'),
+            compliance_enabled=params.get('is_compliance_enabled'),
+            is_encryption_enabled=params.get('is_encryption_enabled'),
+            default_bucket_block_size=params.get('default_bucket_block_size'),
+            external_group_admins=(
+                ','.join(external_group_admins) if external_group_admins else None
+            ),
+            is_stale_allowed=params.get('is_stale_allowed'),
+            is_object_lock_with_ado_allowed=params.get('is_object_lock_with_ado_allowed'),
+            default_audit_delete_expiration=params.get('default_audit_delete_expiration'),
+            root_user_password=params.get('root_user_password'),
+        )
 
         try:
-            request = NamespaceServiceCreateNamespaceRequest(
-                namespace=namespace_name,
-                default_object_project=params.get('default_object_project'),
-                default_data_services_vpool=params['default_data_services_vpool'],
-                allowed_vpools_list=params.get('allowed_vpools_list'),
-                disallowed_vpools_list=params.get('disallowed_vpools_list'),
-                namespace_admins=(
-                    ','.join(namespace_admins) if namespace_admins else None
-                ),
-                user_mapping=params.get('user_mapping'),
-                compliance_enabled=params.get('is_compliance_enabled'),
-                is_encryption_enabled=params.get('is_encryption_enabled'),
-                default_bucket_block_size=params.get('default_bucket_block_size'),
-                external_group_admins=(
-                    ','.join(external_group_admins) if external_group_admins else None
-                ),
-                is_stale_allowed=params.get('is_stale_allowed'),
-                is_object_lock_with_ado_allowed=params.get('is_object_lock_with_ado_allowed'),
-                default_audit_delete_expiration=params.get('default_audit_delete_expiration'),
-                root_user_password=params.get('root_user_password'),
-            )
+            request = self._build_api_payload(NamespaceServiceCreateNamespaceRequest, payload)
             self.namespace_api.namespace_service_create_namespace(request)
             return True
         except Exception as e:
@@ -591,9 +652,7 @@ class Namespace(object):
             )
 
         try:
-            request = NamespaceServiceUpdateNamespaceRequest(
-                **update_params,
-            )
+            request = self._build_api_payload(NamespaceServiceUpdateNamespaceRequest, update_params)
             self.namespace_api.namespace_service_update_namespace(
                 namespace=namespace_name,
                 namespace_service_update_namespace_request=request,
@@ -668,14 +727,13 @@ class Namespace(object):
                 failed=True,
                 msg="Retention class request models are unavailable. Rebuild/install objectscale_client.",
             )
-
         for class_name, period in desired.items():
             current_period = existing.get(class_name)
             try:
                 if current_period is None:
-                    request = NamespaceServiceCreateRetentionClassRequest(
-                        name=class_name,
-                        period=period,
+                    request = self._build_api_payload(
+                        NamespaceServiceCreateRetentionClassRequest,
+                        dict(name=class_name, period=period),
                     )
                     self.namespace_api.namespace_service_create_retention_class(
                         namespace=namespace_name,
@@ -683,8 +741,9 @@ class Namespace(object):
                     )
                     changed = True
                 elif int(current_period) != int(period):
-                    request = NamespaceServiceUpdateRetentionClassRequest(
-                        period=period,
+                    request = self._build_api_payload(
+                        NamespaceServiceUpdateRetentionClassRequest,
+                        dict(period=period),
                     )
                     self.namespace_api.namespace_service_update_retention_class(
                         namespace=namespace_name,
@@ -740,7 +799,7 @@ class Namespace(object):
             return False
 
         try:
-            request = NamespaceServiceUpdateNamespaceQuotaRequest(**quota_fields)
+            request = self._build_api_payload(NamespaceServiceUpdateNamespaceQuotaRequest, quota_fields)
             self.namespace_api.namespace_service_update_namespace_quota(
                 namespace=namespace_name,
                 namespace_service_update_namespace_quota_request=request,

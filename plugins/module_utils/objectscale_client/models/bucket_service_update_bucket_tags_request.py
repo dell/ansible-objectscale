@@ -17,8 +17,8 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_inner import (
-    BucketServiceCreateBucketRequestTagInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_set_inner import (
+    BucketServiceCreateBucketRequestTagSetInner
 )
 try:
     from pydantic import BaseModel
@@ -47,7 +47,8 @@ except ImportError:
 
 class BucketServiceUpdateBucketTagsRequest(BaseModel):
     """BucketServiceUpdateBucketTagsRequest"""
-    tag: Optional[List[BucketServiceCreateBucketRequestTagInner]] = Field(default=None, description="Tags - list of tags set for the Bucket", alias="Tag")
+    tag_set: Optional[List[BucketServiceCreateBucketRequestTagSetInner]] = Field(
+        default=None, description="Tags - list of tags set for the Bucket", alias="TagSet")
     namespace: Optional[StrictStr] = Field(default=None, description="Namespace associated with the user/tenant that is allowed to access the bucket")
 
     model_config = ConfigDict(

@@ -17,8 +17,8 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tag_inner import (
-    UserManagementServiceAddUserRequestTagInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tags_inner import (
+    UserManagementServiceAddUserRequestTagsInner
 )
 try:
     from pydantic import BaseModel
@@ -55,7 +55,7 @@ class UserManagementServiceGetUserInfoResponse(BaseModel):
     name: StrictStr = Field(description="User name")
     locked: StrictBool = Field(description="Set true if user needs to be is to be locked, false otherwise")
     created: StrictStr = Field(description="Gets the user's creation date as an ISO-8601 timestamp.")
-    tag: Optional[List[UserManagementServiceAddUserRequestTagInner]] = Field(
+    tag: Optional[List[UserManagementServiceAddUserRequestTagsInner]] = Field(
         default=None, description="Gets the tags associated with this user. May be null if the user has no  tags.")
     centerapassword: StrictStr = Field(description="Gets the user's centerapassword.")
     swiftpassword: StrictStr = Field(description="Gets the user's swiftpassword.")

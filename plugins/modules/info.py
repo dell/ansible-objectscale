@@ -176,6 +176,16 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils \
     import utils
 from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import HAS_OBJECTSCALE_CLIENT
 
+try:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import api_client as objectscale_api_client
+except (ImportError, Exception):
+    objectscale_api_client = None
+
+try:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import _stubs as objectscale_client_stubs
+except (ImportError, Exception):
+    objectscale_client_stubs = None
+
 if TYPE_CHECKING:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.namespace_api import NamespaceApi
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_response import (
@@ -201,6 +211,29 @@ except (ImportError, Exception):
 
 class ObjectScaleInfo(object):
     """Class for gathering information from ObjectScale"""
+
+    @staticmethod
+    def _ensure_secretstr_compatibility() -> None:
+        """Patch generated stubs for runtime compatibility when pydantic is absent."""
+        if objectscale_api_client is not None:
+            secret_str_cls = getattr(objectscale_api_client, 'SecretStr', None)
+            if secret_str_cls is str:
+                class _CompatSecretStr(str):
+                    def get_secret_value(self) -> str:
+                        return str(self)
+
+                objectscale_api_client.SecretStr = _CompatSecretStr
+
+        if objectscale_client_stubs is not None:
+            base_model_cls = getattr(objectscale_client_stubs, 'BaseModel', None)
+            if base_model_cls is not None and not hasattr(base_model_cls, 'model_dump'):
+                def _model_dump(self, *args, **kwargs):  # type: ignore[no-redef]
+                    data = getattr(self, '__dict__', None)
+                    if isinstance(data, dict):
+                        return dict(data)
+                    return {}
+
+                base_model_cls.model_dump = _model_dump
 
     def __init__(self) -> None:
         """Define all parameters required by this module."""
@@ -236,6 +269,7 @@ class ObjectScaleInfo(object):
         namespace_api_cls = NamespaceApi
 
         try:
+            self._ensure_secretstr_compatibility()
             self.api_client = utils.get_objectscale_connection(self.module.params)
             self.namespace_api = namespace_api_cls(self.api_client)
         except Exception as e:
@@ -261,7 +295,7 @@ class ObjectScaleInfo(object):
             list_kwargs['name'] = str(namespace_query.get('match'))
 
         try:
-            response: NamespaceServiceGetNamespacesResponse = (
+            response = (
                 self.namespace_api.namespace_service_get_namespaces(**list_kwargs)
             )
             return [

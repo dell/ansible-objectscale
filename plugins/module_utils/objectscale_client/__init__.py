@@ -42,9 +42,9 @@ __all__ = [
     "BucketServiceAddBucketTagsRequest",
     "BucketServiceCreateBucketRequest",
     "BucketServiceCreateBucketRequestCopyPolicy",
-    "BucketServiceCreateBucketRequestMetadataInner",
     "BucketServiceCreateBucketRequestMinMaxGovernor",
-    "BucketServiceCreateBucketRequestTagInner",
+    "BucketServiceCreateBucketRequestSearchMetadataInner",
+    "BucketServiceCreateBucketRequestTagSetInner",
     "BucketServiceCreateBucketResponse",
     "BucketServiceCreateBucketResponseMetaData",
     "BucketServiceDeleteBucketTagsRequest",
@@ -142,6 +142,7 @@ __all__ = [
     "IamServiceGetGroupPolicyResponseGetGroupPolicyResult",
     "IamServiceGetGroupResponse",
     "IamServiceGetGroupResponseGetGroupResult",
+    "IamServiceGetGroupResponseGetGroupResultUsersInner",
     "IamServiceGetPolicyResponse",
     "IamServiceGetPolicyResponseGetPolicyResult",
     "IamServiceGetPolicyVersionResponse",
@@ -152,30 +153,41 @@ __all__ = [
     "IamServiceGetUserPolicyResponse",
     "IamServiceGetUserPolicyResponseGetUserPolicyResult",
     "IamServiceGetUserResponse",
+    "IamServiceGetUserResponseGetUserResult",
+    "IamServiceGetUserResponseGetUserResultUser",
+    "IamServiceGetUserResponseGetUserResultUserPermissionsBoundary",
+    "IamServiceGetUserResponseGetUserResultUserTagsInner",
     "IamServiceListAccessKeysResponse",
     "IamServiceListAccessKeysResponseListAccessKeysResult",
+    "IamServiceListAccessKeysResponseListAccessKeysResultAccessKeyMetadataInner",
     "IamServiceListAttachedGroupPoliciesResponse",
     "IamServiceListAttachedGroupPoliciesResponseListAttachedGroupPoliciesResult",
     "IamServiceListAttachedRolePoliciesResponse",
+    "IamServiceListAttachedRolePoliciesResponseListAttachedRolePoliciesResult",
     "IamServiceListAttachedUserPoliciesResponse",
     "IamServiceListGroupPoliciesResponse",
     "IamServiceListGroupPoliciesResponseListGroupPoliciesResult",
     "IamServiceListGroupsForUserResponse",
-    "IamServiceListGroupsForUserResponseResult",
+    "IamServiceListGroupsForUserResponseListGroupsForUserResult",
+    "IamServiceListGroupsForUserResponseListGroupsForUserResultGroupsInner",
     "IamServiceListGroupsResponse",
     "IamServiceListGroupsResponseListGroupsResult",
+    "IamServiceListGroupsResponseListGroupsResultGroupsInner",
     "IamServiceListPoliciesResponse",
     "IamServiceListPoliciesResponseListPoliciesResult",
     "IamServiceListPolicyVersionsResponse",
     "IamServiceListPolicyVersionsResponseListPolicyVersionsResult",
     "IamServiceListRolePoliciesResponse",
     "IamServiceListRoleTagsResponse",
+    "IamServiceListRoleTagsResponseListRoleTagsResult",
     "IamServiceListRolesResponse",
     "IamServiceListRolesResponseResult",
     "IamServiceListUserPoliciesResponse",
     "IamServiceListUserTagsResponse",
+    "IamServiceListUserTagsResponseListUserTagsResult",
     "IamServiceListUsersResponse",
     "IamServiceListUsersResponseListUsersResult",
+    "IamServiceListUsersResponseListUsersResultUsersInner",
     "IamServicePutGroupPolicyResponse",
     "IamServicePutRolePermissionsBoundaryResponse",
     "IamServicePutRolePolicyResponse",
@@ -205,7 +217,7 @@ __all__ = [
     "NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClasses",
     "NamespaceServiceGetNamespacesResponseNamespaceInnerRetentionClassesRetentionClassInner",
     "NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner",
-    "NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner",
+    "NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributesInner",
     "NamespaceServiceGetRetentionClassResponse",
     "NamespaceServiceGetRetentionClassesResponse",
     "NamespaceServiceUpdateNamespaceQuotaRequest",
@@ -219,7 +231,7 @@ __all__ = [
     "ObjectVarrayServiceUpdateVirtualArrayRequest",
     "ObjectVarrayServiceUpdateVirtualArrayResponse",
     "UserManagementServiceAddUserRequest",
-    "UserManagementServiceAddUserRequestTagInner",
+    "UserManagementServiceAddUserRequestTagsInner",
     "UserManagementServiceAddUserResponse",
     "UserManagementServiceAddUserResponseLink",
     "UserManagementServiceAddUserTagRequest",
@@ -283,14 +295,14 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_copy_policy import (
     BucketServiceCreateBucketRequestCopyPolicy
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_metadata_inner import (
-    BucketServiceCreateBucketRequestMetadataInner
-)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_min_max_governor import (
     BucketServiceCreateBucketRequestMinMaxGovernor
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_inner import (
-    BucketServiceCreateBucketRequestTagInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_search_metadata_inner import (
+    BucketServiceCreateBucketRequestSearchMetadataInner
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_set_inner import (
+    BucketServiceCreateBucketRequestTagSetInner
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_response import (
     BucketServiceCreateBucketResponse
@@ -573,6 +585,9 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_group_response_get_group_result import (
     IamServiceGetGroupResponseGetGroupResult
 )
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_group_response_get_group_result_users_inner import (
+    IamServiceGetGroupResponseGetGroupResultUsersInner
+)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_policy_response import IamServiceGetPolicyResponse
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_policy_response_get_policy_result import (
     IamServiceGetPolicyResponseGetPolicyResult
@@ -597,11 +612,26 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
     IamServiceGetUserPolicyResponseGetUserPolicyResult
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_user_response import IamServiceGetUserResponse
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_user_response_get_user_result import (
+    IamServiceGetUserResponseGetUserResult
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_user_response_get_user_result_user import (
+    IamServiceGetUserResponseGetUserResultUser
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_user_response_get_user_result_user_permissions_boundary import (  # noqa: E501
+    IamServiceGetUserResponseGetUserResultUserPermissionsBoundary
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_user_response_get_user_result_user_tags_inner import (  # noqa: E501
+    IamServiceGetUserResponseGetUserResultUserTagsInner
+)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_access_keys_response import (
     IamServiceListAccessKeysResponse
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_access_keys_response_list_access_keys_result import (  # noqa: E501
     IamServiceListAccessKeysResponseListAccessKeysResult
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_access_keys_response_list_access_keys_result_access_key_metadata_inner import (  # noqa: E501
+    IamServiceListAccessKeysResponseListAccessKeysResultAccessKeyMetadataInner
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_attached_group_policies_response import (
     IamServiceListAttachedGroupPoliciesResponse
@@ -611,6 +641,9 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_attached_role_policies_response import (
     IamServiceListAttachedRolePoliciesResponse
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_attached_role_policies_response_list_attached_role_policies_result import (  # noqa: E501
+    IamServiceListAttachedRolePoliciesResponseListAttachedRolePoliciesResult
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_attached_user_policies_response import (
     IamServiceListAttachedUserPoliciesResponse
@@ -624,12 +657,18 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_for_user_response import (
     IamServiceListGroupsForUserResponse
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_for_user_response_result import (
-    IamServiceListGroupsForUserResponseResult
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_for_user_response_list_groups_for_user_result import (  # noqa: E501
+    IamServiceListGroupsForUserResponseListGroupsForUserResult
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_for_user_response_list_groups_for_user_result_groups_inner import (  # noqa: E501
+    IamServiceListGroupsForUserResponseListGroupsForUserResultGroupsInner
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_response import IamServiceListGroupsResponse
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_response_list_groups_result import (
     IamServiceListGroupsResponseListGroupsResult
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_response_list_groups_result_groups_inner import (  # noqa: E501
+    IamServiceListGroupsResponseListGroupsResultGroupsInner
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_policies_response import (
     IamServiceListPoliciesResponse
@@ -649,6 +688,9 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_role_tags_response import (
     IamServiceListRoleTagsResponse
 )
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_role_tags_response_list_role_tags_result import (
+    IamServiceListRoleTagsResponseListRoleTagsResult
+)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_roles_response import IamServiceListRolesResponse
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_roles_response_result import (
     IamServiceListRolesResponseResult
@@ -659,9 +701,15 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_user_tags_response import (
     IamServiceListUserTagsResponse
 )
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_user_tags_response_list_user_tags_result import (
+    IamServiceListUserTagsResponseListUserTagsResult
+)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_users_response import IamServiceListUsersResponse
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_users_response_list_users_result import (
     IamServiceListUsersResponseListUsersResult
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_users_response_list_users_result_users_inner import (  # noqa: E501
+    IamServiceListUsersResponseListUsersResultUsersInner
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_put_group_policy_response import (
     IamServicePutGroupPolicyResponse
@@ -746,8 +794,8 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner import (  # noqa: E501
     NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInner
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner_attribute_inner import (  # noqa: E501
-    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response_namespace_inner_user_mapping_inner_attributes_inner import (  # noqa: E501
+    NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributesInner
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_retention_class_response import (
     NamespaceServiceGetRetentionClassResponse
@@ -788,8 +836,8 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_cl
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request import (
     UserManagementServiceAddUserRequest
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tag_inner import (
-    UserManagementServiceAddUserRequestTagInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tags_inner import (
+    UserManagementServiceAddUserRequestTagsInner
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_response import (
     UserManagementServiceAddUserResponse

@@ -17,8 +17,8 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_inner import (
-    BucketServiceCreateBucketRequestTagInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_set_inner import (
+    BucketServiceCreateBucketRequestTagSetInner
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_get_buckets_response_object_bucket_inner_min_max_governor import (  # noqa: E501
     BucketServiceGetBucketsResponseObjectBucketInnerMinMaxGovernor
@@ -90,8 +90,8 @@ class BucketServiceGetBucketInfoResponse(BaseModel):
     auto_commit_period: Optional[StrictInt] = Field(default=None, description="auto-commit interval")
     notification_size: Optional[StrictInt] = Field(default=None, description="Notification size in GB")
     api_type: Optional[StrictStr] = Field(default=None, description="API type")
-    tag: Optional[List[BucketServiceCreateBucketRequestTagInner]] = Field(
-        default=None, description="Keywords and labels that can be added by a user to a resource  to make it easy to find when doing a search.", alias="Tag")
+    tag_set: Optional[List[BucketServiceCreateBucketRequestTagSetInner]] = Field(
+        default=None, description="Keywords and labels that can be added by a user to a resource  to make it easy to find when doing a search.", alias="TagSet")
     retention: Optional[StrictInt] = Field(default=None, description="Default retention value for the bucket.")
     default_group_file_read_permission: Optional[StrictBool] = Field(default=None, description="Flag indicating the Read permission for default group")
     default_group_file_write_permission: Optional[StrictBool] = Field(default=None, description="Flag indicating the file write permission for default group")

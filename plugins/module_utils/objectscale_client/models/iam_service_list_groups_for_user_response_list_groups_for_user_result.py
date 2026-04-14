@@ -17,8 +17,8 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tags_inner import (
-    UserManagementServiceAddUserRequestTagsInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_for_user_response_list_groups_for_user_result_groups_inner import (  # noqa: E501
+    IamServiceListGroupsForUserResponseListGroupsForUserResultGroupsInner
 )
 try:
     from pydantic import BaseModel
@@ -33,6 +33,14 @@ try:
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field  # stub
 try:
+    from pydantic import StrictBool
+except ImportError:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictBool  # stub
+try:
+    from pydantic import StrictStr
+except ImportError:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
+try:
     from typing_extensions import Self
 except ImportError:
     try:
@@ -41,9 +49,12 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class UserManagementServiceRemoveUserTagsRequest(BaseModel):
-    """UserManagementServiceRemoveUserTagsRequest"""
-    tags: Optional[List[UserManagementServiceAddUserRequestTagsInner]] = Field(default=None, description="Tags - List of user tags")
+class IamServiceListGroupsForUserResponseListGroupsForUserResult(BaseModel):
+    """IamServiceListGroupsForUserResponseListGroupsForUserResult"""
+    groups: Optional[List[IamServiceListGroupsForUserResponseListGroupsForUserResultGroupsInner]] = Field(
+        default=None, description="List of groups the user belongs to.", alias="Groups")
+    is_truncated: Optional[StrictBool] = Field(default=None, description="A flag that indicates whether there are more items to return.", alias="IsTruncated")
+    marker: Optional[StrictStr] = Field(default=None, description="Marker for pagination if IsTruncated is true.", alias="Marker")
 
     model_config = ConfigDict(
         validate_by_name=True,

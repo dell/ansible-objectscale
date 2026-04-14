@@ -17,8 +17,8 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_metadata_inner import (
-    BucketServiceCreateBucketRequestMetadataInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_search_metadata_inner import (
+    BucketServiceCreateBucketRequestSearchMetadataInner
 )
 try:
     from pydantic import BaseModel
@@ -51,7 +51,7 @@ except ImportError:
 
 class BucketServiceCreateBucketResponseMetaData(BaseModel):
     """Getter for the metadata."""
-    metadata: Optional[List[BucketServiceCreateBucketRequestMetadataInner]] = Field(default=None, description="Getter for the metadata.")
+    metadata: Optional[List[BucketServiceCreateBucketRequestSearchMetadataInner]] = Field(default=None, description="Getter for the metadata.")
     is_enabled: Optional[StrictBool] = Field(default=None, description="Getter for the enabled flag.", alias="isEnabled")
     md_tokens: Optional[StrictBool] = Field(default=None, description="Getter for the mdTokens flag.", alias="mdTokens")
     max_keys: Optional[StrictInt] = Field(default=None, description="Getter for maxKeys.", alias="maxKeys")

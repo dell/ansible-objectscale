@@ -17,6 +17,9 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_users_response_list_users_result_users_inner import (  # noqa: E501
+    IamServiceListUsersResponseListUsersResultUsersInner
+)
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -48,11 +51,11 @@ except ImportError:
 
 class IamServiceListUsersResponseListUsersResult(BaseModel):
     """Get listUserResult"""
-    users: Optional[List[StrictStr]] = Field(default=None, description="Get users", alias="Users")
+    users: Optional[List[IamServiceListUsersResponseListUsersResultUsersInner]] = Field(default=None, description="List of users", alias="Users")
     is_truncated: Optional[StrictBool] = Field(default=None, description="A flag that indicates whether there are more items to return.", alias="IsTruncated")
     marker: Optional[StrictStr] = Field(
         default=None,
-        description="When isTruncated is true, this element needs to be sent in the Marker parameter for subsequent pagination requests.",
+        description="When isTruncated is true, this element needs to be sent in the Marker parameter for subsequent pagination requests. when IsTruncated is true",  # noqa: E501
         alias="Marker")
 
     model_config = ConfigDict(

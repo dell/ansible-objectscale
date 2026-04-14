@@ -20,14 +20,14 @@ from typing import Any, Dict, List, Optional
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_copy_policy import (
     BucketServiceCreateBucketRequestCopyPolicy
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_metadata_inner import (
-    BucketServiceCreateBucketRequestMetadataInner
-)
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_min_max_governor import (
     BucketServiceCreateBucketRequestMinMaxGovernor
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_inner import (
-    BucketServiceCreateBucketRequestTagInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_search_metadata_inner import (
+    BucketServiceCreateBucketRequestSearchMetadataInner
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_set_inner import (
+    BucketServiceCreateBucketRequestTagSetInner
 )
 try:
     from pydantic import BaseModel
@@ -79,7 +79,8 @@ class BucketServiceCreateBucketRequest(BaseModel):
         default=None,
         description="HeadType indicates the object head type that is allowed to access the bucket. If the bucket has FS-Enabled,  then the FS heads are implicitly allowed to access this bucket")  # noqa: E501
     namespace: Optional[StrictStr] = Field(default=None, description="Namespace associated with the user/tenant that is allowed to access the bucket")
-    tag: Optional[List[BucketServiceCreateBucketRequestTagInner]] = Field(default=None, description="Tags - list of tags set for the Bucket", alias="Tag")
+    tag_set: Optional[List[BucketServiceCreateBucketRequestTagSetInner]] = Field(
+        default=None, description="Tags - list of tags set for the Bucket", alias="TagSet")
     is_encryption_enabled: Optional[StrictBool] = Field(default=None, description="tag to enable encryption for the bucket")
     default_group_file_read_permission: Optional[StrictBool] = Field(default=None, description="Flag indicating the Read permission for default group")
     default_group_file_write_permission: Optional[StrictBool] = Field(default=None, description="Flag indicating the file write permission for default group")
@@ -101,7 +102,7 @@ class BucketServiceCreateBucketRequest(BaseModel):
     is_object_lock_with_ado_allowed: Optional[StrictBool] = Field(
         default=None, description="permanently sets flag on the bucket to allow Object Lock and ADO to be enabled together.")
     is_tso_read_only: Optional[StrictBool] = Field(default=None, description="enable the Access During Outage option, which allows read access")
-    metadata: Optional[List[BucketServiceCreateBucketRequestMetadataInner]] = Field(
+    search_metadata: Optional[List[BucketServiceCreateBucketRequestSearchMetadataInner]] = Field(
         default=None, description="Searchable tags assigned to objects created within the bucket.")
     metadata_tokens: Optional[StrictBool] = Field(
         default=None, description="metadata search: whether to treat metadata value as array of values (true) or single value (false)")

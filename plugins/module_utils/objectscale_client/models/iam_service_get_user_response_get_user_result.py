@@ -15,10 +15,10 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tags_inner import (
-    UserManagementServiceAddUserRequestTagsInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_user_response_get_user_result_user import (
+    IamServiceGetUserResponseGetUserResultUser
 )
 try:
     from pydantic import BaseModel
@@ -41,9 +41,9 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class UserManagementServiceRemoveUserTagsRequest(BaseModel):
-    """UserManagementServiceRemoveUserTagsRequest"""
-    tags: Optional[List[UserManagementServiceAddUserRequestTagsInner]] = Field(default=None, description="Tags - List of user tags")
+class IamServiceGetUserResponseGetUserResult(BaseModel):
+    """IamServiceGetUserResponseGetUserResult"""
+    user: Optional[IamServiceGetUserResponseGetUserResultUser] = Field(default=None, alias="User")
 
     model_config = ConfigDict(
         validate_by_name=True,

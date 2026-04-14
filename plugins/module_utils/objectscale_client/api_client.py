@@ -243,7 +243,7 @@ class ApiClient:
                 query_params,
                 collection_formats
             )
-            url += "?" + url_query
+            url += ("&" if "?" in url else "?") + url_query
 
         return method, url, header_params, body, post_params
 

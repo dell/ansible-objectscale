@@ -15,11 +15,8 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tags_inner import (
-    UserManagementServiceAddUserRequestTagsInner
-)
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -33,6 +30,10 @@ try:
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field  # stub
 try:
+    from pydantic import StrictStr
+except ImportError:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
+try:
     from typing_extensions import Self
 except ImportError:
     try:
@@ -41,9 +42,12 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class UserManagementServiceRemoveUserTagsRequest(BaseModel):
-    """UserManagementServiceRemoveUserTagsRequest"""
-    tags: Optional[List[UserManagementServiceAddUserRequestTagsInner]] = Field(default=None, description="Tags - List of user tags")
+class IamServiceListGroupsForUserResponseListGroupsForUserResultGroupsInner(BaseModel):
+    """IamServiceListGroupsForUserResponseListGroupsForUserResultGroupsInner"""
+    arn: Optional[StrictStr] = Field(default=None, alias="Arn")
+    group_id: Optional[StrictStr] = Field(default=None, alias="GroupId")
+    group_name: Optional[StrictStr] = Field(default=None, alias="GroupName")
+    path: Optional[StrictStr] = Field(default=None, alias="Path")
 
     model_config = ConfigDict(
         validate_by_name=True,

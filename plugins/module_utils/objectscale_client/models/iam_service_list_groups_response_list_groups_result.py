@@ -17,6 +17,9 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_response_list_groups_result_groups_inner import (  # noqa: E501
+    IamServiceListGroupsResponseListGroupsResultGroupsInner
+)
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -48,7 +51,7 @@ except ImportError:
 
 class IamServiceListGroupsResponseListGroupsResult(BaseModel):
     """Get listGroupsResult"""
-    groups: Optional[List[StrictStr]] = Field(default=None, description="Get groups.", alias="Groups")
+    groups: Optional[List[IamServiceListGroupsResponseListGroupsResultGroupsInner]] = Field(default=None, description="Get groups.", alias="Groups")
     is_truncated: Optional[StrictBool] = Field(default=None, description="A flag that indicates whether there are more items to return.", alias="IsTruncated")
     marker: Optional[StrictStr] = Field(
         default=None,

@@ -20,8 +20,8 @@ from typing import Any, Dict, Optional
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_add_user_to_group_response_response_metadata import (
     IamServiceAddUserToGroupResponseResponseMetadata
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_for_user_response_result import (
-    IamServiceListGroupsForUserResponseResult
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_groups_for_user_response_list_groups_for_user_result import (  # noqa: E501
+    IamServiceListGroupsForUserResponseListGroupsForUserResult
 )
 try:
     from pydantic import BaseModel
@@ -46,7 +46,7 @@ except ImportError:
 
 class IamServiceListGroupsForUserResponse(BaseModel):
     """IamServiceListGroupsForUserResponse"""
-    result: Optional[IamServiceListGroupsForUserResponseResult] = Field(default=None, alias="Result")
+    list_groups_for_user_result: Optional[IamServiceListGroupsForUserResponseListGroupsForUserResult] = Field(default=None, alias="ListGroupsForUserResult")
     response_metadata: Optional[IamServiceAddUserToGroupResponseResponseMetadata] = Field(default=None, alias="ResponseMetadata")
 
     model_config = ConfigDict(

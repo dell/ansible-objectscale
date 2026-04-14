@@ -17,8 +17,8 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tag_inner import (
-    UserManagementServiceAddUserRequestTagInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tags_inner import (
+    UserManagementServiceAddUserRequestTagsInner
 )
 try:
     from pydantic import BaseModel
@@ -43,7 +43,7 @@ except ImportError:
 
 class UserManagementServiceUpdateUserTagRequest(BaseModel):
     """UserManagementServiceUpdateUserTagRequest"""
-    tag: Optional[List[UserManagementServiceAddUserRequestTagInner]] = Field(default=None, description="Tags - List of user Tags")
+    tags: Optional[List[UserManagementServiceAddUserRequestTagsInner]] = Field(default=None, description="Tags - List of user Tags")
 
     model_config = ConfigDict(
         validate_by_name=True,

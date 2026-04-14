@@ -20,6 +20,9 @@ from typing import Any, Dict, List, Optional
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_create_group_response_create_group_result_group import (
     IamServiceCreateGroupResponseCreateGroupResultGroup
 )
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_group_response_get_group_result_users_inner import (
+    IamServiceGetGroupResponseGetGroupResultUsersInner
+)
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -51,7 +54,7 @@ except ImportError:
 
 class IamServiceGetGroupResponseGetGroupResult(BaseModel):
     """IamServiceGetGroupResponseGetGroupResult"""
-    users: Optional[List[StrictStr]] = Field(default=None, alias="Users")
+    users: Optional[List[IamServiceGetGroupResponseGetGroupResultUsersInner]] = Field(default=None, alias="Users")
     is_truncated: Optional[StrictBool] = Field(default=None, alias="IsTruncated")
     marker: Optional[StrictStr] = Field(default=None, alias="Marker")
     group: Optional[IamServiceCreateGroupResponseCreateGroupResultGroup] = Field(default=None, alias="Group")
