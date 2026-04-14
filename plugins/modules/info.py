@@ -17,6 +17,7 @@ short_description: Gather information about Dell ObjectScale entities
 
 description:
 - Gather information about Dell ObjectScale entities such as namespaces.
+- Supports listing all namespaces and fetching namespace details by name.
 
 author:
 - Dell Ansible Team (@dell) <ansible.team@dell.com>
@@ -72,6 +73,16 @@ options:
     choices: ['namespace']
     required: true
 
+  query_parameters:
+    description:
+    - Contains dictionary of query parameters for specific I(gather_subset).
+    - Applicable to C(namespace).
+    - Use C(query_parameters.namespace.name) to get a specific namespace.
+    - Use C(query_parameters.namespace.match) to list namespaces by prefix
+      with wildcard (for example C(team-*)).
+    type: dict
+    required: false
+
 notes:
 - The I(check_mode) is not supported.
 - The objectscale_client Python package must be installed.
@@ -92,6 +103,31 @@ EXAMPLES = r'''
 - name: Display all namespaces
   debug:
     var: objectscale_info.Namespaces
+
+- name: Get namespace details by name
+  dellemc.objectscale.info:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    gather_subset:
+      - namespace
+    query_parameters:
+      namespace:
+        name: "testnamespace"
+  register: objectscale_namespace
+
+- name: List namespaces by name prefix
+  dellemc.objectscale.info:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    gather_subset:
+      - namespace
+    query_parameters:
+      namespace:
+        match: "team-*"
 '''
 
 RETURN = r'''
@@ -140,24 +176,64 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils \
     import utils
 from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import HAS_OBJECTSCALE_CLIENT
 
+try:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import api_client as objectscale_api_client
+except (ImportError, Exception):
+    objectscale_api_client = None
+
+try:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import _stubs as objectscale_client_stubs
+except (ImportError, Exception):
+    objectscale_client_stubs = None
+
 if TYPE_CHECKING:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.namespace_api import NamespaceApi
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_response import (
+        NamespaceServiceGetNamespaceResponse,
+    )
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response import (
         NamespaceServiceGetNamespacesResponse,
     )
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.namespace_api import NamespaceApi
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespace_response import (
+        NamespaceServiceGetNamespaceResponse,
+    )
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response import (
         NamespaceServiceGetNamespacesResponse,
     )
 except (ImportError, Exception):
     NamespaceApi = None  # type: ignore[assignment,misc]
+    NamespaceServiceGetNamespaceResponse = None  # type: ignore[assignment,misc]
     NamespaceServiceGetNamespacesResponse = None  # type: ignore[assignment,misc]
 
 
 class ObjectScaleInfo(object):
     """Class for gathering information from ObjectScale"""
+
+    @staticmethod
+    def _ensure_secretstr_compatibility() -> None:
+        """Patch generated stubs for runtime compatibility when pydantic is absent."""
+        if objectscale_api_client is not None:
+            secret_str_cls = getattr(objectscale_api_client, 'SecretStr', None)
+            if secret_str_cls is str:
+                class _CompatSecretStr(str):
+                    def get_secret_value(self) -> str:
+                        return str(self)
+
+                objectscale_api_client.SecretStr = _CompatSecretStr
+
+        if objectscale_client_stubs is not None:
+            base_model_cls = getattr(objectscale_client_stubs, 'BaseModel', None)
+            if base_model_cls is not None and not hasattr(base_model_cls, 'model_dump'):
+                def _model_dump(self, *args, **kwargs):  # type: ignore[no-redef]
+                    data = getattr(self, '__dict__', None)
+                    if isinstance(data, dict):
+                        return dict(data)
+                    return {}
+
+                base_model_cls.model_dump = _model_dump
 
     def __init__(self) -> None:
         """Define all parameters required by this module."""
@@ -168,7 +244,8 @@ class ObjectScaleInfo(object):
                 elements='str',
                 required=True,
                 choices=['namespace']
-            )
+            ),
+            query_parameters=dict(type='dict', required=False),
         ))
 
         self.module = AnsibleModule(
@@ -183,9 +260,18 @@ class ObjectScaleInfo(object):
                     "Install it with: pip install pydantic urllib3 python-dateutil"
             )
 
+        if NamespaceApi is None:
+            self.module.exit_json(
+                failed=True,
+                msg="ObjectScale namespace API client is unavailable. Rebuild/install objectscale_client.",
+            )
+
+        namespace_api_cls = NamespaceApi
+
         try:
+            self._ensure_secretstr_compatibility()
             self.api_client = utils.get_objectscale_connection(self.module.params)
-            self.namespace_api: NamespaceApi = NamespaceApi(self.api_client)
+            self.namespace_api = namespace_api_cls(self.api_client)
         except Exception as e:
             self.module.exit_json(failed=True, msg="Failed to connect to ObjectScale: %s" % str(e))
 
@@ -193,17 +279,93 @@ class ObjectScaleInfo(object):
 
     def get_namespaces(self) -> Optional[List[Dict[str, Any]]]:
         """Get all namespaces from ObjectScale."""
+        namespace_query = self._get_namespace_query_parameters()
+        namespace_name = namespace_query.get('name')
+
+        if namespace_name:
+            namespace_details = self.get_namespace_details(namespace_name)
+            return [namespace_details] if namespace_details else []
+
+        list_kwargs: Dict[str, Any] = {}
+        if namespace_query.get('limit') is not None:
+            list_kwargs['limit'] = str(namespace_query.get('limit'))
+        if namespace_query.get('marker') is not None:
+            list_kwargs['marker'] = str(namespace_query.get('marker'))
+        if namespace_query.get('match'):
+            list_kwargs['name'] = str(namespace_query.get('match'))
+
         try:
-            response: NamespaceServiceGetNamespacesResponse = (
-                self.namespace_api.namespace_service_get_namespaces()
+            response = (
+                self.namespace_api.namespace_service_get_namespaces(**list_kwargs)
             )
             return [
-                ns.to_dict() for ns in (response.namespace or [])
+                ns.to_dict() if hasattr(ns, 'to_dict') else ns
+                for ns in (response.namespace or [])
             ]
         except Exception as e:
             error_msg = utils.determine_error(e)
             msg = "Getting namespace list failed with error: %s" % error_msg
             self.module.exit_json(failed=True, msg=msg)
+
+    def get_namespace_details(self, namespace_name: str) -> Optional[Dict[str, Any]]:
+        """Get namespace details by namespace name."""
+        try:
+            response = (
+                self.namespace_api.namespace_service_get_namespace(id=namespace_name)
+            )
+            return response.to_dict() if hasattr(response, 'to_dict') else response
+        except Exception as e:
+            status = getattr(e, 'status', None)
+            if str(status) in ('404', '400'):
+                return None
+            error_msg = utils.determine_error(e)
+            msg = "Getting namespace %s details failed with error: %s" % (
+                namespace_name,
+                error_msg,
+            )
+            self.module.exit_json(failed=True, msg=msg)
+
+    def _get_namespace_query_parameters(self) -> Dict[str, Any]:
+        """Extract and validate query parameters for namespace gather subset."""
+        query_parameters = self.module.params.get('query_parameters')
+
+        if query_parameters is None:
+            return {}
+
+        if not isinstance(query_parameters, dict):
+            self.module.exit_json(
+                failed=True,
+                msg="query_parameters must be a dictionary.",
+            )
+            return {}
+
+        namespace_query = query_parameters.get('namespace') or {}
+
+        if namespace_query and not isinstance(namespace_query, dict):
+            self.module.exit_json(
+                failed=True,
+                msg="query_parameters.namespace must be a dictionary.",
+            )
+            return {}
+
+        supported_keys = {'name', 'match', 'limit', 'marker'}
+        unsupported_keys = sorted(set(namespace_query.keys()) - supported_keys)
+        if unsupported_keys:
+            self.module.exit_json(
+                failed=True,
+                msg="Unsupported namespace query parameter(s): %s"
+                    % ", ".join(unsupported_keys),
+            )
+            return {}
+
+        if namespace_query.get('name') and namespace_query.get('match'):
+            self.module.exit_json(
+                failed=True,
+                msg="query_parameters.namespace.name and query_parameters.namespace.match are mutually exclusive.",
+            )
+            return {}
+
+        return namespace_query
 
     def perform_module_operation(self) -> None:
         """Gather requested information and return results."""
