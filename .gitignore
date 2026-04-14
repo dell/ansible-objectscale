@@ -40,10 +40,10 @@ venv.bak/
 *.log
 logs/
 tmp/
+tests/output
 
 # OpenAPI generator artifacts
 openapi-generator-cli-*.jar
-client/build/
 client/src/
 
 # Ansible lint cache

@@ -19,6 +19,7 @@ PARAMS = dict(
     timeout=30,
     gather_subset=['namespace'],
     namespace=None,
+    query_parameters=None,
 )
 
 
@@ -129,6 +130,130 @@ class TestObjectScaleInfoGetNamespaces:
         kwargs = obj.module.exit_json.call_args[1]
         assert kwargs['failed'] is True
         assert 'API error' in kwargs['msg']
+
+    def test_get_namespaces_by_name(self):
+        obj = make_info_obj(params={
+            **PARAMS,
+            'query_parameters': {
+                'namespace': {
+                    'name': 'ns1'
+                }
+            }
+        })
+        obj.get_namespace_details = MagicMock(return_value={'id': 'ns1', 'name': 'ns1'})
+
+        result = obj.get_namespaces()
+
+        obj.get_namespace_details.assert_called_once_with('ns1')
+        assert result == [{'id': 'ns1', 'name': 'ns1'}]
+
+    def test_get_namespaces_with_list_query_parameters(self):
+        obj = make_info_obj(params={
+            **PARAMS,
+            'query_parameters': {
+                'namespace': {
+                    'match': 'team-*',
+                    'limit': 20,
+                    'marker': 'cursor-1',
+                }
+            }
+        })
+        response = MagicMock()
+        ns = MagicMock()
+        ns.to_dict.return_value = {'id': 'team-a'}
+        response.namespace = [ns]
+        obj.namespace_api.namespace_service_get_namespaces.return_value = response
+
+        result = obj.get_namespaces()
+
+        obj.namespace_api.namespace_service_get_namespaces.assert_called_once_with(
+            name='team-*',
+            limit='20',
+            marker='cursor-1',
+        )
+        assert result == [{'id': 'team-a'}]
+
+
+class TestObjectScaleInfoGetNamespaceDetails:
+
+    def test_get_namespace_details_success(self):
+        obj = make_info_obj()
+        resp = MagicMock()
+        resp.to_dict.return_value = {'id': 'ns1', 'name': 'ns1'}
+        obj.namespace_api.namespace_service_get_namespace.return_value = resp
+
+        result = obj.get_namespace_details('ns1')
+
+        assert result == {'id': 'ns1', 'name': 'ns1'}
+
+    def test_get_namespace_details_not_found(self):
+        obj = make_info_obj()
+        err = Exception("not found")
+        err.status = 404
+        obj.namespace_api.namespace_service_get_namespace.side_effect = err
+
+        result = obj.get_namespace_details('ns1')
+
+        assert result is None
+
+
+class TestObjectScaleInfoQueryValidation:
+
+    def test_query_parameters_must_be_dict(self):
+        obj = make_info_obj(params={**PARAMS, 'query_parameters': 'invalid'})
+
+        obj._get_namespace_query_parameters()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'query_parameters must be a dictionary' in kwargs['msg']
+
+    def test_namespace_query_parameters_must_be_dict(self):
+        obj = make_info_obj(params={
+            **PARAMS,
+            'query_parameters': {
+                'namespace': 'invalid'
+            }
+        })
+
+        obj._get_namespace_query_parameters()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'query_parameters.namespace must be a dictionary' in kwargs['msg']
+
+    def test_namespace_name_and_match_mutually_exclusive(self):
+        obj = make_info_obj(params={
+            **PARAMS,
+            'query_parameters': {
+                'namespace': {
+                    'name': 'ns1',
+                    'match': 'ns*',
+                }
+            }
+        })
+
+        obj._get_namespace_query_parameters()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'mutually exclusive' in kwargs['msg']
+
+    def test_namespace_unsupported_query_key(self):
+        obj = make_info_obj(params={
+            **PARAMS,
+            'query_parameters': {
+                'namespace': {
+                    'foo': 'bar'
+                }
+            }
+        })
+
+        obj._get_namespace_query_parameters()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['failed'] is True
+        assert 'Unsupported namespace query parameter' in kwargs['msg']
 
 
 class TestObjectScaleInfoPerformModuleOperation:
