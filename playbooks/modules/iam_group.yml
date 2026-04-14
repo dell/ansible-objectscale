@@ -1,0 +1,101 @@
+---
+- name: IAM Group Management Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('objectscale.example.com', true) }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('admin', true) }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('password', true) }}"
+    objectscale_namespace: "test-namespace"
+
+  tasks:
+    - name: Create an IAM group
+      dellemc.objectscale.iam_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+      register: create_result
+
+    - name: Add users to group
+      dellemc.objectscale.iam_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
+        users:
+          - test-user
+          - user_001
+        user_state: present-in-group
+        state: present
+
+    - name: Attach managed policies
+      dellemc.objectscale.iam_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
+        policies:
+          - "urn:ecs:iam:::policy/ECSS3ReadOnlyAccess"
+        policy_state: present-in-group
+        state: present
+
+    - name: Add inline policy
+      dellemc.objectscale.iam_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
+        inline_policies:
+          - name: AllowListBuckets
+            document: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:ListAllMyBuckets","Resource":"*"}]}'
+        inline_policy_state: present-in-group
+        state: present
+
+    - name: Remove a user from group
+      dellemc.objectscale.iam_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
+        users:
+          - user_001
+        user_state: absent-in-group
+        state: present
+
+    - name: Gather IAM group info
+      dellemc.objectscale.info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        gather_subset:
+          - iam_group
+        namespace: "{{ objectscale_namespace }}"
+      register: group_info
+
+    - name: Display groups
+      ansible.builtin.debug:
+        var: group_info.IamGroups
+
+    - name: Delete IAM group
+      dellemc.objectscale.iam_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        group_name: test-group
+        namespace: "{{ objectscale_namespace }}"
+        state: absent

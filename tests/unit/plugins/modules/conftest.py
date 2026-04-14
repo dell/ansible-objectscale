@@ -3,10 +3,16 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+import os
 import sys
 import pytest
 
-sys.path.insert(0, '/root')
+# Walk up from the repo root to the collections ancestor so that
+# 'ansible_collections.dellemc.objectscale' is importable.
+_repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))
+_collections_root = os.path.dirname(os.path.dirname(_repo))
+sys.path.insert(0, _collections_root)
 
 # Skip the entire module-level test directory when the generated
 # ObjectScale client cannot be imported (e.g. Python < 3.9 without

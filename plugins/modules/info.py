@@ -68,10 +68,18 @@ options:
     - List of string variables to specify the entities for which information
       should be gathered.
     - C(namespace) - returns list of all namespaces.
+    - C(iam_group) - returns list of all IAM groups in the specified namespace.
     type: list
     elements: str
-    choices: ['namespace']
+    choices: ['namespace', 'iam_group']
     required: true
+
+  namespace:
+    description:
+    - The ObjectScale namespace to query for IAM resources.
+    - Required when C(iam_group) is in I(gather_subset).
+    type: str
+    required: false
 
   query_parameters:
     description:
@@ -168,6 +176,38 @@ Namespaces:
                 "is_encryption_enabled": false
             }
         ]
+
+IamGroups:
+    description: List of IAM groups in the specified namespace.
+    returned: When iam_group is in gather_subset
+    type: list
+    elements: dict
+    contains:
+        GroupName:
+            description: The name of the IAM group.
+            type: str
+        GroupId:
+            description: The unique identifier for the IAM group.
+            type: str
+        Arn:
+            description: The Amazon Resource Name (ARN) of the group.
+            type: str
+        Path:
+            description: The IAM path prefix for the group.
+            type: str
+        CreateDate:
+            description: The date and time when the group was created.
+            type: str
+    sample:
+        [
+            {
+                "GroupName": "developers",
+                "GroupId": "AGPA1234567890EXAMPLE",
+                "Arn": "urn:ecs:iam::ns1:group/developers",
+                "Path": "/",
+                "CreateDate": "2025-01-15T12:00:00Z"
+            }
+        ]
 '''
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
@@ -194,6 +234,7 @@ if TYPE_CHECKING:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_get_namespaces_response import (
         NamespaceServiceGetNamespacesResponse,
     )
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.iam_api import IamApi as IamApiType
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.namespace_api import NamespaceApi
@@ -207,6 +248,11 @@ except (ImportError, Exception):
     NamespaceApi = None  # type: ignore[assignment,misc]
     NamespaceServiceGetNamespaceResponse = None  # type: ignore[assignment,misc]
     NamespaceServiceGetNamespacesResponse = None  # type: ignore[assignment,misc]
+
+try:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.iam_api import IamApi
+except (ImportError, Exception):
+    IamApi = None  # type: ignore[assignment,misc]
 
 
 class ObjectScaleInfo(object):
@@ -243,8 +289,9 @@ class ObjectScaleInfo(object):
                 type='list',
                 elements='str',
                 required=True,
-                choices=['namespace']
+                choices=['namespace', 'iam_group']
             ),
+            namespace=dict(type='str', required=False),
             query_parameters=dict(type='dict', required=False),
         ))
 
@@ -259,6 +306,7 @@ class ObjectScaleInfo(object):
                 msg="The objectscale_client Python package is required. "
                     "Install it with: pip install pydantic urllib3 python-dateutil"
             )
+            return
 
         if NamespaceApi is None:
             self.module.exit_json(
@@ -271,7 +319,11 @@ class ObjectScaleInfo(object):
         try:
             self._ensure_secretstr_compatibility()
             self.api_client = utils.get_objectscale_connection(self.module.params)
-            self.namespace_api = namespace_api_cls(self.api_client)
+            self.namespace_api: NamespaceApi = NamespaceApi(self.api_client)
+            if IamApi is not None:
+                self.iam_api: IamApiType = IamApi(self.api_client)
+            else:
+                self.iam_api = None  # type: ignore[assignment]
         except Exception as e:
             self.module.exit_json(failed=True, msg="Failed to connect to ObjectScale: %s" % str(e))
 
@@ -305,6 +357,18 @@ class ObjectScaleInfo(object):
         except Exception as e:
             error_msg = utils.determine_error(e)
             msg = "Getting namespace list failed with error: %s" % error_msg
+            self.module.exit_json(failed=True, msg=msg)
+
+    def get_iam_groups(self, namespace: str) -> Optional[List[Dict[str, Any]]]:
+        """Get all IAM groups in a namespace."""
+        if self.iam_api is None:
+            self.module.exit_json(failed=True, msg="IamApi is not available.")
+            return None
+        try:
+            return self.iam_api.list_groups(namespace)
+        except Exception as e:
+            error_msg = utils.determine_error(e)
+            msg = "Getting IAM group list failed with error: %s" % error_msg
             self.module.exit_json(failed=True, msg=msg)
 
     def get_namespace_details(self, namespace_name: str) -> Optional[Dict[str, Any]]:
@@ -375,6 +439,16 @@ class ObjectScaleInfo(object):
 
         if 'namespace' in gather_subset:
             result['Namespaces'] = self.get_namespaces()
+
+        if 'iam_group' in gather_subset:
+            namespace = self.module.params.get('namespace')
+            if not namespace:
+                self.module.exit_json(
+                    failed=True,
+                    msg="The 'namespace' parameter is required when gathering iam_group info."
+                )
+                return
+            result['IamGroups'] = self.get_iam_groups(namespace)
 
         self.module.exit_json(**result)
 

@@ -6,4 +6,5 @@ exclude_paths:
 skip_list:
   - sanity[cannot-ignore]
 mock_roles:
+  - iam_group
   - iam_user

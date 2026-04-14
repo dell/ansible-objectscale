@@ -33,6 +33,7 @@ help:
 	@echo "  generate     - Full pipeline: build_spec + build_client"
 	@echo "  clean_client - Remove the generated objectscale_client package from module_utils"
 	@echo "  sanity_ignores - Regenerate tests/sanity/ignore-2.20.txt from generated client files"
+	@echo "  docs         - Generate module documentation using antsibull-docs"
 	@echo "  lint         - Run ansible-lint on the collection"
 	@echo "  test         - Run unit tests"
 
@@ -102,4 +103,9 @@ lint:
 test:
 	python -m pytest tests/unit/
 
-.PHONY: default help download_openapi build_spec build_client format_client fix_sanity generate clean_client sanity_ignores lint test
+docs:
+	@echo "Generating module documentation with antsibull-docs..."
+	. .venv/bin/activate && antsibull-docs collection-plugins --use-current --dest-dir docs/modules --output-format simplified-rst dellemc.objectscale
+	@echo "Documentation generated in docs/modules/"
+
+.PHONY: default help download_openapi build_spec build_client format_client fix_sanity generate clean_client sanity_ignores lint test docs
