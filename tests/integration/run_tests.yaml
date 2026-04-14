@@ -1,8 +1,0 @@
----
-- name: Run IAM Group functional integration tests
-  hosts: objectscale
-  connection: local
-  gather_facts: false
-
-  roles:
-    - role: iam_group
