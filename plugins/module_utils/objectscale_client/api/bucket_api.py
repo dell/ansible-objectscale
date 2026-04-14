@@ -5252,7 +5252,6 @@ class BucketApi:
     def bucket_service_set_bucket_policy(
         self,
         bucket_name: Annotated[StrictStr, Field(description="Name of the bucket for which the policy is to be updated.")],
-        body: Dict[str, Any],
         namespace: Annotated[Optional[StrictStr], Field(description="namespace of the bucket")] = None,
         _request_timeout: Union[
             None,
@@ -5273,8 +5272,6 @@ class BucketApi:
 
         :param bucket_name: Name of the bucket for which the policy is to be updated. (required)
         :type bucket_name: str
-        :param body: (required)
-        :type body: object
         :param namespace: namespace of the bucket
         :type namespace: str
         :param _request_timeout: timeout setting for this request. If one
@@ -5301,7 +5298,6 @@ class BucketApi:
 
         _param = self._bucket_service_set_bucket_policy_serialize(
             bucket_name=bucket_name,
-            body=body,
             namespace=namespace,
             _request_auth=_request_auth,
             _content_type=_content_type,
@@ -5331,7 +5327,6 @@ class BucketApi:
     def _bucket_service_set_bucket_policy_serialize(
         self,
         bucket_name,
-        body,
         namespace,
         _request_auth,
         _content_type,
@@ -5364,8 +5359,6 @@ class BucketApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if body is not None:
-            _body_params = body
 
         # set the HTTP header `Accept`
         if 'Accept' not in _header_params:
@@ -5374,20 +5367,6 @@ class BucketApi:
                     'application/json'
                 ]
             )
-
-        # set the HTTP header `Content-Type`
-        if _content_type:
-            _header_params['Content-Type'] = _content_type
-        else:
-            _default_content_type = (
-                self.api_client.select_header_content_type(
-                    [
-                        'application/json'
-                    ]
-                )
-            )
-            if _default_content_type is not None:
-                _header_params['Content-Type'] = _default_content_type
 
         # authentication setting
         _auth_settings: List[str] = [

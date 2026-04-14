@@ -17,9 +17,6 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_access_keys_response_list_access_keys_result_access_key_metadata_inner import (  # noqa: E501
-    IamServiceListAccessKeysResponseListAccessKeysResultAccessKeyMetadataInner
-)
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -37,6 +34,10 @@ try:
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictBool  # stub
 try:
+    from pydantic import StrictStr
+except ImportError:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
+try:
     from typing_extensions import Self
 except ImportError:
     try:
@@ -47,9 +48,12 @@ except ImportError:
 
 class IamServiceListAccessKeysResponseListAccessKeysResult(BaseModel):
     """IamServiceListAccessKeysResponseListAccessKeysResult"""
-    access_key_metadata: Optional[List[IamServiceListAccessKeysResponseListAccessKeysResultAccessKeyMetadataInner]
-                                  ] = Field(default=None, alias="AccessKeyMetadata")
-    is_truncated: Optional[StrictBool] = Field(default=None, alias="IsTruncated")
+    access_keys: Optional[List[StrictStr]] = Field(default=None, alias="AccessKeys")
+    is_truncated: Optional[StrictBool] = Field(default=None, description="A flag that indicates whether there are more items to return.", alias="IsTruncated")
+    marker: Optional[StrictStr] = Field(
+        default=None,
+        description="When isTruncated is true, this element needs to be sent in the Marker parameter for subsequent pagination requests.",
+        alias="Marker")
 
     model_config = ConfigDict(
         validate_by_name=True,

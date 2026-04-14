@@ -17,8 +17,8 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tags_inner import (
-    UserManagementServiceAddUserRequestTagsInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_management_service_add_user_request_tag_inner import (
+    UserManagementServiceAddUserRequestTagInner
 )
 try:
     from pydantic import BaseModel
@@ -49,7 +49,7 @@ class UserManagementServiceAddUserRequest(BaseModel):
     """UserManagementServiceAddUserRequest"""
     user: StrictStr = Field(description="User to be created")
     namespace: StrictStr = Field(description="Namespace identifier to associate with the user")
-    tags: Optional[List[UserManagementServiceAddUserRequestTagsInner]] = Field(
+    tag: Optional[List[UserManagementServiceAddUserRequestTagInner]] = Field(
         default=None, description="A list of arbitrary tags to assign to the new user.  These  can be used to track additional information about the user.")
 
     model_config = ConfigDict(

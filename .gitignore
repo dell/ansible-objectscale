@@ -44,7 +44,6 @@ tests/output
 
 # OpenAPI generator artifacts
 openapi-generator-cli-*.jar
-client/build/
 client/src/
 
 # Ansible lint cache
@@ -56,3 +55,4 @@ tests/integration/test_values.yml
 # Coverage reports
 .coverage
 htmlcov/
+5_patch_review_report.html

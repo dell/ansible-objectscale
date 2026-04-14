@@ -15,7 +15,7 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 try:
     from pydantic import BaseModel
@@ -30,6 +30,10 @@ try:
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Field  # stub
 try:
+    from pydantic import StrictBool
+except ImportError:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictBool  # stub
+try:
     from pydantic import StrictStr
 except ImportError:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import StrictStr  # stub
@@ -42,12 +46,14 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class IamServiceListGroupsForUserResponseListGroupsForUserResultGroupsInner(BaseModel):
-    """IamServiceListGroupsForUserResponseListGroupsForUserResultGroupsInner"""
-    arn: Optional[StrictStr] = Field(default=None, alias="Arn")
-    group_id: Optional[StrictStr] = Field(default=None, alias="GroupId")
-    group_name: Optional[StrictStr] = Field(default=None, alias="GroupName")
-    path: Optional[StrictStr] = Field(default=None, alias="Path")
+class IamServiceListGroupsForUserResponseResult(BaseModel):
+    """IamServiceListGroupsForUserResponseResult"""
+    groups: Optional[List[StrictStr]] = Field(default=None, description="Get groups", alias="Groups")
+    is_truncated: Optional[StrictBool] = Field(default=None, description="A flag that indicates whether there are more items to return.", alias="IsTruncated")
+    marker: Optional[StrictStr] = Field(
+        default=None,
+        description="When isTruncated is true, this element needs to be sent in the Marker parameter for subsequent pagination requests.",
+        alias="Marker")
 
     model_config = ConfigDict(
         validate_by_name=True,

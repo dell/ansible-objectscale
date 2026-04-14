@@ -17,8 +17,8 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_set_inner import (
-    BucketServiceCreateBucketRequestTagSetInner
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_inner import (
+    BucketServiceCreateBucketRequestTagInner
 )
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_response_meta_data import (
     BucketServiceCreateBucketResponseMetaData
@@ -64,8 +64,8 @@ class BucketServiceCreateBucketResponse(BaseModel):
     """BucketServiceCreateBucketResponse"""
     error_message: Optional[StrictStr] = Field(default=None,
                                                description="Message returned by the server indicating the reason for create bucket failure (if any)")
-    tag_set: Optional[List[BucketServiceCreateBucketRequestTagSetInner]] = Field(
-        default=None, description="Keywords and labels that can be added by a user to a resource  to make it easy to find when doing a search.", alias="TagSet")
+    tag: Optional[List[BucketServiceCreateBucketRequestTagInner]] = Field(
+        default=None, description="Keywords and labels that can be added by a user to a resource  to make it easy to find when doing a search.", alias="Tag")
     meta_data: Optional[BucketServiceCreateBucketResponseMetaData] = Field(default=None, alias="metaData")
     advanced_metadata_search_enabled: Optional[StrictBool] = Field(default=None, alias="advancedMetadataSearchEnabled")
     advanced_metadata_search_target_name: Optional[StrictStr] = Field(default=None, alias="advancedMetadataSearchTargetName")

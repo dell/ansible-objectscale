@@ -42,10 +42,11 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class UserManagementServiceAddUserRequestTagsInner(BaseModel):
-    """UserManagementServiceAddUserRequestTagsInner"""
-    name: Optional[StrictStr] = Field(default=None, description="The name of a tag")
-    value: Optional[StrictStr] = Field(default=None, description="The value of a tag")
+class BucketServiceCreateBucketRequestMetadataInner(BaseModel):
+    """BucketServiceCreateBucketRequestMetadataInner"""
+    type: Optional[StrictStr] = Field(default=None, description="The meta key type.")
+    name: Optional[StrictStr] = Field(default=None, description="The meta key name.")
+    datatype: Optional[StrictStr] = Field(default=None, description="The meta key data type.")
 
     model_config = ConfigDict(
         validate_by_name=True,

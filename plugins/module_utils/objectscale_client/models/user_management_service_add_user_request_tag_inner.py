@@ -42,12 +42,10 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class IamServiceListAccessKeysResponseListAccessKeysResultAccessKeyMetadataInner(BaseModel):
-    """IamServiceListAccessKeysResponseListAccessKeysResultAccessKeyMetadataInner"""
-    access_key_id: Optional[StrictStr] = Field(default=None, alias="AccessKeyId")
-    create_date: Optional[StrictStr] = Field(default=None, alias="CreateDate")
-    status: Optional[StrictStr] = Field(default=None, alias="Status")
-    user_name: Optional[StrictStr] = Field(default=None, alias="UserName")
+class UserManagementServiceAddUserRequestTagInner(BaseModel):
+    """UserManagementServiceAddUserRequestTagInner"""
+    name: Optional[StrictStr] = Field(default=None, description="The name of a tag")
+    value: Optional[StrictStr] = Field(default=None, description="The value of a tag")
 
     model_config = ConfigDict(
         validate_by_name=True,

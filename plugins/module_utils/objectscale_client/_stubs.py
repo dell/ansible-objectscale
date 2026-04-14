@@ -18,16 +18,7 @@ _T = TypeVar('_T')
 
 
 class BaseModel(Generic[_T]):
-    """Stub BaseModel that stores keyword arguments as attributes.
-
-    When pydantic is not installed this stub provides just enough
-    behaviour for the generated OpenAPI models to work:
-    * ``__init__(**kw)`` stores every keyword as an instance attribute.
-    * ``to_dict()`` / ``model_dump()`` return those attributes as a dict.
-    * ``from_dict(d)`` / ``model_validate(d)`` construct an instance from
-      a dict, mapping JSON keys to Python attribute names via the class-
-      level ``model_fields`` (extracted from ``Field(alias=...)``).
-    """
+    """Stub BaseModel for import compatibility."""
 
     model_config: dict = {}
 
@@ -35,90 +26,25 @@ class BaseModel(Generic[_T]):
         pass
 
     def __init__(self, **kw: Any) -> None:
-        for key, val in kw.items():
-            object.__setattr__(self, key, val)
+        pass
 
-    # -- serialisation helpers ------------------------------------------------
-
-    def to_dict(self, **kw: Any) -> dict:
-        return {
-            k: _stub_serialise(v)
-            for k, v in self.__dict__.items()
-            if v is not None
-        }
-
-    def model_dump(self, **kw: Any) -> dict:
-        return {
-            k: _stub_serialise(v)
-            for k, v in self.__dict__.items()
-            if v is not None
-        }
+    def to_dict(self) -> dict:
+        return {}
 
     def to_json(self) -> str:
-        import json as _json
-        return _json.dumps(self.to_dict())
-
-    # -- deserialisation helpers ----------------------------------------------
-
-    @classmethod
-    def _alias_map(cls) -> Dict[str, str]:
-        """Build ``{json_alias: python_attr}`` from class annotations + Field defaults."""
-        mapping: Dict[str, str] = {}
-        annotations = {}
-        for klass in reversed(cls.__mro__):
-            annotations.update(getattr(klass, '__annotations__', {}))
-        for attr_name in annotations:
-            field_default = cls.__dict__.get(attr_name)
-            if isinstance(field_default, _FieldInfo) and field_default.alias:
-                mapping[field_default.alias] = attr_name
-            else:
-                mapping[attr_name] = attr_name
-        return mapping
+        return "{}"
 
     @classmethod
     def from_dict(cls, obj: Any) -> Any:
-        if obj is None:
-            return None
-        return cls.model_validate(obj)
+        return cls()
 
     @classmethod
     def from_json(cls, j: str) -> Any:
-        import json as _json
-        return cls.from_dict(_json.loads(j))
+        return cls()
 
     @classmethod
     def model_validate(cls, obj: Any, **kw: Any) -> Any:
-        if obj is None:
-            return None
-        if not isinstance(obj, dict):
-            return cls()
-        alias_map = cls._alias_map()
-        mapped: Dict[str, Any] = {}
-        for key, val in obj.items():
-            attr = alias_map.get(key, key)
-            mapped[attr] = val
-        return cls(**mapped)
-
-
-def _stub_serialise(val: Any) -> Any:
-    """Recursively serialise values produced by stub models."""
-    if val is None:
-        return None
-    if isinstance(val, BaseModel):
-        return val.to_dict()
-    if isinstance(val, list):
-        return [_stub_serialise(v) for v in val]
-    if isinstance(val, dict):
-        return {k: _stub_serialise(v) for k, v in val.items()}
-    return val
-
-
-class _FieldInfo:
-    """Tiny holder so ``Field(alias=...)`` works in stub mode."""
-
-    def __init__(self, default: Any = None, alias: Any = None, **kw: Any) -> None:
-        self.default = default
-        self.alias = alias
+        return cls()
 
 
 def ConfigDict(**kw: Any) -> Any:
@@ -127,8 +53,8 @@ def ConfigDict(**kw: Any) -> Any:
 
 
 def Field(*a: Any, **kw: Any) -> Any:
-    """Stub Field – returns a _FieldInfo so alias mapping works."""
-    return _FieldInfo(default=kw.get('default'), alias=kw.get('alias'))
+    """Stub Field."""
+    return None  # type: ignore
 
 
 def validate_call(*a: Any, **kw: Any) -> Any:
@@ -205,13 +131,7 @@ Self = Any
 
 
 StrictBytes = bytes
-
-
-class SecretStr(str):
-    """Stub SecretStr that behaves like str but provides get_secret_value()."""
-
-    def get_secret_value(self) -> str:
-        return str(self)
+SecretStr = str
 
 
 # --- urllib3 stubs ---

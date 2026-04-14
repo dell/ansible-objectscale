@@ -15,14 +15,8 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_user_response_get_user_result_user_permissions_boundary import (  # noqa: E501
-    IamServiceGetUserResponseGetUserResultUserPermissionsBoundary
-)
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_get_user_response_get_user_result_user_tags_inner import (  # noqa: E501
-    IamServiceGetUserResponseGetUserResultUserTagsInner
-)
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -48,15 +42,10 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class IamServiceGetUserResponseGetUserResultUser(BaseModel):
-    """IamServiceGetUserResponseGetUserResultUser"""
-    arn: Optional[StrictStr] = Field(default=None, alias="Arn")
-    create_date: Optional[StrictStr] = Field(default=None, alias="CreateDate")
-    path: Optional[StrictStr] = Field(default=None, alias="Path")
-    user_id: Optional[StrictStr] = Field(default=None, alias="UserId")
-    user_name: Optional[StrictStr] = Field(default=None, alias="UserName")
-    permissions_boundary: Optional[IamServiceGetUserResponseGetUserResultUserPermissionsBoundary] = Field(default=None, alias="PermissionsBoundary")
-    tags: Optional[List[IamServiceGetUserResponseGetUserResultUserTagsInner]] = Field(default=None, alias="Tags")
+class BucketServiceCreateBucketRequestTagInner(BaseModel):
+    """BucketServiceCreateBucketRequestTagInner"""
+    key: Optional[StrictStr] = Field(default=None, description="The key of a tag", alias="Key")
+    value: Optional[StrictStr] = Field(default=None, description="The value of a tag", alias="Value")
 
     model_config = ConfigDict(
         validate_by_name=True,

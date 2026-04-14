@@ -20,8 +20,8 @@ from typing import Any, Dict, Optional
 from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_add_user_to_group_response_response_metadata import (
     IamServiceAddUserToGroupResponseResponseMetadata
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_attached_role_policies_response_list_attached_role_policies_result import (  # noqa: E501
-    IamServiceListAttachedRolePoliciesResponseListAttachedRolePoliciesResult
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_attached_group_policies_response_list_attached_group_policies_result import (  # noqa: E501
+    IamServiceListAttachedGroupPoliciesResponseListAttachedGroupPoliciesResult
 )
 try:
     from pydantic import BaseModel
@@ -46,7 +46,7 @@ except ImportError:
 
 class IamServiceListAttachedUserPoliciesResponse(BaseModel):
     """IamServiceListAttachedUserPoliciesResponse"""
-    list_attached_user_policies_result: Optional[IamServiceListAttachedRolePoliciesResponseListAttachedRolePoliciesResult] = Field(
+    list_attached_user_policies_result: Optional[IamServiceListAttachedGroupPoliciesResponseListAttachedGroupPoliciesResult] = Field(
         default=None, alias="ListAttachedUserPoliciesResult")
     response_metadata: Optional[IamServiceAddUserToGroupResponseResponseMetadata] = Field(default=None, alias="ResponseMetadata")
 

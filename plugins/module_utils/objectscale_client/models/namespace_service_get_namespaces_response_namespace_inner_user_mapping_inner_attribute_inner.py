@@ -42,13 +42,10 @@ except ImportError:
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client._stubs import Self  # stub
 
 
-class IamServiceListRoleTagsResponseListRoleTagsResult(BaseModel):
-    """IamServiceListRoleTagsResponseListRoleTagsResult"""
-    member: Optional[List[StrictStr]] = None
-    marker: Optional[StrictStr] = Field(
-        default=None,
-        description="When IsTruncated is true, this element is present and contains the value to use for the Marker parameter in a subsequent pagination request.",  # noqa: E501
-        alias="Marker")
+class NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner(BaseModel):
+    """NamespaceServiceGetNamespacesResponseNamespaceInnerUserMappingInnerAttributeInner"""
+    key: StrictStr = Field(description="Lookup string for this key-value pair")
+    value: List[StrictStr] = Field(description="Lookup result for this key-value pair")
 
     model_config = ConfigDict(
         validate_by_name=True,

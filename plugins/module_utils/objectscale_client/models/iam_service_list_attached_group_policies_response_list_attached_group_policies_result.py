@@ -17,9 +17,6 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_list_access_keys_response import (
-    IamServiceListAccessKeysResponse
-)
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -47,7 +44,7 @@ except ImportError:
 
 class IamServiceListAttachedGroupPoliciesResponseListAttachedGroupPoliciesResult(BaseModel):
     """IamServiceListAttachedGroupPoliciesResponseListAttachedGroupPoliciesResult"""
-    attached_policies: Optional[List[IamServiceListAccessKeysResponse]] = Field(default=None, alias="AttachedPolicies")
+    member: Optional[List[StrictStr]] = None
     marker: Optional[StrictStr] = Field(
         default=None,
         description="When IsTruncated is true, this element is present and contains the value to use for the Marker parameter in a subsequent pagination request.",  # noqa: E501
