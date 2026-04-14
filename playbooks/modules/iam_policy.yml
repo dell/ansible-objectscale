@@ -1,0 +1,135 @@
+---
+- name: IAM Policy Management Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    namespace_name: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') }}"
+    validate_certs: false
+
+  tasks:
+    - name: Create an S3 read-only policy
+      dellemc.objectscale.iam_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_name: "ExampleS3ReadOnlyPolicy"
+        policy_document: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": ["s3:GetObject", "s3:ListBucket"],
+                "Resource": "*"
+              }
+            ]
+          }
+        description: "Grants read-only access to S3 buckets"
+        state: present
+      register: create_result
+
+    - name: Display created policy details
+      ansible.builtin.debug:
+        var: create_result.policy_details
+
+    - name: Attach read-only policy to a user, a group and a role
+      dellemc.objectscale.iam_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_arn: "{{ create_result.policy_details.Arn }}"
+        attach_entities:
+          - entity_type: user
+            entity_name: ans_ft_testuser99
+          - entity_type: group
+            entity_name: ans_ft_testgroup99
+          - entity_type: role
+            entity_name: ans_ft_testrole99
+        state: present
+
+    - name: Update the read-only policy document to add GetBucketLocation
+      dellemc.objectscale.iam_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_arn: "{{ create_result.policy_details.Arn }}"
+        policy_document: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": ["s3:GetObject", "s3:ListBucket", "s3:GetBucketLocation"],
+                "Resource": "*"
+              }
+            ]
+          }
+        state: present
+      register: update_result
+
+    - name: Verify policy was updated (changed should be true)
+      ansible.builtin.assert:
+        that:
+          - update_result.changed
+        fail_msg: "Policy document was not updated"
+
+    - name: Detach read-only policy from the user, group and role
+      dellemc.objectscale.iam_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_arn: "{{ create_result.policy_details.Arn }}"
+        detach_entities:
+          - entity_type: user
+            entity_name: ans_ft_testuser99
+          - entity_type: group
+            entity_name: ans_ft_testgroup99
+          - entity_type: role
+            entity_name: ans_ft_testrole99
+        state: present
+
+    - name: Delete the S3 read-only policy
+      dellemc.objectscale.iam_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_arn: "{{ create_result.policy_details.Arn }}"
+        state: absent
+      register: delete_result
+
+    - name: Verify policy was deleted (changed should be true)
+      ansible.builtin.assert:
+        that:
+          - delete_result.changed
+        fail_msg: "Policy was not deleted"
+
+    - name: Delete the same policy again (idempotent, should not change)
+      dellemc.objectscale.iam_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_arn: "{{ create_result.policy_details.Arn }}"
+        state: absent
+      register: delete_again_result
+
+    - name: Verify idempotent delete (changed should be false)
+      ansible.builtin.assert:
+        that:
+          - not delete_again_result.changed
+        fail_msg: "Idempotent delete reported changes"
