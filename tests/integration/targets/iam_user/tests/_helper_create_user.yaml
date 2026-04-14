@@ -1,0 +1,6 @@
+---
+- name: "Helper — Create user {{ helper_user_name }}"
+  dellemc.objectscale.iam_user:
+    user_name: "{{ helper_user_name }}"
+    namespace_name: "{{ objectscale_namespace }}"
+    state: present

@@ -1,0 +1,316 @@
+---
+# ============================================================================
+# create.yaml — IAM User creation tests
+# TC-01: Create basic user (4-phase)
+# TC-02: Create user with tags (4-phase)
+# TC-03: Create user with tags + permissions_boundary (4-phase)
+# TC-04: Create user with diff mode
+# ============================================================================
+
+- module_defaults:
+    dellemc.objectscale.iam_user:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+    dellemc.objectscale.iam_user_info:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+  block:
+    # ==================================================================
+    # TC-01: Create basic user (4-phase)
+    # ==================================================================
+    - name: "TC-01 — Pre-cleanup"
+      ansible.builtin.include_tasks: _helper_cleanup.yaml
+      vars:
+        cleanup_user_name: "{{ user_name }}"
+
+    - name: "TC-01 Phase 1 — Create basic user (check mode)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+      check_mode: true
+      register: tc01_check
+
+    - name: "TC-01 Phase 1 — Assert check mode reports changed"
+      ansible.builtin.assert:
+        that:
+          - tc01_check.changed == true
+        fail_msg: "TC-01 Phase 1 FAILED: check mode should report changed for new user"
+        success_msg: "TC-01 Phase 1 PASSED"
+
+    - name: "TC-01 Phase 2 — Create basic user (apply)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+      register: tc01_apply
+
+    - name: "TC-01 Phase 2 — Assert user created"
+      ansible.builtin.assert:
+        that:
+          - tc01_apply.changed == true
+          - tc01_apply.user.UserName == user_name
+          - tc01_apply.user.Arn is defined
+          - tc01_apply.user.UserId is defined
+        fail_msg: "TC-01 Phase 2 FAILED: user creation did not return expected result"
+        success_msg: "TC-01 Phase 2 PASSED"
+
+    - name: "TC-01 Phase 3 — Re-run create (check mode, no changes expected)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+      check_mode: true
+      register: tc01_check_idem
+
+    - name: "TC-01 Phase 3 — Assert check mode reports no change"
+      ansible.builtin.assert:
+        that:
+          - tc01_check_idem.changed == false
+        fail_msg: "TC-01 Phase 3 FAILED: check mode should report no change for existing user"
+        success_msg: "TC-01 Phase 3 PASSED"
+
+    - name: "TC-01 Phase 4 — Re-run create (idempotence)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+      register: tc01_idem
+
+    - name: "TC-01 Phase 4 — Assert idempotent (changed=false)"
+      ansible.builtin.assert:
+        that:
+          - tc01_idem.changed == false
+        fail_msg: "TC-01 Phase 4 FAILED: second create should not report changed"
+        success_msg: "TC-01 Phase 4 PASSED"
+
+    # ==================================================================
+    # TC-02: Create user with tags (4-phase)
+    # ==================================================================
+    - name: "TC-02 — Pre-cleanup"
+      ansible.builtin.include_tasks: _helper_cleanup.yaml
+      vars:
+        cleanup_user_name: "{{ user_name_2 }}"
+
+    - name: "TC-02 Phase 1 — Create user with tags (check mode)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name_2 }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        tags:
+          Department: Engineering
+          Environment: IntegrationTest
+      check_mode: true
+      register: tc02_check
+
+    - name: "TC-02 Phase 1 — Assert check mode reports changed"
+      ansible.builtin.assert:
+        that:
+          - tc02_check.changed == true
+        fail_msg: "TC-02 Phase 1 FAILED: check mode should report changed"
+        success_msg: "TC-02 Phase 1 PASSED"
+
+    - name: "TC-02 Phase 2 — Create user with tags (apply)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name_2 }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        tags:
+          Department: Engineering
+          Environment: IntegrationTest
+      register: tc02_apply
+
+    - name: "TC-02 Phase 2 — Assert user created with tags"
+      ansible.builtin.assert:
+        that:
+          - tc02_apply.changed == true
+          - tc02_apply.user.UserName == user_name_2
+        fail_msg: "TC-02 Phase 2 FAILED: user creation with tags failed"
+        success_msg: "TC-02 Phase 2 PASSED"
+
+    - name: "TC-02 Phase 2 — Verify tags via info module"
+      dellemc.objectscale.iam_user_info:
+        user_name: "{{ user_name_2 }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        include_tags: true
+      register: tc02_info
+
+    - name: "TC-02 Phase 2 — Assert tags present"
+      ansible.builtin.assert:
+        that:
+          - tc02_info.iam_users | length == 1
+          - tc02_info.iam_users[0].user_tags | length == 2
+        fail_msg: "TC-02 Phase 2 FAILED: tags not found on user"
+        success_msg: "TC-02 Phase 2 tags verified"
+
+    - name: "TC-02 Phase 3 — Re-run with same tags (check mode, no changes expected)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name_2 }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        tags:
+          Department: Engineering
+          Environment: IntegrationTest
+      check_mode: true
+      register: tc02_check_idem
+
+    - name: "TC-02 Phase 3 — Assert check mode reports no change"
+      ansible.builtin.assert:
+        that:
+          - tc02_check_idem.changed == false
+        fail_msg: "TC-02 Phase 3 FAILED: same tags should be idempotent in check mode"
+        success_msg: "TC-02 Phase 3 PASSED"
+
+    - name: "TC-02 Phase 4 — Re-run with same tags (idempotence)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name_2 }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        tags:
+          Department: Engineering
+          Environment: IntegrationTest
+      register: tc02_idem
+
+    - name: "TC-02 Phase 4 — Assert idempotent (changed=false)"
+      ansible.builtin.assert:
+        that:
+          - tc02_idem.changed == false
+        fail_msg: "TC-02 Phase 4 FAILED: same tags should be idempotent"
+        success_msg: "TC-02 Phase 4 PASSED"
+
+    # ==================================================================
+    # TC-03: Create user with tags + permissions_boundary (4-phase)
+    # ==================================================================
+    - name: "TC-03 — Pre-cleanup user_name (reuse)"
+      ansible.builtin.include_tasks: _helper_cleanup.yaml
+      vars:
+        cleanup_user_name: "{{ user_name }}"
+
+    - name: "TC-03 Phase 1 — Create user with boundary (check mode)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        tags:
+          Purpose: BoundaryTest
+        permissions_boundary: "{{ managed_policy_arn }}"
+      check_mode: true
+      register: tc03_check
+
+    - name: "TC-03 Phase 1 — Assert check mode reports changed"
+      ansible.builtin.assert:
+        that:
+          - tc03_check.changed == true
+        fail_msg: "TC-03 Phase 1 FAILED: check mode should report changed"
+        success_msg: "TC-03 Phase 1 PASSED"
+
+    - name: "TC-03 Phase 2 — Create user with boundary (apply)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        tags:
+          Purpose: BoundaryTest
+        permissions_boundary: "{{ managed_policy_arn }}"
+      register: tc03_apply
+
+    - name: "TC-03 Phase 2 — Assert user created"
+      ansible.builtin.assert:
+        that:
+          - tc03_apply.changed == true
+          - tc03_apply.user.UserName == user_name
+        fail_msg: "TC-03 Phase 2 FAILED: user creation with boundary failed"
+        success_msg: "TC-03 Phase 2 PASSED"
+
+    - name: "TC-03 Phase 3 — Re-run with same params (check mode, no changes expected)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        tags:
+          Purpose: BoundaryTest
+        permissions_boundary: "{{ managed_policy_arn }}"
+      check_mode: true
+      register: tc03_check_idem
+
+    - name: "TC-03 Phase 3 — Assert check mode reports no change"
+      ansible.builtin.assert:
+        that:
+          - tc03_check_idem.changed == false
+        fail_msg: "TC-03 Phase 3 FAILED: same params should be idempotent in check mode"
+        success_msg: "TC-03 Phase 3 PASSED"
+
+    - name: "TC-03 Phase 4 — Re-run with same params (idempotence)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        tags:
+          Purpose: BoundaryTest
+        permissions_boundary: "{{ managed_policy_arn }}"
+      register: tc03_idem
+
+    - name: "TC-03 Phase 4 — Assert idempotent (changed=false)"
+      ansible.builtin.assert:
+        that:
+          - tc03_idem.changed == false
+        fail_msg: "TC-03 Phase 4 FAILED: same params should be idempotent"
+        success_msg: "TC-03 Phase 4 PASSED"
+
+    # ==================================================================
+    # TC-04: Create user with diff mode
+    # ==================================================================
+    - name: "TC-04 — Pre-cleanup"
+      ansible.builtin.include_tasks: _helper_cleanup.yaml
+      vars:
+        cleanup_user_name: "{{ user_name_2 }}"
+
+    - name: "TC-04 — Create user with diff mode"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name_2 }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        tags:
+          DiffTest: "yes"
+      diff: true
+      register: tc04_diff
+
+    - name: "TC-04 — Assert diff output present and changed"
+      ansible.builtin.assert:
+        that:
+          - tc04_diff.changed == true
+          - tc04_diff.diff is defined or tc04_diff.user is defined
+        fail_msg: "TC-04 FAILED: diff mode create did not work"
+        success_msg: "TC-04 PASSED"
+
+    - name: "TC-04 — Re-run with diff mode (idempotent)"
+      dellemc.objectscale.iam_user:
+        user_name: "{{ user_name_2 }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        tags:
+          DiffTest: "yes"
+      diff: true
+      register: tc04_diff_idem
+
+    - name: "TC-04 — Assert diff mode idempotent (changed=false)"
+      ansible.builtin.assert:
+        that:
+          - tc04_diff_idem.changed == false
+        fail_msg: "TC-04 FAILED: diff mode re-run should be idempotent"
+        success_msg: "TC-04 idempotent PASSED"
+
+  always:
+    - name: "Cleanup — Remove test users"
+      ansible.builtin.include_tasks: _helper_cleanup.yaml
+      vars:
+        cleanup_user_name: "{{ item }}"
+      loop:
+        - "{{ user_name }}"
+        - "{{ user_name_2 }}"

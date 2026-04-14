@@ -1,0 +1,14 @@
+[objectscale]
+objectscale_host objectscale_host=10.247.101.251 objectscale_username=admin1 objectscale_password=ChangeMe objectscale_port=4443 validate_certs=false objectscale_namespace=ns1
+
+[objectscale:vars]
+objectscale_host=10.247.101.251
+objectscale_username=admin1
+objectscale_password=ChangeMe
+objectscale_port=4443
+validate_certs=false
+objectscale_namespace=ns1
+
+[all:vars]
+ansible_host=localhost
+ansible_connection=local
