@@ -7,3 +7,4 @@ skip_list:
   - sanity[cannot-ignore]
 mock_roles:
   - iam_user
+  - iam_role

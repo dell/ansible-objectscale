@@ -1,0 +1,7 @@
+---
+- name: "Helper — Create role {{ helper_role_name }}"
+  dellemc.objectscale.iam_role:
+    role_name: "{{ helper_role_name }}"
+    namespace_name: "{{ objectscale_namespace }}"
+    state: present
+    assume_role_policy_document: "{{ assume_role_policy_document }}"

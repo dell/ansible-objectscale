@@ -1,0 +1,195 @@
+---
+# ============================================================================
+# modify_attributes.yaml — Role attribute management tests
+# TC-19: Update description (4-phase)
+# TC-20: Update max_session_duration (4-phase)
+# ============================================================================
+
+- module_defaults:
+    dellemc.objectscale.iam_role:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+    dellemc.objectscale.iam_role_info:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+  block:
+    # ==================================================================
+    # Setup: create a role for attribute tests
+    # ==================================================================
+    - name: "Attribute tests — Pre-cleanup"
+      ansible.builtin.include_tasks: _helper_cleanup.yaml
+      vars:
+        cleanup_role_name: "{{ iam_role_name }}"
+
+    - name: "Attribute tests — Create role"
+      ansible.builtin.include_tasks: _helper_create_role.yaml
+      vars:
+        helper_role_name: "{{ iam_role_name }}"
+
+    # ==================================================================
+    # TC-19: Update description (4-phase)
+    # ==================================================================
+    - name: "TC-19 Phase 1 — Update description (check mode)"
+      dellemc.objectscale.iam_role:
+        role_name: "{{ iam_role_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        description: "Updated integration test description"
+      check_mode: true
+      register: tc19_check
+
+    - name: "TC-19 Phase 1 — Assert check mode reports changed"
+      ansible.builtin.assert:
+        that:
+          - tc19_check.changed == true
+        fail_msg: "TC-19 Phase 1 FAILED: check mode should report changed for new description"
+        success_msg: "TC-19 Phase 1 PASSED"
+
+    - name: "TC-19 Phase 2 — Update description (apply)"
+      dellemc.objectscale.iam_role:
+        role_name: "{{ iam_role_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        description: "Updated integration test description"
+      register: tc19_apply
+
+    - name: "TC-19 Phase 2 — Assert description updated"
+      ansible.builtin.assert:
+        that:
+          - tc19_apply.changed == true
+        fail_msg: "TC-19 Phase 2 FAILED: description update should report changed"
+        success_msg: "TC-19 Phase 2 PASSED"
+
+    - name: "TC-19 Phase 2 — Verify description via info module"
+      dellemc.objectscale.iam_role_info:
+        role_name: "{{ iam_role_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+      register: tc19_info
+
+    - name: "TC-19 Phase 2 — Assert description is set"
+      ansible.builtin.assert:
+        that:
+          - tc19_info.iam_roles[0].Description == "Updated integration test description"
+        fail_msg: "TC-19 Phase 2 FAILED: description not updated on role"
+        success_msg: "TC-19 Phase 2 description verified"
+
+    - name: "TC-19 Phase 3 — Re-run same description (check mode, no changes expected)"
+      dellemc.objectscale.iam_role:
+        role_name: "{{ iam_role_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        description: "Updated integration test description"
+      check_mode: true
+      register: tc19_check_idem
+
+    - name: "TC-19 Phase 3 — Assert check mode reports no change"
+      ansible.builtin.assert:
+        that:
+          - tc19_check_idem.changed == false
+        fail_msg: "TC-19 Phase 3 FAILED: same description should be idempotent in check mode"
+        success_msg: "TC-19 Phase 3 PASSED"
+
+    - name: "TC-19 Phase 4 — Re-run same description (idempotence)"
+      dellemc.objectscale.iam_role:
+        role_name: "{{ iam_role_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        description: "Updated integration test description"
+      register: tc19_idem
+
+    - name: "TC-19 Phase 4 — Assert idempotent (changed=false)"
+      ansible.builtin.assert:
+        that:
+          - tc19_idem.changed == false
+        fail_msg: "TC-19 Phase 4 FAILED: same description should be idempotent"
+        success_msg: "TC-19 Phase 4 PASSED"
+
+    # ==================================================================
+    # TC-20: Update max_session_duration (4-phase)
+    # ==================================================================
+    - name: "TC-20 Phase 1 — Update max_session_duration (check mode)"
+      dellemc.objectscale.iam_role:
+        role_name: "{{ iam_role_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        max_session_duration: 7200
+      check_mode: true
+      register: tc20_check
+
+    - name: "TC-20 Phase 1 — Assert check mode reports changed"
+      ansible.builtin.assert:
+        that:
+          - tc20_check.changed == true
+        fail_msg: "TC-20 Phase 1 FAILED: check mode should report changed for new max_session_duration"
+        success_msg: "TC-20 Phase 1 PASSED"
+
+    - name: "TC-20 Phase 2 — Update max_session_duration (apply)"
+      dellemc.objectscale.iam_role:
+        role_name: "{{ iam_role_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        max_session_duration: 7200
+      register: tc20_apply
+
+    - name: "TC-20 Phase 2 — Assert max_session_duration updated"
+      ansible.builtin.assert:
+        that:
+          - tc20_apply.changed == true
+        fail_msg: "TC-20 Phase 2 FAILED: max_session_duration update should report changed"
+        success_msg: "TC-20 Phase 2 PASSED"
+
+    - name: "TC-20 Phase 2 — Verify max_session_duration via info module"
+      dellemc.objectscale.iam_role_info:
+        role_name: "{{ iam_role_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+      register: tc20_info
+
+    - name: "TC-20 Phase 2 — Assert max_session_duration is set"
+      ansible.builtin.assert:
+        that:
+          - tc20_info.iam_roles[0].MaxSessionDuration == 7200
+        fail_msg: "TC-20 Phase 2 FAILED: max_session_duration not updated on role"
+        success_msg: "TC-20 Phase 2 max_session_duration verified"
+
+    - name: "TC-20 Phase 3 — Re-run same max_session_duration (check mode, no changes expected)"
+      dellemc.objectscale.iam_role:
+        role_name: "{{ iam_role_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        max_session_duration: 7200
+      check_mode: true
+      register: tc20_check_idem
+
+    - name: "TC-20 Phase 3 — Assert check mode reports no change"
+      ansible.builtin.assert:
+        that:
+          - tc20_check_idem.changed == false
+        fail_msg: "TC-20 Phase 3 FAILED: same max_session_duration should be idempotent in check mode"
+        success_msg: "TC-20 Phase 3 PASSED"
+
+    - name: "TC-20 Phase 4 — Re-run same max_session_duration (idempotence)"
+      dellemc.objectscale.iam_role:
+        role_name: "{{ iam_role_name }}"
+        namespace_name: "{{ objectscale_namespace }}"
+        state: present
+        max_session_duration: 7200
+      register: tc20_idem
+
+    - name: "TC-20 Phase 4 — Assert idempotent (changed=false)"
+      ansible.builtin.assert:
+        that:
+          - tc20_idem.changed == false
+        fail_msg: "TC-20 Phase 4 FAILED: same max_session_duration should be idempotent"
+        success_msg: "TC-20 Phase 4 PASSED"
+
+  always:
+    - name: "Cleanup — Remove test role"
+      ansible.builtin.include_tasks: _helper_cleanup.yaml
+      vars:
+        cleanup_role_name: "{{ iam_role_name }}"

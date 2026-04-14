@@ -1,0 +1,8 @@
+---
+- name: "Helper — Force-delete role {{ cleanup_role_name }}"
+  dellemc.objectscale.iam_role:
+    role_name: "{{ cleanup_role_name }}"
+    namespace_name: "{{ objectscale_namespace }}"
+    state: absent
+    force_delete: true
+  failed_when: false
