@@ -46,7 +46,9 @@ except ImportError:
 
 class IamServiceListPolicyVersionsResponseListPolicyVersionsResult(BaseModel):
     """Get listPolicyVersionsResult"""
-    policy_versions: Optional[List[IamServiceCreatePolicyVersionResponseCreatePolicyVersionResultPolicyVersion]] = Field(default=None, description="Get policyVersions", alias="Versions")
+    policy_versions: Optional[
+        List[IamServiceCreatePolicyVersionResponseCreatePolicyVersionResultPolicyVersion]
+    ] = Field(default=None, description="Get policyVersions", alias="Versions")
     marker: Optional[StrictStr] = Field(
         default=None,
         description="When IsTruncated is true, this element is present and contains the value to use for the Marker parameter in a subsequent pagination request.",  # noqa: E501
