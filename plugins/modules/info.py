@@ -18,6 +18,7 @@ short_description: Gather information about Dell ObjectScale entities
 description:
 - Gather information about Dell ObjectScale entities such as namespaces.
 - Supports listing all namespaces and fetching namespace details by name.
+- Supports listing attached IAM policies for a user, group, or role.
 
 author:
 - Dell Ansible Team (@dell) <ansible.team@dell.com>
@@ -71,13 +72,37 @@ options:
     - C(iam_group) - returns list of all IAM groups in the specified namespace.
     type: list
     elements: str
-    choices: ['namespace', 'iam_group']
+    choices: ['namespace', 'iam_group', 'iam_attached_policies']
     required: true
 
   namespace:
     description:
     - The ObjectScale namespace to query for IAM resources.
-    - Required when C(iam_group) is in I(gather_subset).
+    - Required when C(iam_group) or C(iam_attached_policies) is in I(gather_subset).
+    type: str
+    required: false
+
+  user_name:
+    description:
+    - The IAM user name whose attached policies to list.
+    - Used when C(iam_attached_policies) is in I(gather_subset).
+    - Mutually exclusive with I(group_name) and I(role_name).
+    type: str
+    required: false
+
+  group_name:
+    description:
+    - The IAM group name whose attached policies to list.
+    - Used when C(iam_attached_policies) is in I(gather_subset).
+    - Mutually exclusive with I(user_name) and I(role_name).
+    type: str
+    required: false
+
+  role_name:
+    description:
+    - The IAM role name whose attached policies to list.
+    - Used when C(iam_attached_policies) is in I(gather_subset).
+    - Mutually exclusive with I(user_name) and I(group_name).
     type: str
     required: false
 
@@ -136,6 +161,30 @@ EXAMPLES = r'''
     query_parameters:
       namespace:
         match: "team-*"
+
+- name: List attached policies for an IAM user
+  dellemc.objectscale.info:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    gather_subset:
+      - iam_attached_policies
+    namespace: "ns1"
+    user_name: "testuser"
+  register: user_policies
+
+- name: List attached policies for an IAM group
+  dellemc.objectscale.info:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    gather_subset:
+      - iam_attached_policies
+    namespace: "ns1"
+    group_name: "developers"
+  register: group_policies
 '''
 
 RETURN = r'''
@@ -206,6 +255,26 @@ IamGroups:
                 "Arn": "urn:ecs:iam::ns1:group/developers",
                 "Path": "/",
                 "CreateDate": "2025-01-15T12:00:00Z"
+            }
+        ]
+
+IamAttachedPolicies:
+    description: List of managed policies attached to the specified IAM entity.
+    returned: When iam_attached_policies is in gather_subset
+    type: list
+    elements: dict
+    contains:
+        PolicyName:
+            description: The name of the attached policy.
+            type: str
+        PolicyArn:
+            description: The ARN of the attached policy.
+            type: str
+    sample:
+        [
+            {
+                "PolicyName": "ECSS3ReadOnlyAccess",
+                "PolicyArn": "urn:ecs:iam:::policy/ECSS3ReadOnlyAccess"
             }
         ]
 '''
@@ -289,15 +358,19 @@ class ObjectScaleInfo(object):
                 type='list',
                 elements='str',
                 required=True,
-                choices=['namespace', 'iam_group']
+                choices=['namespace', 'iam_group', 'iam_attached_policies']
             ),
             namespace=dict(type='str', required=False),
+            user_name=dict(type='str', required=False),
+            group_name=dict(type='str', required=False),
+            role_name=dict(type='str', required=False),
             query_parameters=dict(type='dict', required=False),
         ))
 
         self.module = AnsibleModule(
             argument_spec=self.module_params,
-            supports_check_mode=False
+            supports_check_mode=False,
+            mutually_exclusive=[['user_name', 'group_name', 'role_name']],
         )
 
         if not HAS_OBJECTSCALE_CLIENT:
@@ -370,6 +443,38 @@ class ObjectScaleInfo(object):
             error_msg = utils.determine_error(e)
             msg = "Getting IAM group list failed with error: %s" % error_msg
             self.module.exit_json(failed=True, msg=msg)
+
+    def get_iam_attached_policies(self, namespace: str) -> Optional[List[Dict[str, Any]]]:
+        """Get attached IAM policies for a user, group, or role."""
+        if self.iam_api is None:
+            self.module.exit_json(failed=True, msg="IamApi is not available.")
+            return None
+
+        user_name = self.module.params.get('user_name')
+        group_name = self.module.params.get('group_name')
+        role_name = self.module.params.get('role_name')
+
+        if not any([user_name, group_name, role_name]):
+            self.module.exit_json(
+                failed=True,
+                msg="One of 'user_name', 'group_name', or 'role_name' is required "
+                    "when gathering iam_attached_policies info."
+            )
+            return None
+
+        try:
+            if user_name:
+                return self.iam_api.list_attached_user_policies(user_name, namespace)
+            elif group_name:
+                return self.iam_api.list_attached_group_policies(group_name, namespace)
+            elif role_name:
+                return self.iam_api.list_attached_role_policies(role_name, namespace)
+        except Exception as e:
+            error_msg = utils.determine_error(e)
+            entity = user_name or group_name or role_name
+            msg = "Getting attached policies failed with error: %s" % error_msg
+            self.module.exit_json(failed=True, msg=msg)
+        return None
 
     def get_namespace_details(self, namespace_name: str) -> Optional[Dict[str, Any]]:
         """Get namespace details by namespace name."""
@@ -449,6 +554,16 @@ class ObjectScaleInfo(object):
                 )
                 return
             result['IamGroups'] = self.get_iam_groups(namespace)
+
+        if 'iam_attached_policies' in gather_subset:
+            namespace = self.module.params.get('namespace')
+            if not namespace:
+                self.module.exit_json(
+                    failed=True,
+                    msg="The 'namespace' parameter is required when gathering iam_attached_policies info."
+                )
+                return
+            result['IamAttachedPolicies'] = self.get_iam_attached_policies(namespace)
 
         self.module.exit_json(**result)
 

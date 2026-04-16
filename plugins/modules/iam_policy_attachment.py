@@ -57,7 +57,6 @@ options:
     - Password for authenticating with the ObjectScale management endpoint.
     type: str
     required: true
-    no_log: true
 
   validate_certs:
     description:
@@ -229,7 +228,7 @@ diff:
     type: dict
 '''
 
-from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Set, Tuple, TYPE_CHECKING
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.dellemc.objectscale.plugins.module_utils \
     import utils

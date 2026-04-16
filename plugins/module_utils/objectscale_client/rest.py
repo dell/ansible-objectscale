@@ -87,8 +87,12 @@ class RESTClientObject:
             "ca_certs": configuration.ssl_ca_cert,
             "cert_file": configuration.cert_file,
             "key_file": configuration.key_file,
-            "ca_cert_data": configuration.ca_cert_data,
         }
+        # ca_cert_data is only supported in urllib3 >= 2.0
+        if configuration.ca_cert_data is not None:
+            _urllib3_major = int(getattr(urllib3, '__version__', '0').split('.')[0])
+            if _urllib3_major >= 2:
+                pool_args["ca_cert_data"] = configuration.ca_cert_data
         if configuration.assert_hostname is not None:
             pool_args['assert_hostname'] = (
                 configuration.assert_hostname
