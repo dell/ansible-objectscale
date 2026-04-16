@@ -1,0 +1,127 @@
+---
+- name: IAM Policy Info Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    namespace_name: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') }}"
+    validate_certs: false
+
+  tasks:
+    - name: List all IAM policies in a namespace
+      dellemc.objectscale.iam_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+      register: all_policies
+
+    - name: Display all policies
+      ansible.builtin.debug:
+        var: all_policies.iam_policies
+
+    - name: Get a specific IAM policy by name
+      dellemc.objectscale.iam_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_name: "ExampleS3ReadOnlyPolicy"
+      register: policy_by_name
+
+    - name: Display policy details
+      ansible.builtin.debug:
+        var: policy_by_name.iam_policies
+
+    - name: Get a specific IAM policy by ARN
+      dellemc.objectscale.iam_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_arn: "urn:ecs:iam::{{ namespace_name }}:policy/ExampleS3ReadOnlyPolicy"
+      register: policy_by_arn
+
+    - name: Display policy by ARN
+      ansible.builtin.debug:
+        var: policy_by_arn.iam_policies
+
+    - name: Get policy with the default version document
+      dellemc.objectscale.iam_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_name: "ExampleS3ReadOnlyPolicy"
+        include_policy_document: true
+      register: policy_with_doc
+
+    - name: Display policy document
+      ansible.builtin.debug:
+        var: policy_with_doc.iam_policies[0].policy_document
+
+    - name: Get policy with version history
+      dellemc.objectscale.iam_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_name: "ExampleS3ReadOnlyPolicy"
+        include_versions: true
+      register: policy_with_versions
+
+    - name: Display policy versions
+      ansible.builtin.debug:
+        var: policy_with_versions.iam_policies[0].versions
+
+    - name: Get policy with both document and versions
+      dellemc.objectscale.iam_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_name: "ExampleS3ReadOnlyPolicy"
+        include_policy_document: true
+        include_versions: true
+      register: enriched_policy
+
+    - name: Display fully enriched policy
+      ansible.builtin.debug:
+        var: enriched_policy.iam_policies
+
+    - name: List only Local-scoped policies
+      dellemc.objectscale.iam_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        policy_scope: "Local"
+      register: local_policies
+
+    - name: Display local policies
+      ansible.builtin.debug:
+        var: local_policies.iam_policies
+
+    - name: List only attached policies
+      dellemc.objectscale.iam_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "{{ namespace_name }}"
+        only_attached: true
+      register: attached_policies
+
+    - name: Display attached policies
+      ansible.builtin.debug:
+        var: attached_policies.iam_policies

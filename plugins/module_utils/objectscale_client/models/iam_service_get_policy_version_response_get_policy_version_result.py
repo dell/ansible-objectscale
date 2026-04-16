@@ -43,7 +43,7 @@ except ImportError:
 
 class IamServiceGetPolicyVersionResponseGetPolicyVersionResult(BaseModel):
     """Get getPolicyVersionResult"""
-    policy_versioin: Optional[IamServiceCreatePolicyVersionResponseCreatePolicyVersionResultPolicyVersion] = Field(default=None, alias="PolicyVersioin")
+    policy_version: Optional[IamServiceCreatePolicyVersionResponseCreatePolicyVersionResultPolicyVersion] = Field(default=None, alias="PolicyVersion")
 
     model_config = ConfigDict(
         validate_by_name=True,

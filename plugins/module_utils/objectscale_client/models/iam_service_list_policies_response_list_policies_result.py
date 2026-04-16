@@ -17,6 +17,8 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_create_policy_response_create_policy_result_policy import IamServiceCreatePolicyResponseCreatePolicyResultPolicy  # noqa: E501
+
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -48,7 +50,7 @@ except ImportError:
 
 class IamServiceListPoliciesResponseListPoliciesResult(BaseModel):
     """Get listPoliciesResult"""
-    policies: Optional[List[StrictStr]] = Field(default=None, description="Get policies", alias="Policies")
+    policies: Optional[List[IamServiceCreatePolicyResponseCreatePolicyResultPolicy]] = Field(default=None, description="Get policies", alias="Policies")
     is_truncated: Optional[StrictBool] = Field(default=None, description="A flag that indicates whether there are more items to return.", alias="IsTruncated")
     marker: Optional[StrictStr] = Field(
         default=None,
