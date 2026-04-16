@@ -20,7 +20,7 @@ except ImportError:
 def get_objectscale_management_host_parameters() -> Dict[str, Dict[str, Any]]:
     """
     Returns a dict of standard ObjectScale connection parameters for use as module argument_spec.
-    
+
     NOTE: objectscale_password is explicitly marked with no_log=True to prevent
     credential leakage in logs, diffs, or error messages (Ansible security best practice).
     """
