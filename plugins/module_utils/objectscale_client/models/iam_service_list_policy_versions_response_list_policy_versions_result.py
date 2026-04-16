@@ -17,6 +17,8 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Optional
 
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.iam_service_create_policy_version_response_create_policy_version_result_policy_version import IamServiceCreatePolicyVersionResponseCreatePolicyVersionResultPolicyVersion  # noqa: E501
+
 try:
     from pydantic import BaseModel
 except ImportError:
@@ -44,7 +46,9 @@ except ImportError:
 
 class IamServiceListPolicyVersionsResponseListPolicyVersionsResult(BaseModel):
     """Get listPolicyVersionsResult"""
-    policy_versions: Optional[List[StrictStr]] = Field(default=None, description="Get policyVersions", alias="PolicyVersions")
+    policy_versions: Optional[
+        List[IamServiceCreatePolicyVersionResponseCreatePolicyVersionResultPolicyVersion]
+    ] = Field(default=None, description="Get policyVersions", alias="Versions")
     marker: Optional[StrictStr] = Field(
         default=None,
         description="When IsTruncated is true, this element is present and contains the value to use for the Marker parameter in a subsequent pagination request.",  # noqa: E501
