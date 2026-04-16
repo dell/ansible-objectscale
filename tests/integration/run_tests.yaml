@@ -6,4 +6,3 @@
 
   roles:
     - role: iam_user
-    - role: iam_role
