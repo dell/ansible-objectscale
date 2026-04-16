@@ -4,7 +4,7 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 MODULE = 'ansible_collections.dellemc.objectscale.plugins.modules.iam_policy_attachment'
 UTILS = 'ansible_collections.dellemc.objectscale.plugins.module_utils.utils'
@@ -729,12 +729,12 @@ class TestErrorPaths:
         params.pop('group_name', None)
         params.pop('role_name', None)
         obj = make_iam_policy_attachment_obj(params=params)
-        
+
         # This should trigger the error path at lines 292-293
         entity_type, entity_name = obj.determine_entity()
         assert entity_type == ''
         assert entity_name == ''
-        
+
         # Verify exit_json was called with error
         obj.module.exit_json.assert_called_once()
         call_args = obj.module.exit_json.call_args[1]
@@ -745,10 +745,10 @@ class TestErrorPaths:
     def test_get_attached_policies_unknown_entity_type(self):
         """UT-001-11: Test get_attached_policies with unknown entity type."""
         obj = make_iam_policy_attachment_obj(params=BASE_PARAMS)
-        
+
         # Call get_attached_policies directly with unknown entity type
         obj.get_attached_policies('unknown', 'test', 'test-ns')
-        
+
         # Verify exit_json was called with error (lines 315-316)
         obj.module.exit_json.assert_called_once()
         call_args = obj.module.exit_json.call_args[1]
@@ -759,13 +759,13 @@ class TestErrorPaths:
     def test_get_attached_policies_api_exception(self):
         """UT-001-13: Test get_attached_policies with API exception."""
         obj = make_iam_policy_attachment_obj(params=BASE_PARAMS)
-        
+
         # Mock API to raise exception
         obj.iam_api.list_attached_user_policies.side_effect = Exception('API Error')
-        
+
         # This should trigger the exception handling at lines 317-322
         obj.get_attached_policies('user', 'testuser', 'test-ns')
-        
+
         # Verify exit_json was called with error
         obj.module.exit_json.assert_called_once()
         call_args = obj.module.exit_json.call_args[1]
@@ -777,13 +777,13 @@ class TestErrorPaths:
     def test_attach_policies_role_exception(self):
         """UT-001-14: Test attach_policies with role entity exception."""
         obj = make_iam_policy_attachment_obj(params=BASE_PARAMS)
-        
+
         # Mock API to raise exception for role attach
         obj.iam_api.attach_role_policy.side_effect = Exception('Attach failed')
-        
+
         # This should trigger the exception handling at lines 339-340
         obj.attach_policies('role', 'test-role', 'test-ns', [ARN1])
-        
+
         # Verify exit_json was called with error
         obj.module.exit_json.assert_called_once()
         call_args = obj.module.exit_json.call_args[1]
@@ -795,13 +795,13 @@ class TestErrorPaths:
     def test_detach_policies_exception(self):
         """UT-001-15: Test detach_policies with exception."""
         obj = make_iam_policy_attachment_obj(params=BASE_PARAMS)
-        
+
         # Mock API to raise exception
         obj.iam_api.detach_user_policy.side_effect = Exception('Detach failed')
-        
+
         # This should trigger the exception handling
         obj.detach_policies('user', 'testuser', 'test-ns', [ARN1])
-        
+
         # Verify exit_json was called with error
         obj.module.exit_json.assert_called_once()
         call_args = obj.module.exit_json.call_args[1]
@@ -817,11 +817,11 @@ class TestErrorPaths:
         with patch('ansible_collections.dellemc.objectscale.plugins.modules.iam_policy_attachment.IamPolicyAttachment') as mock_class:
             mock_instance = mock_class.return_value
             mock_instance.perform_module_operation = Mock()
-            
+
             # Import and call main
             from ansible_collections.dellemc.objectscale.plugins.modules import iam_policy_attachment
             iam_policy_attachment.main()
-            
+
             # Verify the main function was called
             mock_class.assert_called_once()
             mock_instance.perform_module_operation.assert_called_once()
