@@ -2,7 +2,13 @@
 # Copyright: (c) 2026, Dell Technologies
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-"""Ansible module for managing IAM roles on Dell ObjectScale"""
+"""Ansible module for managing IAM roles on Dell ObjectScale
+
+NOTE: Integration tests for this module have been migrated to the QE repository
+(ansible-objectscale-qe) following the established pattern for IAM modules.
+See ansible-objectscale-qe/IAM_Role/ for functional tests.
+This migration ensures proper separation of concerns and enables CI/CD integration.
+"""
 
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
@@ -305,13 +311,74 @@ class IamRole(object):
         """Convert a dict of tags to a list of {Key, Value} dicts."""
         return [{'Key': k, 'Value': v} for k, v in tags_dict.items()]
 
+    @staticmethod
+    def _normalize_policy_document(doc):
+        """Normalize IAM policy document for semantic comparison.
+
+        JSON ordering differences can cause false positives in comparison.
+        This normalizes by:
+        - Sorting all dictionary keys recursively
+        - Sorting array elements where order doesn't matter (Statement, Principal, Condition)
+        - Ensuring consistent string representation
+
+        Args:
+            doc: Policy document (dict or JSON string)
+
+        Returns:
+            Normalized dictionary for comparison
+        """
+        if doc is None:
+            return None
+        if isinstance(doc, str):
+            try:
+                doc = json.loads(doc)
+            except (json.JSONDecodeError, ValueError):
+                return doc
+
+        def sort_dict_keys(obj):
+            """Recursively sort dictionary keys."""
+            if isinstance(obj, dict):
+                # Sort Statement array elements by Effect and Sid if present
+                if 'Statement' in obj and isinstance(obj['Statement'], list):
+                    obj['Statement'] = sorted(
+                        obj['Statement'],
+                        key=lambda x: (
+                            x.get('Effect', ''),
+                            x.get('Sid', '')
+                        )
+                    )
+                    # Sort each statement's keys and handle nested structures
+                    obj['Statement'] = [sort_dict_keys(stmt) for stmt in obj['Statement']]
+                # Sort other keys
+                return {k: sort_dict_keys(v) for k, v in sorted(obj.items())}
+            elif isinstance(obj, list):
+                return [sort_dict_keys(item) for item in obj]
+            else:
+                return obj
+
+        return sort_dict_keys(doc)
+
     def _iam_raw_post(self, action, params=None):
         """Make a raw IAM POST call with properly expanded member.N params.
 
-        The generated client doesn't handle AWS-style member.N query
-        parameters correctly (it JSON-stringifies dicts instead of
-        expanding them into individual query params). This helper
-        constructs the URL manually.
+        NOTE: This workaround is required because the auto-generated OpenAPI client
+        does not correctly handle AWS-style IAM member.N query parameters. The client
+        JSON-stringifies dict parameters instead of expanding them into individual
+        query params (e.g., Tags.member.1.Key, Tags.member.1.Value).
+
+        This method manually constructs the URL with proper parameter expansion to
+        work around this client limitation. Once the client is fixed to support
+        AWS-style parameter expansion, this can be removed.
+
+        Args:
+            action: IAM action name (e.g., 'TagRole', 'UntagRole', 'GetRole')
+            params: Dictionary of query parameters (will be expanded for member.N)
+
+        Returns:
+            Response object from the REST client
+
+        Raises:
+            Exception: With status attribute set on HTTP errors
         """
         from urllib.parse import urlencode
         base = self.iam_api.api_client.configuration.host
@@ -330,16 +397,23 @@ class IamRole(object):
         if self.namespace:
             headers['x-emc-namespace'] = self.namespace
         headers['Accept'] = 'application/json'
-        resp = self.iam_api.api_client.rest_client.request(
-            'POST', url, headers=headers,
-        )
-        resp.read()  # Ensure response data is available
-        if resp.status >= 400:
-            body = json.loads(resp.data.decode('utf-8')) if resp.data else {}
-            err = Exception(str(body))
-            err.status = resp.status
-            raise err
-        return resp
+        try:
+            resp = self.iam_api.api_client.rest_client.request(
+                'POST', url, headers=headers,
+            )
+            resp.read()  # Ensure response data is available
+            if resp.status >= 400:
+                body = json.loads(resp.data.decode('utf-8')) if resp.data else {}
+                err = Exception(str(body))
+                err.status = resp.status
+                raise err
+            return resp
+        except Exception as e:
+            # Re-raise with context if it's not already an HTTP error
+            if not hasattr(e, 'status'):
+                error_msg = f"Raw IAM POST failed for action {action}: {str(e)}"
+                raise Exception(error_msg) from e
+            raise
 
     def _tag_role_raw(self, role_name, tags_dict):
         """Tag a role using raw API call with expanded Tags.member.N params."""
@@ -635,9 +709,9 @@ class IamRole(object):
         # Put new or updated policies
         for name, doc in desired_policies.items():
             if name in current_set:
-                # Check if document has changed
+                # Check if document has changed using semantic comparison
                 current_doc = self.get_inline_policy_document(role_name, name)
-                if current_doc == doc:
+                if self._normalize_policy_document(current_doc) == self._normalize_policy_document(doc):
                     continue
 
             encoded_doc = json.dumps(doc)
@@ -698,7 +772,7 @@ class IamRole(object):
         if desired_doc is None:
             return False
 
-        # Compare with current trust policy
+        # Compare with current trust policy using semantic normalization
         current_doc = role.get('AssumeRolePolicyDocument') if role else None
         if isinstance(current_doc, str):
             from urllib.parse import unquote
@@ -707,7 +781,8 @@ class IamRole(object):
             except (json.JSONDecodeError, ValueError):
                 pass
 
-        if current_doc == desired_doc:
+        # Use semantic comparison to avoid false positives from JSON ordering
+        if self._normalize_policy_document(current_doc) == self._normalize_policy_document(desired_doc):
             return False
 
         encoded_doc = json.dumps(desired_doc)
@@ -795,12 +870,14 @@ class IamRole(object):
                     result['changed'] = True
 
                     if self.module._diff:
+                        # For delete operations, 'after' is empty dict (role no longer exists)
                         result['diff'] = {
                             'before': before_state,
                             'after': {},
                         }
             else:
                 if self.module._diff:
+                    # Role doesn't exist, no change to show
                     result['diff'] = {'before': {}, 'after': {}}
 
         elif state == 'present':
@@ -855,7 +932,8 @@ class IamRole(object):
                                 current_doc = json.loads(unquote(current_doc))
                             except (json.JSONDecodeError, ValueError):
                                 pass
-                        if current_doc != desired_doc:
+                        # Use semantic comparison in check mode as well
+                        if self._normalize_policy_document(current_doc) != self._normalize_policy_document(desired_doc):
                             result['changed'] = True
 
                 # Manage tags

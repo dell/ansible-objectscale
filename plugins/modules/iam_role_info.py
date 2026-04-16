@@ -2,7 +2,13 @@
 # Copyright: (c) 2026, Dell Technologies
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-"""Ansible module for gathering IAM role information from Dell ObjectScale"""
+"""Ansible module for gathering IAM role information from Dell ObjectScale
+
+NOTE: Integration tests for this module have been migrated to the QE repository
+(ansible-objectscale-qe) following the established pattern for IAM modules.
+See ansible-objectscale-qe/IAM_Role/ for functional tests.
+This migration ensures proper separation of concerns and enables CI/CD integration.
+"""
 
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
@@ -234,8 +240,8 @@ class IamRoleInfo(object):
     def get_role(self, role_name):
         """Get a single IAM role by name.
 
-        Returns the role dict from the API response.
-        On 404: calls module.fail_json (role must exist for info query).
+        Returns the role dict from the API response, or None if not found.
+        On 404: returns None (role not found is a valid state for info modules).
         On other errors: calls module.fail_json.
         """
         try:
@@ -257,20 +263,22 @@ class IamRoleInfo(object):
             resp.read()  # Ensure response data is available
             if resp.status >= 400:
                 raw_err = json.loads(resp.data.decode('utf-8')) if resp.data else {}
+                # Return None on 404 (role not found) - info modules should not fail
+                if resp.status == 404 or 'NoSuchEntity' in str(raw_err):
+                    return None
                 raise Exception(str(raw_err))
             raw = json.loads(resp.data.decode('utf-8'))
             return raw.get('GetRoleResult', {}).get('Role')
         except Exception as e:
             status = getattr(e, 'status', None)
             error_msg = utils.determine_error(e)
-            if status == 404:
-                self.module.fail_json(
-                    msg="Role '%s' not found: %s" % (role_name, error_msg)
-                )
-            else:
-                self.module.fail_json(
-                    msg="Getting IAM role '%s' failed with error: %s" % (role_name, error_msg)
-                )
+            # Return None on 404-like errors
+            if status == 404 or 'NoSuchEntity' in str(e) or 'not found' in str(e).lower():
+                return None
+            # Fail on other errors
+            self.module.fail_json(
+                msg="Getting IAM role '%s' failed with error: %s" % (role_name, error_msg)
+            )
 
     def list_all_roles(self):
         """List all IAM roles in the namespace with auto-pagination.
