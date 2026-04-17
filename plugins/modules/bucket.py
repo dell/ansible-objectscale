@@ -9,7 +9,7 @@ __metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
-module: objectscale_bucket
+module: bucket
 
 version_added: '1.0.0'
 
