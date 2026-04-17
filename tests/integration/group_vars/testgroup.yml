@@ -1,6 +1,0 @@
----
-objectscale_host: 192.168.1.1
-objectscale_username: admin
-objectscale_password: password
-namespace: test-namespace
-bucket_name: test-bucket
