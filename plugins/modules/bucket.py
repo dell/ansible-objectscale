@@ -22,15 +22,52 @@ author:
 - Dell Ansible Team (@dell)
 
 options:
-  objectscale_host: { type: str, required: true }
-  objectscale_username: { type: str, required: true }
-  objectscale_password: { type: str, required: true, no_log: true }
-  validate_certs: { type: bool, default: true }
-  name: { type: str, required: true }
-  namespace: { type: str, required: true }
-  state: { type: str, required: true, choices: ['present', 'absent'] }
-  versioning: { type: bool, required: false }
-  force: { type: bool, default: false, description: 'Force delete a non-empty bucket.' }
+  objectscale_host:
+    description: The hostname or IP address of the ObjectScale management host.
+    type: str
+    required: true
+  objectscale_port:
+    description: The port number of the ObjectScale management host.
+    type: int
+    required: false
+    default: 4443
+  objectscale_username:
+    description: The username for authenticating with the ObjectScale management host.
+    type: str
+    required: true
+  objectscale_password:
+    description: The password for authenticating with the ObjectScale management host.
+    type: str
+    required: true
+  validate_certs:
+    description: Whether to validate SSL certificates.
+    type: bool
+    default: true
+  timeout:
+    description: The timeout in seconds for API requests.
+    type: int
+    default: 30
+  name:
+    description: The name of the bucket.
+    type: str
+    required: true
+  namespace:
+    description: The namespace of the bucket.
+    type: str
+    required: true
+  state:
+    description: The desired state of the bucket.
+    type: str
+    required: true
+    choices: ['present', 'absent']
+  versioning:
+    description: Whether to enable versioning on the bucket.
+    type: bool
+    required: false
+  force:
+    description: Force delete a non-empty bucket.
+    type: bool
+    default: false
 '''
 
 EXAMPLES = r'''
@@ -50,11 +87,13 @@ RETURN = r'''
 changed:
     description: Whether or not the resource has changed.
     type: bool
+    returned: success
 '''
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.dellemc.objectscale.plugins.module_utils import utils
 from ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api import BucketApi
+
 
 def main():
     module_params = utils.get_objectscale_management_host_parameters()
@@ -72,7 +111,7 @@ def main():
     )
 
     result = {"changed": False}
-    
+
     name = module.params['name']
     namespace = module.params['namespace']
     state = module.params['state']
@@ -86,7 +125,7 @@ def main():
     try:
         api_client = utils.get_objectscale_connection(module.params)
         bucket_api = BucketApi(api_client)
-        
+
         current_bucket = bucket_api.get_bucket(name, namespace)
 
         if state == 'present':
@@ -116,6 +155,7 @@ def main():
 
     except Exception as e:
         module.fail_json(msg=f"Module failed: {str(e)}")
+
 
 if __name__ == '__main__':  # pragma: no cover
     main()
