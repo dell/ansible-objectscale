@@ -18,9 +18,9 @@ class TestBucketApi(unittest.TestCase):
     def test_get_bucket_success(self, mock_get_bucket):
         """Test successful retrieval of an existing bucket."""
         mock_get_bucket.return_value = {'name': 'test-bucket', 'versioning': False}
-        
+
         result = self.bucket_api.get_bucket('test-bucket', 'my-namespace')
-        
+
         self.assertIsNotNone(result)
         self.assertEqual(result['name'], 'test-bucket')
         mock_get_bucket.assert_called_once_with('test-bucket', 'my-namespace')
@@ -30,9 +30,9 @@ class TestBucketApi(unittest.TestCase):
         """Test handling of a 404 Not Found error when getting a bucket."""
         # Simulate the API raising a 404 exception, which the method should catch.
         mock_get_bucket.side_effect = Exception("404 Not Found")
-        
+
         result = self.bucket_api.get_bucket('non-existent-bucket', 'my-namespace')
-        
+
         self.assertIsNone(result)
 
     @patch('ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api.BucketApi.create_bucket')
@@ -42,7 +42,7 @@ class TestBucketApi(unittest.TestCase):
         mock_create_bucket.return_value = True
 
         self.bucket_api.create_bucket(payload)
-        
+
         mock_create_bucket.assert_called_once_with(payload)
 
     @patch('ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api.BucketApi.delete_bucket')
@@ -64,10 +64,10 @@ class TestBucketApi(unittest.TestCase):
     def test_api_503_error(self, mock_get_bucket):
         """Test graceful failure on a 503 Service Unavailable error."""
         mock_get_bucket.side_effect = Exception("503 Service Unavailable")
-        
+
         with self.assertRaises(Exception) as context:
             self.bucket_api.get_bucket('any-bucket', 'my-namespace')
-        
+
         self.assertIn("503", str(context.exception))
 
 
