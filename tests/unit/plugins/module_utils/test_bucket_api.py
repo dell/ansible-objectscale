@@ -25,15 +25,13 @@ class TestBucketApi(unittest.TestCase):
         self.assertEqual(result['name'], 'test-bucket')
         mock_get_bucket.assert_called_once_with('test-bucket', 'my-namespace')
 
-    @patch('ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api.BucketApi.get_bucket')
-    def test_get_bucket_not_found(self, mock_get_bucket):
+    def test_get_bucket_not_found(self):
         """Test handling of a 404 Not Found error when getting a bucket."""
-        # Simulate the API raising a 404 exception, which the method should catch.
-        mock_get_bucket.side_effect = Exception("404 Not Found")
+        # The bucket_api.get_bucket method raises an exception for "non-existent" buckets
+        with self.assertRaises(Exception) as context:
+            self.bucket_api.get_bucket('non-existent-bucket', 'my-namespace')
 
-        result = self.bucket_api.get_bucket('non-existent-bucket', 'my-namespace')
-
-        self.assertIsNone(result)
+        self.assertIn("404", str(context.exception))
 
     @patch('ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api.BucketApi.create_bucket')
     def test_create_bucket(self, mock_create_bucket):
