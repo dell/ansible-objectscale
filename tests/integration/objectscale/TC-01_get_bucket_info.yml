@@ -1,0 +1,25 @@
+---
+- name: TC-01 Get specific bucket info
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Get bucket info
+      dellemc.objectscale.bucket_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        bucket_name: "{{ bucket_name }}"
+        namespace: "{{ objectscale_namespace }}"
+      register: result
+
+    - name: Verify bucket info retrieved
+      ansible.builtin.assert:
+        that:
+          - result.bucket_info is defined
+          - result.bucket_info.bucket_name == bucket_name
+          - result.bucket_info.namespace == objectscale_namespace
+        fail_msg: "TC-01 failed: {{ result }}"

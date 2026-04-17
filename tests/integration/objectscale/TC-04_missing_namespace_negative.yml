@@ -1,0 +1,24 @@
+---
+- name: TC-04 Missing namespace negative test
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Attempt to create bucket without namespace
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        bucket_name: "{{ bucket_name }}"
+        state: present
+      register: result
+      failed_when: result is not failed
+
+    - name: Verify failure
+      ansible.builtin.assert:
+        that:
+          - result is failed
+        fail_msg: "TC-04 failed: Expected failure when namespace is missing"

@@ -1,0 +1,68 @@
+---
+- name: TC-01 Create a basic bucket
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Cleanup before test
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        bucket_name: "{{ bucket_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Create bucket
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        bucket_name: "{{ bucket_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+      register: result
+
+    - name: Verify create results
+      ansible.builtin.assert:
+        that:
+          - result.changed
+          - result.bucket_details is defined
+          - result.bucket_details.bucket_name == bucket_name
+          - result.bucket_details.namespace == objectscale_namespace
+        fail_msg: "TC-01 failed: {{ result }}"
+
+    - name: Idempotence check
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        bucket_name: "{{ bucket_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: present
+      register: idem
+
+    - name: Assert idempotence
+      ansible.builtin.assert:
+        that:
+          - not idem.changed
+        fail_msg: "TC-01 idempotence failed: {{ idem }}"
+
+    - name: Cleanup after test
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        bucket_name: "{{ bucket_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: absent
