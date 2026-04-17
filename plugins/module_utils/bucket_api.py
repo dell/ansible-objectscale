@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # Copyright: (c) 2026, Dell Technologies
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
@@ -12,6 +11,7 @@ from typing import Any, Dict, Optional
 # In a real implementation, this would import the actual API client
 # from the objectscale_client package.
 # For this simulation, we'll use a mock object.
+
 
 class BucketApi:
     """A wrapper class for ObjectScale S3 bucket API calls."""
@@ -32,7 +32,7 @@ class BucketApi:
             raise Exception("404 Not Found")
         if "503" in name:
             raise Exception("503 Service Unavailable")
-        
+
         # Simulate finding an existing bucket
         return {'name': name, 'namespace': namespace, 'versioning': False, 'tags': {}}
 
