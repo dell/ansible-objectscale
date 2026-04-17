@@ -1,0 +1,99 @@
+---
+- name: Test bucket with minimal parameters
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - test_vars.yml
+  tasks:
+    - name: Create namespace for bucket tests
+      dellemc.objectscale.namespace:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        namespace_name: "test_ns_bucket"
+        default_data_services_vpool: "{{ default_vpool }}"
+        state: present
+      register: ns_result
+
+    - name: Create bucket with minimal parameters
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        bucket_name: "test_bucket_min"
+        namespace: "test_ns_bucket"
+        state: present
+      register: result
+
+    - name: Verify bucket creation
+      ansible.builtin.assert:
+        that:
+          - result.changed == true
+          - result.bucket_details is not none
+          - result.bucket_details.name == "test_bucket_min"
+
+    - name: Create bucket again (idempotent)
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        bucket_name: "test_bucket_min"
+        namespace: "test_ns_bucket"
+        state: present
+      register: result_idempotent
+
+    - name: Verify idempotency
+      ansible.builtin.assert:
+        that:
+          - result_idempotent.changed == false
+          - result_idempotent.bucket_details is not none
+
+    - name: Delete bucket
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        bucket_name: "test_bucket_min"
+        namespace: "test_ns_bucket"
+        state: absent
+      register: delete_result
+
+    - name: Verify bucket deletion
+      ansible.builtin.assert:
+        that:
+          - delete_result.changed == true
+
+    - name: Delete bucket again (idempotent)
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        bucket_name: "test_bucket_min"
+        namespace: "test_ns_bucket"
+        state: absent
+      register: delete_idempotent
+
+    - name: Verify delete idempotency
+      ansible.builtin.assert:
+        that:
+          - delete_idempotent.changed == false
+
+    - name: Clean up - delete namespace
+      dellemc.objectscale.namespace:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        namespace_name: "test_ns_bucket"
+        state: absent

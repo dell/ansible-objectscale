@@ -1,0 +1,90 @@
+---
+- name: Test bucket info gathering
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - test_vars.yml
+  tasks:
+    - name: Create namespace for bucket tests
+      dellemc.objectscale.namespace:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        namespace_name: "test_ns_bucket_info"
+        default_data_services_vpool: "{{ default_vpool }}"
+        state: present
+      register: ns_result
+
+    - name: Create test buckets
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        bucket_name: "test_info_{{ item }}"
+        namespace: "test_ns_bucket_info"
+        state: present
+      loop:
+        - bucket1
+        - bucket2
+      register: created_buckets
+
+    - name: Test 1 - Get specific bucket info
+      dellemc.objectscale.bucket_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        bucket_name: "test_info_bucket1"
+        namespace: "test_ns_bucket_info"
+      register: bucket_info
+
+    - name: Verify bucket info retrieved
+      ansible.builtin.assert:
+        that:
+          - bucket_info.bucket_details is not none
+          - bucket_info.bucket_details.name == "test_info_bucket1"
+
+    - name: Test 2 - Get all buckets in namespace (bucket_name not specified)
+      dellemc.objectscale.bucket_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        namespace: "test_ns_bucket_info"
+      register: all_buckets
+
+    - name: Verify all buckets retrieved
+      ansible.builtin.assert:
+        that:
+          - all_buckets.buckets is defined
+          - all_buckets.buckets | length >= 2
+
+    - name: Clean up - delete test buckets
+      dellemc.objectscale.bucket:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        bucket_name: "test_info_{{ item }}"
+        namespace: "test_ns_bucket_info"
+        state: absent
+      loop:
+        - bucket1
+        - bucket2
+
+    - name: Clean up - delete namespace
+      dellemc.objectscale.namespace:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_port: "{{ objectscale_port }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        namespace_name: "test_ns_bucket_info"
+        state: absent
