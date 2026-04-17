@@ -1,0 +1,44 @@
+---
+- name: IAM User Access Key Info Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    namespace_name: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') }}"
+    user_name: "sample_user_1"
+    validate_certs: false
+
+  tasks:
+    - name: List all access keys for a user
+      dellemc.objectscale.iam_user_access_key_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ namespace_name }}"
+      register: all_keys
+
+    - name: Display the access keys (no secrets returned)
+      ansible.builtin.debug:
+        var: all_keys.access_keys
+
+    - name: Get a specific access key by id (if any keys exist)
+      dellemc.objectscale.iam_user_access_key_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ namespace_name }}"
+        access_key_id: "{{ all_keys.access_keys[0].AccessKeyId }}"
+      register: specific_key
+      when: all_keys.access_keys | length > 0
+
+    - name: Show the specific key
+      ansible.builtin.debug:
+        var: specific_key.access_keys
+      when: all_keys.access_keys | length > 0

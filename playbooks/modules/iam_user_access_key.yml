@@ -1,0 +1,140 @@
+---
+- name: IAM User Access Key Management Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    namespace_name: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') }}"
+    user_name: "sample_user_1"
+    validate_certs: false
+
+  tasks:
+    - name: Create a new access key for the IAM user
+      dellemc.objectscale.iam_user_access_key:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ namespace_name }}"
+        state: present
+      register: create_result
+      no_log: true
+
+    - name: Verify access key was created
+      ansible.builtin.assert:
+        that:
+          - create_result.changed
+          - create_result.access_key.AccessKeyId is defined
+          - create_result.access_key.SecretAccessKey is defined
+        fail_msg: "Access key was not created"
+
+    - name: Update access key status to Inactive
+      dellemc.objectscale.iam_user_access_key:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ namespace_name }}"
+        access_key_id: "{{ create_result.access_key.AccessKeyId }}"
+        status: Inactive
+        state: present
+      register: update_result
+
+    - name: Verify status was updated (changed should be true)
+      ansible.builtin.assert:
+        that:
+          - update_result.changed
+          - update_result.access_key.Status == 'Inactive'
+        fail_msg: "Access key status was not updated"
+
+    - name: Update status to Inactive again (idempotent, should not change)
+      dellemc.objectscale.iam_user_access_key:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ namespace_name }}"
+        access_key_id: "{{ create_result.access_key.AccessKeyId }}"
+        status: Inactive
+        state: present
+      register: update_again_result
+
+    - name: Verify idempotent update (changed should be false)
+      ansible.builtin.assert:
+        that:
+          - not update_again_result.changed
+        fail_msg: "Idempotent update reported changes"
+
+    - name: List all access keys for the user
+      dellemc.objectscale.iam_user_access_key_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ namespace_name }}"
+      register: all_keys
+
+    - name: Display all keys (secrets are never returned by info module)
+      ansible.builtin.debug:
+        var: all_keys.access_keys
+
+    - name: Get details of a specific access key
+      dellemc.objectscale.iam_user_access_key_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ namespace_name }}"
+        access_key_id: "{{ create_result.access_key.AccessKeyId }}"
+      register: specific_key
+
+    - name: Verify specific key lookup returned one entry
+      ansible.builtin.assert:
+        that:
+          - specific_key.access_keys | length == 1
+          - specific_key.access_keys[0].AccessKeyId == create_result.access_key.AccessKeyId
+        fail_msg: "Specific key lookup did not return the expected entry"
+
+    - name: Delete the access key
+      dellemc.objectscale.iam_user_access_key:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ namespace_name }}"
+        access_key_id: "{{ create_result.access_key.AccessKeyId }}"
+        state: absent
+      register: delete_result
+
+    - name: Verify key was deleted
+      ansible.builtin.assert:
+        that:
+          - delete_result.changed
+        fail_msg: "Access key was not deleted"
+
+    - name: Delete again (idempotent, should not change)
+      dellemc.objectscale.iam_user_access_key:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_name: "{{ user_name }}"
+        namespace_name: "{{ namespace_name }}"
+        access_key_id: "{{ create_result.access_key.AccessKeyId }}"
+        state: absent
+      register: delete_again_result
+
+    - name: Verify idempotent delete
+      ansible.builtin.assert:
+        that:
+          - not delete_again_result.changed
+        fail_msg: "Idempotent delete reported changes"
