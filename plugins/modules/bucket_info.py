@@ -87,5 +87,5 @@ def main():
     except Exception as e:
         module.fail_json(msg=f"Failed to retrieve bucket info: {str(e)}")
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()

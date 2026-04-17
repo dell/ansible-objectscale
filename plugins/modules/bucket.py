@@ -117,5 +117,5 @@ def main():
     except Exception as e:
         module.fail_json(msg=f"Module failed: {str(e)}")
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()
