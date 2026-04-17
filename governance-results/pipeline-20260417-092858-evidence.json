@@ -1,0 +1,247 @@
+{
+  "pipeline_id": "pipeline-20260417-092858",
+  "pipeline_start": "2026-04-17T09:28:58.690742+00:00",
+  "run_id": null,
+  "gates": [
+    {
+      "gate_id": "post_implementation",
+      "decision": "PASS",
+      "score": 95.8,
+      "retry_count": 0,
+      "timestamp": "2026-04-17T09:28:58.696061+00:00",
+      "collectors": [
+        {
+          "collector": "static_analysis",
+          "score": 95,
+          "issues": [],
+          "data": {
+            "tools_run": [],
+            "findings": [],
+            "finding_count": 0,
+            "build_compiled": true,
+            "overall_score": 95,
+            "issues": [],
+            "status": "passed"
+          }
+        },
+        {
+          "collector": "security_scanner",
+          "score": 100,
+          "issues": [],
+          "data": {
+            "secrets_detection": {
+              "status": "clean",
+              "findings": [],
+              "finding_count": 0
+            },
+            "code_security": {
+              "status": "clean",
+              "findings": [],
+              "finding_count": 0
+            },
+            "dependency_security": {
+              "status": "clean",
+              "findings": [],
+              "finding_count": 0
+            },
+            "overall_score": 100,
+            "issues": [],
+            "status": "passed"
+          }
+        },
+        {
+          "collector": "impact_assessment",
+          "score": 91.0,
+          "issues": [],
+          "data": {
+            "blast_radius": {
+              "radius": "single_service",
+              "affected_files": 1,
+              "affected_services": [],
+              "affected_components": [],
+              "service_count": 0,
+              "component_count": 0,
+              "downstream_services": []
+            },
+            "breaking_changes": {
+              "has_breaking_changes": false,
+              "changes": [],
+              "change_count": 0,
+              "severity": "low"
+            },
+            "customer_impact": {
+              "level": "low",
+              "customer_facing_files": [],
+              "customer_facing_count": 0,
+              "impact_indicators": {
+                "api_changes": false,
+                "ui_changes": false,
+                "feature_changes": false,
+                "auth_changes": false,
+                "csi_rpc_changes": false,
+                "storage_class_changes": false
+              },
+              "active_indicator_count": 0
+            },
+            "api_governance": {
+              "has_api_changes": false,
+              "api_files": [],
+              "violations": [],
+              "violation_count": 0,
+              "severity": "none",
+              "endpoints_catalog_loaded": false
+            },
+            "design_completeness": {
+              "has_plan": false,
+              "planned_files": [],
+              "changed_files": [],
+              "missing_files": [],
+              "coverage_complete": true
+            },
+            "overall_score": 91.0,
+            "risk_level": "low"
+          }
+        },
+        {
+          "collector": "code_quality",
+          "score": 98.8,
+          "issues": [],
+          "data": {
+            "security_scan": {
+              "status": "passed",
+              "issues": [],
+              "severity": "low",
+              "by_type": {}
+            },
+            "test_coverage": {
+              "percentage": 95,
+              "status": "adequate",
+              "test_files": 6,
+              "source_files": 7,
+              "test_func_count": 118,
+              "source_func_count": 40,
+              "coverage_ids_total": 0,
+              "coverage_ids_covered": 0,
+              "source": "changes-summary.json",
+              "test_status": "passed",
+              "test_results": {
+                "total": 118,
+                "passed": 118,
+                "failed": 0,
+                "failing": 0,
+                "skipped": 0,
+                "commands": [
+                  {
+                    "command": "cd /usr/shrinidhirao/collections && python3 -m pytest ansible_collections/dellemc/powerscale/tests/unit/plugins/modules/test_job*.py -v --tb=short",
+                    "purpose": "Run all 118 unit tests across 6 job management module test suites",
+                    "exit_code": 0,
+                    "result": "passed",
+                    "duration_seconds": 1.88
+                  }
+                ]
+              },
+              "validation_report": "ImplementationValidationReport.md"
+            },
+            "complexity": {
+              "total_complexity": 1,
+              "max_complexity": 1,
+              "avg_complexity": 1,
+              "max_nesting_depth": 0,
+              "function_complexities": {},
+              "complex_functions": [],
+              "status": "acceptable"
+            },
+            "patterns": {
+              "violations": [],
+              "violation_count": 0,
+              "by_severity": {},
+              "status": "passed"
+            },
+            "error_handling": {
+              "issues": [],
+              "status": "good",
+              "metrics": {
+                "try_count": 0,
+                "except_count": 0,
+                "raise_count": 0,
+                "if_err_count": 0,
+                "catch_count": 0,
+                "function_count": 0,
+                "swallowed_exceptions": 0
+              }
+            },
+            "todo_stubs": {
+              "findings": [],
+              "finding_count": 0,
+              "status": "clean"
+            },
+            "overall_score": 98.8,
+            "issues": [],
+            "status": "passed"
+          }
+        },
+        {
+          "collector": "test_execution",
+          "score": 90,
+          "issues": [],
+          "data": {
+            "execution_verified": true,
+            "test_status": "passed",
+            "total_tests": 0,
+            "passed_tests": 0,
+            "failed_tests": 0,
+            "skipped_tests": 0,
+            "overall_score": 90,
+            "issues": [],
+            "status": "passing",
+            "source": "changes-summary.json"
+          }
+        },
+        {
+          "collector": "context_validation",
+          "score": 100,
+          "issues": [],
+          "data": {
+            "architecture_compliance": {
+              "status": "passed",
+              "violations": [],
+              "rules_checked": 3
+            },
+            "terminology": {
+              "status": "consistent",
+              "violations": [],
+              "glossary_terms_checked": 0,
+              "deprecated_terms_checked": 0
+            },
+            "patterns": {
+              "status": "compliant",
+              "violations": [],
+              "required_checked": 2,
+              "prohibited_checked": 1
+            },
+            "documentation": {
+              "status": "adequate",
+              "violations": [],
+              "public_functions": 0,
+              "public_classes": 0,
+              "documented_items": 0,
+              "documentation_percentage": 100
+            },
+            "cross_file_consistency": {
+              "violations": [],
+              "rules_loaded": 0,
+              "status": "no_rules"
+            },
+            "overall_score": 100,
+            "violations": [],
+            "status": "passed"
+          }
+        }
+      ],
+      "blocking_violations": [],
+      "warnings": [],
+      "retry_feedback": null,
+      "retry_history": []
+    }
+  ]
+}
