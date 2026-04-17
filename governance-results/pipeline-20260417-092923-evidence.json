@@ -1,0 +1,117 @@
+{
+  "pipeline_id": "pipeline-20260417-092923",
+  "pipeline_start": "2026-04-17T09:29:23.507291+00:00",
+  "run_id": null,
+  "gates": [
+    {
+      "gate_id": "post_code_review",
+      "decision": "PASS",
+      "score": 90.0,
+      "retry_count": 0,
+      "timestamp": "2026-04-17T09:29:23.508831+00:00",
+      "collectors": [
+        {
+          "collector": "code_review",
+          "score": 90,
+          "issues": [],
+          "data": {
+            "review_available": true,
+            "verdict": "approve",
+            "overall_score": 90,
+            "findings": [
+              {
+                "id": "CR-002",
+                "file": "plugins/modules/job.py",
+                "line": 361,
+                "severity": "low",
+                "category": "logic_error",
+                "title": "job_params mapped to changelistcreate_params - SDK-specific field name",
+                "description": "In start_job, user-provided job_params are mapped to the SDK field changelistcreate_params. This field name is specific to the OneFS isilon_sdk's JobJobCreateParams model. The OneFS SDK maps different job-type-specific parameters through this single field. This is consistent with how the SDK is designed, but the limitation should be documented for users who may need custom parameters for non-ChangelistCreate job types.",
+                "expected_behavior": "Documentation should note that job_params is passed through the SDK's changelistcreate_params field.",
+                "actual_behavior": "The mapping works correctly for job types that support custom parameters through the SDK's CreateParams model.",
+                "confidence": "medium",
+                "spec_reference": "FR-02 (Job-specific params)"
+              },
+              {
+                "id": "CR-006",
+                "file": "plugins/module_utils/storage/dell/shared_library/powerscale_base.py",
+                "line": 160,
+                "severity": "low",
+                "category": "cross_file_inconsistency",
+                "title": "PowerScaleBase.job_api property added as foundation for future module refactoring",
+                "description": "The job_api property was added to PowerScaleBase per the Implementation Plan (Phase 1: Foundation). The 6 new modules inherit from object (following the existing synciqjob.py pattern) rather than PowerScaleBase. The property is available for future module refactoring when modules are migrated to the PowerScaleBase pattern.",
+                "expected_behavior": "Property available for future use when modules are refactored to use PowerScaleBase.",
+                "actual_behavior": "Property exists but is not currently referenced by the new modules.",
+                "confidence": "high",
+                "spec_reference": "Design Section 3.1 (Architecture)"
+              }
+            ],
+            "critical_count": 0,
+            "high_count": 0,
+            "medium_count": 0,
+            "low_count": 2,
+            "overall_confidence": "high",
+            "human_review_recommendation": "recommended",
+            "human_review_reason": "Standard review recommended for new modules. All findings are low-severity informational items. 118/118 unit tests pass. CR-005 (dead code) was fixed during implementation retry. CR-001 was confirmed as false positive - tests explicitly validate cancel-on-terminal fails, which is the TDD-defined behavior.",
+            "spec_coverage": {
+              "requirements_checked": [
+                "FR-01 (Start new job)",
+                "FR-02 (Job-specific params)",
+                "FR-03 (Job priority)",
+                "FR-04 (Job policy)",
+                "FR-06 (Allow duplicate)",
+                "FR-07 (Pause job)",
+                "FR-08 (Resume job)",
+                "FR-09 (Cancel job)",
+                "FR-10 (Modify priority)",
+                "FR-11 (Modify policy)",
+                "FR-12 (Get job by ID)",
+                "FR-13 (Idempotent start)",
+                "FR-14 (Check mode)",
+                "FR-15 (Diff mode)",
+                "FR-16 (Wait for completion)",
+                "Section 9 (Idempotency)",
+                "Section 11 (Error handling)",
+                "Section 13 (System policy protection)"
+              ],
+              "requirements_verified": [
+                "FR-01 (Start new job)",
+                "FR-02 (Job-specific params)",
+                "FR-03 (Job priority)",
+                "FR-04 (Job policy)",
+                "FR-06 (Allow duplicate)",
+                "FR-07 (Pause job)",
+                "FR-08 (Resume job)",
+                "FR-09 (Cancel job)",
+                "FR-10 (Modify priority)",
+                "FR-11 (Modify policy)",
+                "FR-12 (Get job by ID)",
+                "FR-13 (Idempotent start)",
+                "FR-14 (Check mode)",
+                "FR-15 (Diff mode)",
+                "FR-16 (Wait for completion)",
+                "Section 9 (Idempotency)",
+                "Section 11 (Error handling)",
+                "Section 13 (System policy protection)"
+              ],
+              "requirements_with_issues": [],
+              "requirements_not_found": []
+            },
+            "hallucination_check": {
+              "apis_verified": 22,
+              "apis_unverified": 0,
+              "unverified_details": []
+            },
+            "issues": [],
+            "status": "approved",
+            "source": "code-review.json"
+          }
+        }
+      ],
+      "blocking_violations": [],
+      "warnings": [],
+      "retry_feedback": null,
+      "retry_history": []
+    }
+  ]
+}

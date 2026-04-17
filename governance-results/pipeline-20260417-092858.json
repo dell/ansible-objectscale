@@ -1,0 +1,18 @@
+{
+  "pipeline_id": "pipeline-20260417-092858",
+  "pipeline_start": "2026-04-17T09:28:58.690742+00:00",
+  "final_decision": "PENDING",
+  "total_retries": 0,
+  "gates": [
+    {
+      "gate_id": "post_implementation",
+      "stage_name": "Post-Implementation",
+      "decision": "PASS",
+      "score": 95.8,
+      "retries": 0,
+      "blocking_count": 0,
+      "warning_count": 0,
+      "timestamp": "2026-04-17T09:28:58.696061+00:00"
+    }
+  ]
+}

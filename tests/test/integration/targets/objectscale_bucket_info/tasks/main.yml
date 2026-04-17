@@ -1,0 +1,37 @@
+---
+- name: Setup - Create a bucket to get info on
+  dellemc.objectscale.bucket:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    name: "{{ bucket_name }}_info_test"
+    namespace: "{{ namespace }}"
+    state: present
+
+- name: Get info for a single bucket
+  dellemc.objectscale.bucket_info:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    name: "{{ bucket_name }}_info_test"
+    namespace: "{{ namespace }}"
+  register: result
+
+- name: Assert that bucket info was returned
+  assert:
+    that:
+      - not result.changed
+      - result.buckets | length == 1
+      - result.buckets[0].name == "{{ bucket_name }}_info_test"
+
+- name: Teardown - Delete the bucket
+  dellemc.objectscale.bucket:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    name: "{{ bucket_name }}_info_test"
+    namespace: "{{ namespace }}"
+    state: absent

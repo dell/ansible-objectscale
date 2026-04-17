@@ -1,0 +1,32 @@
+---
+- name: Test bucket creation in check mode
+  dellemc.objectscale.bucket:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    name: "{{ bucket_name }}_check_mode"
+    namespace: "{{ namespace }}"
+    state: present
+  check_mode: true
+  register: result
+
+- name: Assert that check mode reported a change
+  assert:
+    that:
+      - result.changed
+
+- name: Verify that the bucket was not actually created
+  dellemc.objectscale.bucket_info:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    name: "{{ bucket_name }}_check_mode"
+    namespace: "{{ namespace }}"
+  register: info_result
+
+- name: Assert that bucket does not exist
+  assert:
+    that:
+      - info_result.buckets | length == 0
