@@ -167,24 +167,24 @@ changed (always, bool, True)
   Whether or not the resource has changed.
 
 
-policy_attachment_details (always, dict, {'namespace': 'ns1', 'entity_type': 'user', 'entity_name': 'userTest1', 'attached_policy_arns': ['urn:ecs:iam:::policy/ECSS3ReadOnlyAccess', 'urn:ecs:iam:::policy/IAMReadOnlyAccess']})
+policy_attachment_details (always, dict, sample)
   Details of the policy attachment state after the operation.
 
+  contains:
 
-  namespace (returned, str, sample)
-    The ObjectScale namespace.
+    namespace (str)
+      The ObjectScale namespace.
 
+    entity_type (str)
+      The type of IAM entity (user, group, or role).
 
-  entity_type (returned, str, sample)
-    The type of IAM entity (user, group, or role).
+    entity_name (str)
+      The name of the IAM entity.
 
+    attached_policy_arns (list)
+      List of policy ARNs currently attached to the entity.
 
-  entity_name (returned, str, sample)
-    The name of the IAM entity.
-
-
-  attached_policy_arns (returned, list, sample)
-    List of policy ARNs currently attached to the entity.
+  sample: {'namespace': 'ns1', 'entity_type': 'user', 'entity_name': 'userTest1', 'attached_policy_arns': ['urn:ecs:iam:::policy/ECSS3ReadOnlyAccess', 'urn:ecs:iam:::policy/IAMReadOnlyAccess']}
 
 
 
