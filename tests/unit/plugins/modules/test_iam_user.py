@@ -1785,3 +1785,242 @@ class TestIamUserMain:
         mock_cls.return_value = mock_obj
         main()
         mock_obj.perform_module_operation.assert_called_once()
+
+
+class TestIamUserCoverageBoost:
+
+    def test_extract_user_dict_passthrough(self):
+        obj = make_iam_user_obj()
+        resp = MagicMock()
+        resp.to_dict.return_value = {'UserName': 'plain-user'}
+
+        result = obj._extract_user_dict(resp)
+
+        assert result == {'UserName': 'plain-user'}
+
+    def test_iam_raw_post_success(self):
+        obj = make_iam_user_obj()
+        obj.iam_api.api_client.configuration.host = 'https://example.local'
+        obj.iam_api.api_client.configuration.api_key = {'AuthToken': 'token'}
+        obj.iam_api.api_client.configuration.api_key_prefix = {'AuthToken': 'Bearer '}
+
+        response = MagicMock()
+        response.status = 200
+        response.data = b'{}'
+        obj.iam_api.api_client.rest_client.request.return_value = response
+
+        result = obj._iam_raw_post('TagUser', {'UserName': 'alice'})
+
+        assert result is response
+        obj.iam_api.api_client.rest_client.request.assert_called_once()
+
+    def test_iam_raw_post_error_raises_exception(self):
+        obj = make_iam_user_obj()
+        obj.iam_api.api_client.configuration.host = 'https://example.local'
+        obj.iam_api.api_client.configuration.api_key = {'AuthToken': 'token'}
+        obj.iam_api.api_client.configuration.api_key_prefix = {'AuthToken': ''}
+
+        response = MagicMock()
+        response.status = 400
+        response.data = b'{"error":"bad request"}'
+        obj.iam_api.api_client.rest_client.request.return_value = response
+
+        with pytest.raises(Exception):
+            obj._iam_raw_post('TagUser', {'UserName': 'alice'})
+
+    def test_tag_and_untag_helpers_expand_members(self):
+        obj = make_iam_user_obj()
+        obj._iam_raw_post = MagicMock()
+
+        obj._tag_user_raw('alice', {'Env': 'prod', 'Team': 'qe'})
+        obj._untag_user_raw('alice', ['Env', 'Team'])
+
+        first_call = obj._iam_raw_post.call_args_list[0]
+        assert first_call.args[0] == 'TagUser'
+        assert first_call.args[1]['Tags.member.1.Key'] == 'Env'
+        assert first_call.args[1]['Tags.member.2.Value'] == 'qe'
+
+        second_call = obj._iam_raw_post.call_args_list[1]
+        assert second_call.args[0] == 'UntagUser'
+        assert second_call.args[1]['TagKeys.member.1'] == 'Env'
+        assert second_call.args[1]['TagKeys.member.2'] == 'Team'
+
+    def test_paginate_list_missing_result_attr(self):
+        obj = make_iam_user_obj()
+        response = MagicMock()
+        response.list_result = None
+        mock_list_func = MagicMock(return_value=response)
+
+        result = obj._paginate_list(mock_list_func, 'list_result', 'Items')
+
+        assert result == []
+
+    def test_list_helper_wrappers_call_paginate(self):
+        obj = make_iam_user_obj()
+        obj._paginate_list = MagicMock(return_value=[])
+
+        obj.list_access_keys('alice')
+        obj.list_attached_policies('alice')
+        obj.list_inline_policy_names('alice')
+        obj.list_groups_for_user('alice')
+        obj.list_user_tags('alice')
+
+        assert obj._paginate_list.call_count == 5
+
+    def test_get_inline_policy_document_error_returns_none(self):
+        obj = make_iam_user_obj()
+        obj.iam_api.iam_service_get_user_policy.side_effect = Exception('failed')
+
+        result = obj.get_inline_policy_document('alice', 'policy-a')
+
+        assert result is None
+
+    def test_force_delete_cleanup_inner_errors_are_collected(self):
+        obj = make_iam_user_obj()
+        obj.list_access_keys = MagicMock(return_value=[{'AccessKeyId': 'AKIA1'}])
+        obj.list_attached_policies = MagicMock(return_value=[{'PolicyArn': 'arn:pol'}])
+        obj.list_inline_policy_names = MagicMock(return_value=['inline1'])
+        obj.list_groups_for_user = MagicMock(return_value=[{'GroupName': 'devs'}])
+        obj.get_user = MagicMock(return_value={'PermissionsBoundary': {'PermissionsBoundaryArn': 'arn:boundary'}})
+
+        obj.iam_api.iam_service_delete_access_key.side_effect = Exception('del key err')
+        obj.iam_api.iam_service_detach_user_policy.side_effect = Exception('detach err')
+        obj.iam_api.iam_service_delete_user_policy.side_effect = Exception('delete inline err')
+        obj.iam_api.iam_service_remove_user_from_group.side_effect = Exception('remove err')
+        obj.iam_api.iam_service_delete_user_permissions_boundary.side_effect = Exception('boundary err')
+
+        obj.force_delete_cleanup('alice')
+
+        obj.module.warn.assert_called_once()
+        warn_msg = obj.module.warn.call_args[0][0]
+        assert 'del key err' in warn_msg
+        assert 'detach err' in warn_msg
+        assert 'delete inline err' in warn_msg
+        assert 'remove err' in warn_msg
+        assert 'boundary err' in warn_msg
+
+    def test_force_delete_cleanup_outer_errors_are_collected(self):
+        obj = make_iam_user_obj()
+        obj.list_access_keys = MagicMock(side_effect=Exception('list keys err'))
+        obj.list_attached_policies = MagicMock(side_effect=Exception('list policies err'))
+        obj.list_inline_policy_names = MagicMock(side_effect=Exception('list inline err'))
+        obj.list_groups_for_user = MagicMock(side_effect=Exception('list groups err'))
+        obj.get_user = MagicMock(side_effect=Exception('get user err'))
+
+        obj.force_delete_cleanup('alice')
+
+        obj.module.warn.assert_called_once()
+        warn_msg = obj.module.warn.call_args[0][0]
+        assert 'list keys err' in warn_msg
+        assert 'list policies err' in warn_msg
+        assert 'list inline err' in warn_msg
+        assert 'list groups err' in warn_msg
+        assert 'get user err' in warn_msg
+
+    def test_absent_state_diff_when_user_missing(self):
+        params = {**BASE_PARAMS, 'state': 'absent'}
+        obj = make_iam_user_obj(params)
+        obj.module._diff = True
+        obj.get_user = MagicMock(return_value=None)
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['diff'] == {'before': {}, 'after': {}}
+
+    def test_present_check_mode_tags_detects_change(self):
+        params = {**BASE_PARAMS, 'tags': {'Env': 'prod'}}
+        obj = make_iam_user_obj(params)
+        obj.module.check_mode = True
+        obj.get_user = MagicMock(return_value=_mock_user())
+        obj.list_user_tags = MagicMock(return_value=[{'Key': 'Env', 'Value': 'dev'}])
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+
+    def test_present_check_mode_managed_policies_detects_change(self):
+        params = {**BASE_PARAMS, 'managed_policies': ['arn:new']}
+        obj = make_iam_user_obj(params)
+        obj.module.check_mode = True
+        obj.get_user = MagicMock(return_value=_mock_user())
+        obj.list_attached_policies = MagicMock(return_value=[{'PolicyArn': 'arn:old'}])
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+
+    def test_present_check_mode_inline_policies_detects_change(self):
+        params = {
+            **BASE_PARAMS,
+            'inline_policies': {'policy-a': {'Version': '2012-10-17', 'Statement': []}},
+        }
+        obj = make_iam_user_obj(params)
+        obj.module.check_mode = True
+        obj.get_user = MagicMock(return_value=_mock_user())
+        obj.list_inline_policy_names = MagicMock(return_value=[])
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+
+    def test_present_check_mode_groups_detects_change(self):
+        params = {**BASE_PARAMS, 'groups': ['admins']}
+        obj = make_iam_user_obj(params)
+        obj.module.check_mode = True
+        obj.get_user = MagicMock(return_value=_mock_user())
+        obj.list_groups_for_user = MagicMock(return_value=[])
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+
+    def test_present_check_mode_permissions_boundary_detects_change(self):
+        params = {**BASE_PARAMS, 'permissions_boundary': ''}
+        user_with_boundary = _mock_user(
+            boundary={'PermissionsBoundaryArn': 'urn:ecs:iam::testns:policy/Boundary'}
+        )
+        obj = make_iam_user_obj(params)
+        obj.module.check_mode = True
+        obj.get_user = MagicMock(return_value=user_with_boundary)
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+
+    def test_present_check_mode_access_key_absent_detects_change(self):
+        params = {
+            **BASE_PARAMS,
+            'access_key_state': 'absent',
+            'access_key_id': 'AKIA1',
+        }
+        obj = make_iam_user_obj(params)
+        obj.module.check_mode = True
+        obj.get_user = MagicMock(return_value=_mock_user())
+        obj.list_access_keys = MagicMock(return_value=[{'AccessKeyId': 'AKIA1', 'Status': 'Active'}])
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
+
+    def test_present_check_mode_access_key_status_detects_change(self):
+        params = {
+            **BASE_PARAMS,
+            'access_key_id': 'AKIA1',
+            'access_key_status': 'Inactive',
+        }
+        obj = make_iam_user_obj(params)
+        obj.module.check_mode = True
+        obj.get_user = MagicMock(return_value=_mock_user())
+        obj.list_access_keys = MagicMock(return_value=[{'AccessKeyId': 'AKIA1', 'Status': 'Active'}])
+
+        obj.perform_module_operation()
+
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs['changed'] is True
