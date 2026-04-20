@@ -217,12 +217,6 @@ try:
 except (ImportError, Exception):
     DataServiceVpoolServiceAddToVpoolRequest = None  # type: ignore[assignment,misc]
 
-try:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.data_service_vpool_service_remove_from_vpool_request import (  # noqa: E501
-        DataServiceVpoolServiceRemoveFromVpoolRequest,
-    )
-except (ImportError, Exception):
-    DataServiceVpoolServiceRemoveFromVpoolRequest = None  # type: ignore[assignment,misc]
 
 
 class ReplicationGroup(object):

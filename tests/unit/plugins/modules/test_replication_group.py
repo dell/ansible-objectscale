@@ -543,8 +543,7 @@ class TestReplicationGroupCoverageImprovements:
              patch(f'{MODULE}.DataVpoolApi', None), \
              patch(f'{MODULE}.DataServiceVpoolServiceCreateDataServiceVpoolRequest', None), \
              patch(f'{MODULE}.DataServiceVpoolServicePutDataServiceVpoolRequest', None), \
-             patch(f'{MODULE}.DataServiceVpoolServiceAddToVpoolRequest', None), \
-             patch(f'{MODULE}.DataServiceVpoolServiceRemoveFromVpoolRequest', None):
+             patch(f'{MODULE}.DataServiceVpoolServiceAddToVpoolRequest', None):
             ReplicationGroup()
         mock_module.fail_json.assert_called_once()
         assert 'DataVpool API client is unavailable' in mock_module.fail_json.call_args[1]['msg']
