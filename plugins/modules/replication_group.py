@@ -218,7 +218,6 @@ except (ImportError, Exception):
     DataServiceVpoolServiceAddToVpoolRequest = None  # type: ignore[assignment,misc]
 
 
-
 class ReplicationGroup(object):
     """Class with operations on ObjectScale replication groups."""
 
