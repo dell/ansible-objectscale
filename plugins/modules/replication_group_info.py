@@ -12,41 +12,57 @@ short_description: Gather ObjectScale replication group information
 description:
   - Retrieve ObjectScale replication group details by id, by name, or list all.
 version_added: "1.0.0"
-author: Dell Technologies
+author:
+- Dell Ansible Team (@dell) <ansible.team@dell.com>
+
+attributes:
+  check_mode:
+    support: full
+    description: Supports check mode. This is a read-only info module.
+
 options:
   objectscale_host:
-    description: ObjectScale management endpoint.
+    description:
+    - IP address or FQDN of the ObjectScale management endpoint.
     type: str
     required: true
   objectscale_port:
-    description: ObjectScale management HTTPS port.
+    description:
+    - Port number for the ObjectScale management endpoint.
     type: int
     default: 4443
   objectscale_username:
-    description: ObjectScale management username.
+    description:
+    - Username for authenticating with the ObjectScale management endpoint.
     type: str
     required: true
   objectscale_password:
-    description: ObjectScale management password.
+    description:
+    - Password for authenticating with the ObjectScale management endpoint.
     type: str
     required: true
-    no_log: true
   validate_certs:
-    description: Whether to validate TLS certificates.
+    description:
+    - Boolean value to enable or disable SSL certificate verification.
+    - Set to C(false) when certificates are not trusted.
     type: bool
     default: true
   timeout:
-    description: API timeout in seconds.
+    description:
+    - Timeout in seconds for HTTP requests to the ObjectScale management endpoint.
     type: int
     default: 30
   id:
-    description: Replication group identifier.
+    description:
+    - Replication group identifier (URN).
     type: str
   name:
-    description: Replication group name.
+    description:
+    - Replication group name.
     type: str
   fetch_full_details:
-    description: Fetch full details for each matched replication group.
+    description:
+    - Fetch full details for each matched replication group.
     type: bool
     default: true
 '''

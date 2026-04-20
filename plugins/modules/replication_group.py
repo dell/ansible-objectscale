@@ -13,82 +13,116 @@ description:
   - Create, update, and delete ObjectScale replication groups (data vpools).
   - Supports idempotency, check mode, and diff mode.
 version_added: "1.0.0"
-author: Dell Technologies
+author:
+- Dell Ansible Team (@dell) <ansible.team@dell.com>
+
+attributes:
+  check_mode:
+    support: full
+    description: Supports check mode. No changes will be made when check mode is enabled.
+  diff_mode:
+    support: full
+    description: Supports diff mode. Shows before and after state of the replication group.
+
 options:
   objectscale_host:
-    description: ObjectScale management endpoint.
+    description:
+    - IP address or FQDN of the ObjectScale management endpoint.
     type: str
     required: true
   objectscale_port:
-    description: ObjectScale management HTTPS port.
+    description:
+    - Port number for the ObjectScale management endpoint.
     type: int
     default: 4443
   objectscale_username:
-    description: ObjectScale management username.
+    description:
+    - Username for authenticating with the ObjectScale management endpoint.
     type: str
     required: true
   objectscale_password:
-    description: ObjectScale management password.
+    description:
+    - Password for authenticating with the ObjectScale management endpoint.
     type: str
     required: true
-    no_log: true
   validate_certs:
-    description: Whether to validate TLS certificates.
+    description:
+    - Boolean value to enable or disable SSL certificate verification.
+    - Set to C(false) when certificates are not trusted.
     type: bool
     default: true
   timeout:
-    description: API timeout in seconds.
+    description:
+    - Timeout in seconds for HTTP requests to the ObjectScale management endpoint.
     type: int
     default: 30
   state:
-    description: Desired replication group state.
+    description:
+    - Desired replication group state.
+    - C(present) ensures the replication group exists with the specified configuration.
+    - C(absent) ensures the replication group does not exist.
     type: str
     required: true
     choices: [present, absent]
   id:
-    description: Replication group identifier (URN).
+    description:
+    - Replication group identifier (URN).
     type: str
   name:
-    description: Replication group name.
+    description:
+    - Replication group name.
     type: str
   new_name:
-    description: New name to set on an existing replication group.
+    description:
+    - New name to set on an existing replication group.
     type: str
   description:
-    description: Replication group description.
+    description:
+    - Description of the replication group.
     type: str
   replication_type:
-    description: Desired replication type.
+    description:
+    - Desired replication type.
     type: str
     choices: [active, passive]
     default: active
   mappings:
     description:
-      - List of VDC and storage-pool mappings.
+    - List of VDC and storage-pool mappings.
     type: list
     elements: dict
     suboptions:
       vdc_id:
+        description:
+        - VDC identifier for the mapping.
         type: str
         required: true
       storage_pool_id:
+        description:
+        - Storage pool identifier for the mapping.
         type: str
         required: true
       is_replication_target:
+        description:
+        - Whether this mapping is a replication target.
         type: bool
   replicate_to_all_sites:
-    description: Allow all namespaces / replicate to all sites.
+    description:
+    - Allow all namespaces / replicate to all sites.
     type: bool
     default: false
   enable_rebalancing:
-    description: Enable rebalancing.
+    description:
+    - Enable rebalancing for the replication group.
     type: bool
   skip_bootstrap_check:
-    description: Skip bootstrap check during mapping removal.
+    description:
+    - Skip bootstrap check during mapping removal.
     type: bool
     default: false
   force_pso_zones:
-    description: Force PSO zones during mapping removal.
+    description:
+    - Force PSO zones during mapping removal.
     type: bool
     default: false
 notes:
