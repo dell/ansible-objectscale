@@ -1,7 +1,7 @@
 .. Created with antsibull-docs 2.24.0
 
-dellemc.objectscale.info module -- Gather information about Dell ObjectScale entities
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+dellemc.objectscale.iam_group_info module -- Gather IAM group information from Dell ObjectScale
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 This module is part of the `dellemc.objectscale collection <https://galaxy.ansible.com/ui/repo/published/dellemc/objectscale/>`_ (version 1.0.0).
 
@@ -9,8 +9,10 @@ It is not included in ``ansible-core``.
 To check whether it is installed, run ``ansible-galaxy collection list``.
 
 To install it, use: :code:`ansible\-galaxy collection install dellemc.objectscale`.
+You need further requirements to be able to use this module,
+see `Requirements <ansible_collections.dellemc.objectscale.iam_group_info_module_requirements_>`_ for details.
 
-To use it in a playbook, specify: ``dellemc.objectscale.info``.
+To use it in a playbook, specify: ``dellemc.objectscale.iam_group_info``.
 
 New in dellemc.objectscale 1.0.0
 
@@ -22,9 +24,18 @@ New in dellemc.objectscale 1.0.0
 Synopsis
 --------
 
-- Gather information about Dell ObjectScale entities such as namespaces.
+- Gather information about IAM groups in a specific ObjectScale namespace.
+- Can retrieve a single group by name or list all groups.
 
 
+
+.. _ansible_collections.dellemc.objectscale.iam_group_info_module_requirements:
+
+Requirements
+------------
+The below requirements are needed on the host that executes this module.
+
+- python \>= 3.9
 
 
 
@@ -46,25 +57,16 @@ Parameters
   <tbody>
   <tr>
     <td valign="top">
-      <div class="ansibleOptionAnchor" id="parameter-gather_subset"></div>
-      <p style="display: inline;"><strong>gather_subset</strong></p>
-      <a class="ansibleOptionLink" href="#parameter-gather_subset" title="Permalink to this option"></a>
+      <div class="ansibleOptionAnchor" id="parameter-group_name"></div>
+      <p style="display: inline;"><strong>group_name</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-group_name" title="Permalink to this option"></a>
       <p style="font-size: small; margin-bottom: 0;">
-        <span style="color: purple;">list</span>
-        / <span style="color: purple;">elements=string</span>
-        / <span style="color: red;">required</span>
+        <span style="color: purple;">string</span>
       </p>
     </td>
     <td valign="top">
-      <p>List of string variables to specify the entities for which information should be gathered.</p>
-      <p><code class='docutils literal notranslate'>namespace</code> - returns list of all namespaces.</p>
-      <p><code class='docutils literal notranslate'>iam_group</code> - returns list of all IAM groups in the specified namespace.</p>
-      <p style="margin-top: 8px;"><b">Choices:</b></p>
-      <ul>
-        <li><p><code>&#34;namespace&#34;</code></p></li>
-        <li><p><code>&#34;iam_group&#34;</code></p></li>
-      </ul>
-
+      <p>The IAM group name to retrieve.</p>
+      <p>If omitted, all groups in the namespace are listed.</p>
     </td>
   </tr>
   <tr>
@@ -74,11 +76,11 @@ Parameters
       <a class="ansibleOptionLink" href="#parameter-namespace" title="Permalink to this option"></a>
       <p style="font-size: small; margin-bottom: 0;">
         <span style="color: purple;">string</span>
+        / <span style="color: red;">required</span>
       </p>
     </td>
     <td valign="top">
-      <p>The ObjectScale namespace to query for IAM resources.</p>
-      <p>Required when <code class='docutils literal notranslate'>iam_group</code> is in <em>gather_subset</em>.</p>
+      <p>The ObjectScale namespace to query for IAM groups.</p>
     </td>
   </tr>
   <tr>
@@ -147,7 +149,7 @@ Parameters
       </p>
     </td>
     <td valign="top">
-      <p>Timeout in seconds for HTTP requests to the ObjectScale management endpoint.</p>
+      <p>Timeout in seconds for HTTP requests to ObjectScale.</p>
       <p style="margin-top: 8px;"><b style="color: blue;">Default:</b> <code style="color: blue;">30</code></p>
     </td>
   </tr>
@@ -180,8 +182,12 @@ Parameters
 Notes
 -----
 
-- The :emphasis:`check\_mode` is not supported.
+- The :emphasis:`check\_mode` is supported. This is a read\-only info module.
 - The objectscale\_client Python package must be installed. Generate it with :literal:`make build\_client` and install with :literal:`make install\_client`.
+- This module requires the ObjectScale Python client library.
+- The client library is included as part of the collection.
+- All operations are performed using the ObjectScale REST API.
+- SSL certificate verification can be disabled for testing environments.
 
 
 Examples
@@ -189,19 +195,24 @@ Examples
 
 .. code-block:: yaml
 
-    - name: Gather namespace information
-      dellemc.objectscale.info:
+    - name: List all IAM groups in namespace
+      dellemc.objectscale.iam_group_info:
         objectscale_host: "{{ objectscale_host }}"
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        gather_subset:
-          - namespace
-      register: objectscale_info
+        namespace: "testnamespace"
+      register: group_info_result
 
-    - name: Display all namespaces
-      debug:
-        var: objectscale_info.Namespaces
+    - name: Get a specific IAM group
+      dellemc.objectscale.iam_group_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        namespace: "testnamespace"
+        group_name: "developers"
+      register: group_info_result
 
 
 
@@ -230,33 +241,32 @@ The following are the fields unique to this module:
       </p>
     </td>
     <td valign="top">
-      <p>Whether or not the resource has changed.</p>
+      <p>Whether or not the resource has changed. Always false for info modules.</p>
       <p style="margin-top: 8px;"><b>Returned:</b> always</p>
       <p style="margin-top: 8px; color: blue; word-wrap: break-word; word-break: break-all;"><b style="color: black;">Sample:</b> <code>false</code></p>
     </td>
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <div class="ansibleOptionAnchor" id="return-IamGroups"></div>
-      <p style="display: inline;"><strong>IamGroups</strong></p>
-      <a class="ansibleOptionLink" href="#return-IamGroups" title="Permalink to this return value"></a>
+      <div class="ansibleOptionAnchor" id="return-iam_groups"></div>
+      <p style="display: inline;"><strong>iam_groups</strong></p>
+      <a class="ansibleOptionLink" href="#return-iam_groups" title="Permalink to this return value"></a>
       <p style="font-size: small; margin-bottom: 0;">
         <span style="color: purple;">list</span>
         / <span style="color: purple;">elements=dictionary</span>
       </p>
     </td>
     <td valign="top">
-      <p>List of IAM groups in the specified namespace.</p>
-      <p style="margin-top: 8px;"><b>Returned:</b> When iam_group is in gather_subset</p>
-      <p style="margin-top: 8px; color: blue; word-wrap: break-word; word-break: break-all;"><b style="color: black;">Sample:</b> <code>[{&#34;Arn&#34;: &#34;urn:ecs:iam::ns1:group/developers&#34;, &#34;CreateDate&#34;: &#34;2025-01-15T12:00:00Z&#34;, &#34;GroupId&#34;: &#34;AGPA1234567890EXAMPLE&#34;, &#34;GroupName&#34;: &#34;developers&#34;, &#34;Path&#34;: &#34;/&#34;}]</code></p>
+      <p>List of IAM groups in the namespace.</p>
+      <p style="margin-top: 8px;"><b>Returned:</b> always</p>
     </td>
   </tr>
   <tr>
     <td></td>
     <td valign="top">
-      <div class="ansibleOptionAnchor" id="return-IamGroups/Arn"></div>
+      <div class="ansibleOptionAnchor" id="return-iam_groups/Arn"></div>
       <p style="display: inline;"><strong>Arn</strong></p>
-      <a class="ansibleOptionLink" href="#return-IamGroups/Arn" title="Permalink to this return value"></a>
+      <a class="ansibleOptionLink" href="#return-iam_groups/Arn" title="Permalink to this return value"></a>
       <p style="font-size: small; margin-bottom: 0;">
         <span style="color: purple;">string</span>
       </p>
@@ -269,9 +279,9 @@ The following are the fields unique to this module:
   <tr>
     <td></td>
     <td valign="top">
-      <div class="ansibleOptionAnchor" id="return-IamGroups/CreateDate"></div>
+      <div class="ansibleOptionAnchor" id="return-iam_groups/CreateDate"></div>
       <p style="display: inline;"><strong>CreateDate</strong></p>
-      <a class="ansibleOptionLink" href="#return-IamGroups/CreateDate" title="Permalink to this return value"></a>
+      <a class="ansibleOptionLink" href="#return-iam_groups/CreateDate" title="Permalink to this return value"></a>
       <p style="font-size: small; margin-bottom: 0;">
         <span style="color: purple;">string</span>
       </p>
@@ -284,9 +294,9 @@ The following are the fields unique to this module:
   <tr>
     <td></td>
     <td valign="top">
-      <div class="ansibleOptionAnchor" id="return-IamGroups/GroupId"></div>
+      <div class="ansibleOptionAnchor" id="return-iam_groups/GroupId"></div>
       <p style="display: inline;"><strong>GroupId</strong></p>
-      <a class="ansibleOptionLink" href="#return-IamGroups/GroupId" title="Permalink to this return value"></a>
+      <a class="ansibleOptionLink" href="#return-iam_groups/GroupId" title="Permalink to this return value"></a>
       <p style="font-size: small; margin-bottom: 0;">
         <span style="color: purple;">string</span>
       </p>
@@ -299,9 +309,9 @@ The following are the fields unique to this module:
   <tr>
     <td></td>
     <td valign="top">
-      <div class="ansibleOptionAnchor" id="return-IamGroups/GroupName"></div>
+      <div class="ansibleOptionAnchor" id="return-iam_groups/GroupName"></div>
       <p style="display: inline;"><strong>GroupName</strong></p>
-      <a class="ansibleOptionLink" href="#return-IamGroups/GroupName" title="Permalink to this return value"></a>
+      <a class="ansibleOptionLink" href="#return-iam_groups/GroupName" title="Permalink to this return value"></a>
       <p style="font-size: small; margin-bottom: 0;">
         <span style="color: purple;">string</span>
       </p>
@@ -314,107 +324,15 @@ The following are the fields unique to this module:
   <tr>
     <td></td>
     <td valign="top">
-      <div class="ansibleOptionAnchor" id="return-IamGroups/Path"></div>
+      <div class="ansibleOptionAnchor" id="return-iam_groups/Path"></div>
       <p style="display: inline;"><strong>Path</strong></p>
-      <a class="ansibleOptionLink" href="#return-IamGroups/Path" title="Permalink to this return value"></a>
+      <a class="ansibleOptionLink" href="#return-iam_groups/Path" title="Permalink to this return value"></a>
       <p style="font-size: small; margin-bottom: 0;">
         <span style="color: purple;">string</span>
       </p>
     </td>
     <td valign="top">
       <p>The IAM path prefix for the group.</p>
-      <p style="margin-top: 8px;"><b>Returned:</b> success</p>
-    </td>
-  </tr>
-
-  <tr>
-    <td colspan="2" valign="top">
-      <div class="ansibleOptionAnchor" id="return-Namespaces"></div>
-      <p style="display: inline;"><strong>Namespaces</strong></p>
-      <a class="ansibleOptionLink" href="#return-Namespaces" title="Permalink to this return value"></a>
-      <p style="font-size: small; margin-bottom: 0;">
-        <span style="color: purple;">list</span>
-        / <span style="color: purple;">elements=dictionary</span>
-      </p>
-    </td>
-    <td valign="top">
-      <p>List of namespaces on the ObjectScale system.</p>
-      <p style="margin-top: 8px;"><b>Returned:</b> When namespace is in gather_subset</p>
-      <p style="margin-top: 8px; color: blue; word-wrap: break-word; word-break: break-all;"><b style="color: black;">Sample:</b> <code>[{&#34;default_data_services_vpool&#34;: &#34;urn:storageos:ReplicationGroupInfo:xxxx:global&#34;, &#34;id&#34;: &#34;testnamespace&#34;, &#34;is_compliance_enabled&#34;: false, &#34;is_encryption_enabled&#34;: false, &#34;name&#34;: &#34;testnamespace&#34;}]</code></p>
-    </td>
-  </tr>
-  <tr>
-    <td></td>
-    <td valign="top">
-      <div class="ansibleOptionAnchor" id="return-Namespaces/default_data_services_vpool"></div>
-      <p style="display: inline;"><strong>default_data_services_vpool</strong></p>
-      <a class="ansibleOptionLink" href="#return-Namespaces/default_data_services_vpool" title="Permalink to this return value"></a>
-      <p style="font-size: small; margin-bottom: 0;">
-        <span style="color: purple;">string</span>
-      </p>
-    </td>
-    <td valign="top">
-      <p>Default replication group for the namespace.</p>
-      <p style="margin-top: 8px;"><b>Returned:</b> success</p>
-    </td>
-  </tr>
-  <tr>
-    <td></td>
-    <td valign="top">
-      <div class="ansibleOptionAnchor" id="return-Namespaces/id"></div>
-      <p style="display: inline;"><strong>id</strong></p>
-      <a class="ansibleOptionLink" href="#return-Namespaces/id" title="Permalink to this return value"></a>
-      <p style="font-size: small; margin-bottom: 0;">
-        <span style="color: purple;">string</span>
-      </p>
-    </td>
-    <td valign="top">
-      <p>Unique namespace identifier.</p>
-      <p style="margin-top: 8px;"><b>Returned:</b> success</p>
-    </td>
-  </tr>
-  <tr>
-    <td></td>
-    <td valign="top">
-      <div class="ansibleOptionAnchor" id="return-Namespaces/is_compliance_enabled"></div>
-      <p style="display: inline;"><strong>is_compliance_enabled</strong></p>
-      <a class="ansibleOptionLink" href="#return-Namespaces/is_compliance_enabled" title="Permalink to this return value"></a>
-      <p style="font-size: small; margin-bottom: 0;">
-        <span style="color: purple;">boolean</span>
-      </p>
-    </td>
-    <td valign="top">
-      <p>Whether compliance (WORM) mode is enabled.</p>
-      <p style="margin-top: 8px;"><b>Returned:</b> success</p>
-    </td>
-  </tr>
-  <tr>
-    <td></td>
-    <td valign="top">
-      <div class="ansibleOptionAnchor" id="return-Namespaces/is_encryption_enabled"></div>
-      <p style="display: inline;"><strong>is_encryption_enabled</strong></p>
-      <a class="ansibleOptionLink" href="#return-Namespaces/is_encryption_enabled" title="Permalink to this return value"></a>
-      <p style="font-size: small; margin-bottom: 0;">
-        <span style="color: purple;">boolean</span>
-      </p>
-    </td>
-    <td valign="top">
-      <p>Whether server-side encryption is enabled.</p>
-      <p style="margin-top: 8px;"><b>Returned:</b> success</p>
-    </td>
-  </tr>
-  <tr>
-    <td></td>
-    <td valign="top">
-      <div class="ansibleOptionAnchor" id="return-Namespaces/name"></div>
-      <p style="display: inline;"><strong>name</strong></p>
-      <a class="ansibleOptionLink" href="#return-Namespaces/name" title="Permalink to this return value"></a>
-      <p style="font-size: small; margin-bottom: 0;">
-        <span style="color: purple;">string</span>
-      </p>
-    </td>
-    <td valign="top">
-      <p>Name of the namespace.</p>
       <p style="margin-top: 8px;"><b>Returned:</b> success</p>
     </td>
   </tr>
@@ -428,6 +346,7 @@ The following are the fields unique to this module:
 Authors
 ~~~~~~~
 
+- Dell Ansible Team (@dell)
 - Dell Ansible Team (@dell)
 
 

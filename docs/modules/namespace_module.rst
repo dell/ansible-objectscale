@@ -22,7 +22,7 @@ New in dellemc.objectscale 1.0.0
 Synopsis
 --------
 
-- Manages the namespace configuration on the Dell ObjectScale storage system. This includes creating, modifying, deleting and retrieving details of a namespace.
+- Manages the namespace configuration on the Dell ObjectScale storage system. This includes creating, modifying and deleting a namespace.
 
 
 
@@ -60,6 +60,20 @@ Parameters
   </tr>
   <tr>
     <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-allowed_vpools_list"></div>
+      <p style="display: inline;"><strong>allowed_vpools_list</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-allowed_vpools_list" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">list</span>
+        / <span style="color: purple;">elements=string</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>Desired list of replication groups allowed for this namespace.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
       <div class="ansibleOptionAnchor" id="parameter-blocked_quota_size"></div>
       <p style="display: inline;"><strong>blocked_quota_size</strong></p>
       <a class="ansibleOptionLink" href="#parameter-blocked_quota_size" title="Permalink to this option"></a>
@@ -69,6 +83,45 @@ Parameters
     </td>
     <td valign="top">
       <p>Quota size (in bytes) at which new object creation is blocked.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-current_root_user_password"></div>
+      <p style="display: inline;"><strong>current_root_user_password</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-current_root_user_password" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">string</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>Current password for namespace virtual root user.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-default_audit_delete_expiration"></div>
+      <p style="display: inline;"><strong>default_audit_delete_expiration</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-default_audit_delete_expiration" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">integer</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>Default bucket audit delete expiration for the namespace.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-default_bucket_block_size"></div>
+      <p style="display: inline;"><strong>default_bucket_block_size</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-default_bucket_block_size" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">integer</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>Default bucket quota size for buckets created in this namespace.</p>
     </td>
   </tr>
   <tr>
@@ -87,6 +140,19 @@ Parameters
   </tr>
   <tr>
     <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-default_object_project"></div>
+      <p style="display: inline;"><strong>default_object_project</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-default_object_project" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">string</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>Default object project identifier used when creating buckets in this namespace.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
       <div class="ansibleOptionAnchor" id="parameter-default_replication_factor"></div>
       <p style="display: inline;"><strong>default_replication_factor</strong></p>
       <a class="ansibleOptionLink" href="#parameter-default_replication_factor" title="Permalink to this option"></a>
@@ -95,7 +161,35 @@ Parameters
       </p>
     </td>
     <td valign="top">
-      <p>Default replication factor for objects in this namespace.</p>
+      <p>Deprecated and currently unsupported by ObjectScale namespace API.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-disallowed_vpools_list"></div>
+      <p style="display: inline;"><strong>disallowed_vpools_list</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-disallowed_vpools_list" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">list</span>
+        / <span style="color: purple;">elements=string</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>Desired list of replication groups disallowed for this namespace.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-external_group_admins"></div>
+      <p style="display: inline;"><strong>external_group_admins</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-external_group_admins" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">list</span>
+        / <span style="color: purple;">elements=string</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>List of Active Directory groups to set as external namespace administrators.</p>
     </td>
   </tr>
   <tr>
@@ -151,6 +245,25 @@ Parameters
   </tr>
   <tr>
     <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-is_object_lock_with_ado_allowed"></div>
+      <p style="display: inline;"><strong>is_object_lock_with_ado_allowed</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-is_object_lock_with_ado_allowed" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">boolean</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>Whether Object Lock with ADO is allowed by default for new buckets in this namespace.</p>
+      <p style="margin-top: 8px;"><b">Choices:</b></p>
+      <ul>
+        <li><p><code>false</code></p></li>
+        <li><p><code>true</code></p></li>
+      </ul>
+
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
       <div class="ansibleOptionAnchor" id="parameter-is_stale_allowed"></div>
       <p style="display: inline;"><strong>is_stale_allowed</strong></p>
       <a class="ansibleOptionLink" href="#parameter-is_stale_allowed" title="Permalink to this option"></a>
@@ -194,6 +307,19 @@ Parameters
     </td>
     <td valign="top">
       <p>The name of the namespace.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-new_root_user_password"></div>
+      <p style="display: inline;"><strong>new_root_user_password</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-new_root_user_password" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">string</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>New password for namespace virtual root user.</p>
     </td>
   </tr>
   <tr>
@@ -286,6 +412,34 @@ Parameters
   </tr>
   <tr>
     <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-retention_classes"></div>
+      <p style="display: inline;"><strong>retention_classes</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-retention_classes" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">list</span>
+        / <span style="color: purple;">elements=dictionary</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>Desired list of retention classes for the namespace.</p>
+      <p>Each entry should contain <code class='docutils literal notranslate'>name</code> and <code class='docutils literal notranslate'>period</code> in seconds.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-root_user_password"></div>
+      <p style="display: inline;"><strong>root_user_password</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-root_user_password" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">string</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>Password for namespace virtual root user when creating a namespace.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
       <div class="ansibleOptionAnchor" id="parameter-soft_quota_size"></div>
       <p style="display: inline;"><strong>soft_quota_size</strong></p>
       <a class="ansibleOptionLink" href="#parameter-soft_quota_size" title="Permalink to this option"></a>
@@ -335,6 +489,20 @@ Parameters
   </tr>
   <tr>
     <td valign="top">
+      <div class="ansibleOptionAnchor" id="parameter-user_mapping"></div>
+      <p style="display: inline;"><strong>user_mapping</strong></p>
+      <a class="ansibleOptionLink" href="#parameter-user_mapping" title="Permalink to this option"></a>
+      <p style="font-size: small; margin-bottom: 0;">
+        <span style="color: purple;">list</span>
+        / <span style="color: purple;">elements=dictionary</span>
+      </p>
+    </td>
+    <td valign="top">
+      <p>List of namespace user mapping entries.</p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
       <div class="ansibleOptionAnchor" id="parameter-validate_certs"></div>
       <p style="display: inline;"><strong>validate_certs</strong></p>
       <a class="ansibleOptionLink" href="#parameter-validate_certs" title="Permalink to this option"></a>
@@ -364,6 +532,7 @@ Notes
 
 - The :emphasis:`check\_mode` is not supported.
 - The objectscale\_client Python package must be installed. Generate it with :literal:`make build\_client` and install with :literal:`make install\_client`.
+- Use :emphasis:`dellemc.objectscale.namespace\_info` for listing namespaces and getting namespace details by name.
 
 
 Examples
@@ -397,13 +566,24 @@ Examples
         notification_quota_size: 85899345920
         state: "present"
 
-    - name: Get namespace details
+    - name: Configure namespace user mapping and retention class
       dellemc.objectscale.namespace:
         objectscale_host: "{{ objectscale_host }}"
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
         namespace_name: "testnamespace"
+        user_mapping:
+          - domain: "example.com"
+            groups:
+              - "ops"
+            attributes:
+              - key: "department"
+                value:
+                  - "engineering"
+        retention_classes:
+          - name: "compliance-7d"
+            period: 604800
         state: "present"
 
     - name: Delete a namespace
