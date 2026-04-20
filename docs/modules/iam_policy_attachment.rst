@@ -98,7 +98,6 @@ Examples
 
 .. code-block:: yaml+jinja
 
-    
     - name: Attach policies to an IAM user
       dellemc.objectscale.iam_policy_attachment:
         objectscale_host: "{{ objectscale_host }}"
@@ -172,28 +171,28 @@ policy_attachment_details (always, dict, {'namespace': 'ns1', 'entity_type': 'us
   Details of the policy attachment state after the operation.
 
 
-  namespace (, str, )
+  namespace (returned, str, sample)
     The ObjectScale namespace.
 
 
-  entity_type (, str, )
+  entity_type (returned, str, sample)
     The type of IAM entity (user, group, or role).
 
 
-  entity_name (, str, )
+  entity_name (returned, str, sample)
     The name of the IAM entity.
 
 
-  attached_policy_arns (, list, )
+  attached_policy_arns (returned, list, sample)
     List of policy ARNs currently attached to the entity.
 
 
 
-id (always, str, ns1:user:userTest1)
-  Resource identifier in format namespace:entity\_type:entity\_name.
+id (always, str, sample)
+  Resource identifier in format namespace:entity_type:entity_name.
 
 
-diff (When diff mode is enabled, dict, )
+diff (When diff mode is enabled, dict, sample)
   Diff of the attached policies before and after changes.
 
 
