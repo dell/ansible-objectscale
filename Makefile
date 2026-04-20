@@ -105,7 +105,7 @@ test:
 
 docs:
 	@echo "Generating module documentation with antsibull-docs..."
-	. .venv/bin/activate && antsibull-docs collection-plugins --use-current --dest-dir docs/modules --output-format simplified-rst dellemc.objectscale
+	. .venv/bin/activate && ANSIBLE_COLLECTIONS_PATH=../../../ antsibull-docs collection-plugins --use-current --dest-dir docs/modules --output-format simplified-rst dellemc.objectscale
 	@echo "Documentation generated in docs/modules/"
 
 .PHONY: default help download_openapi build_spec build_client format_client fix_sanity generate clean_client sanity_ignores lint test docs
