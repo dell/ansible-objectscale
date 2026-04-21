@@ -6,11 +6,12 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-# In a real implementation, this would import the actual API client
-# from the objectscale_client package.
-# For this simulation, we'll use a mock object.
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
+    ApiException,
+    NotFoundException,
+)
 
 
 class BucketApi:
@@ -34,13 +35,18 @@ class BucketApi:
             )
             if response is None:
                 return None
-            return response.to_dict()
-        except Exception as e:
-            if '404' in str(e) or 'Not Found' in str(e):
+            result = response.to_dict()
+            if not result or not result.get('name'):
+                return None
+            return result
+        except NotFoundException:
+            return None
+        except ApiException as e:
+            if e.status == 404:
                 return None
             raise
 
-    def list_buckets(self, namespace: str) -> list:
+    def list_buckets(self, namespace: str) -> List[Dict[str, Any]]:
         """Lists all buckets in a namespace.
 
         Returns a list of bucket detail dicts.
@@ -56,8 +62,10 @@ class BucketApi:
             if hasattr(response, 'object_bucket') and response.object_bucket:
                 return [b.to_dict() for b in response.object_bucket]
             return []
-        except Exception as e:
-            if '404' in str(e) or 'Not Found' in str(e):
+        except NotFoundException:
+            return []
+        except ApiException as e:
+            if e.status == 404:
                 return []
             raise
 

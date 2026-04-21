@@ -122,6 +122,11 @@ def main():
     versioning = module.params.get('versioning')
     force = module.params['force']
 
+    if not name:
+        module.fail_json(msg="missing required arguments: name")
+    if not namespace:
+        module.fail_json(msg="missing required arguments: namespace")
+
     # Basic name validation
     if any(c.isupper() for c in name) or len(name) > 63:
         module.fail_json(msg="'InvalidBucketName': Bucket name is invalid.")
@@ -134,29 +139,29 @@ def main():
 
         if state == 'present':
             if not current_bucket:
+                result['changed'] = True
                 if not module.check_mode:
                     bucket_api.create_bucket(
                         {'name': name, 'namespace': namespace}
                     )
-                result['changed'] = True
             else:
                 if versioning is not None and \
-                        current_bucket.get('versioning') != versioning:
+                        current_bucket.get('versioning_status', '').lower() \
+                        != ('enabled' if versioning else 'suspended'):
+                    result['changed'] = True
                     if not module.check_mode:
                         bucket_api.update_bucket_versioning(
                             name, namespace, versioning
                         )
-                    result['changed'] = True
 
             if not module.check_mode:
-                bucket_details = bucket_api.get_bucket(
-                    name, namespace
-                )
+                bucket_details = bucket_api.get_bucket(name, namespace)
                 if bucket_details:
                     result['bucket_details'] = bucket_details
 
         elif state == 'absent':
             if current_bucket:
+                result['changed'] = True
                 if not module.check_mode:
                     try:
                         bucket_api.delete_bucket(
@@ -170,12 +175,11 @@ def main():
                                 " empty."
                             )
                         raise
-                result['changed'] = True
-
-        module.exit_json(**result)
 
     except Exception as e:
         module.fail_json(msg=f"Module failed: {str(e)}")
+
+    module.exit_json(**result)
 
 
 if __name__ == '__main__':  # pragma: no cover

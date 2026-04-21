@@ -101,12 +101,15 @@ def main():
 
     result = {"changed": False, "buckets": []}
 
+    namespace = module.params['namespace']
+    bucket_name = module.params.get('name')
+
+    if not namespace:
+        module.fail_json(msg="missing required arguments: namespace")
+
     try:
         api_client = utils.get_objectscale_connection(module.params)
         bucket_api = BucketApi(api_client)
-
-        bucket_name = module.params.get('name')
-        namespace = module.params['namespace']
 
         if bucket_name:
             bucket_details = bucket_api.get_bucket(
@@ -119,10 +122,10 @@ def main():
                 namespace
             )
 
-        module.exit_json(**result)
-
     except Exception as e:
         module.fail_json(msg=f"Failed to retrieve bucket info: {str(e)}")
+
+    module.exit_json(**result)
 
 
 if __name__ == '__main__':  # pragma: no cover

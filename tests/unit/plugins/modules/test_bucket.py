@@ -26,7 +26,7 @@ BASE_PARAMS = dict(
     force=False,
 )
 
-MOCK_BUCKET = {'name': 'test-bucket', 'namespace': 'test-ns', 'versioning': False, 'tags': {}}
+MOCK_BUCKET = {'name': 'test-bucket', 'namespace': 'test-ns', 'versioning_status': 'Suspended', 'tags': {}}
 
 
 class TestBucketCreate:
