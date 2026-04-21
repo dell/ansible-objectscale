@@ -53,8 +53,8 @@ class BucketApi:
             )
             if response is None:
                 return []
-            if hasattr(response, 'buckets') and response.buckets:
-                return [b.to_dict() for b in response.buckets]
+            if hasattr(response, 'object_bucket') and response.object_bucket:
+                return [b.to_dict() for b in response.object_bucket]
             return []
         except Exception as e:
             if '404' in str(e) or 'Not Found' in str(e):
@@ -79,25 +79,29 @@ class BucketApi:
         """Deletes a bucket."""
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api import bucket_api as generated_bucket_api
         api = generated_bucket_api.BucketApi(self.api_client)
+        empty_bucket = 'true' if force else None
         api.bucket_service_deactivate_bucket(
             bucket_name=name,
             namespace=namespace,
-            force=force
+            empty_bucket=empty_bucket
         )
         return True
 
     def update_bucket_tagging(self, name: str, namespace: str, tags: Dict[str, str]) -> bool:
         """Updates the tags for a bucket."""
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api import bucket_api as generated_bucket_api
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models import bucket_service_add_bucket_tags_request as tags_req
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_add_bucket_tags_request import BucketServiceAddBucketTagsRequest
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_set_inner import BucketServiceCreateBucketRequestTagSetInner
         api = generated_bucket_api.BucketApi(self.api_client)
-        tag_list = [{'key': k, 'value': v} for k, v in tags.items()]
-        tags_request = tags_req.BucketServiceAddBucketTagsRequest(
-            tags=tag_list
+        tag_list = [
+            BucketServiceCreateBucketRequestTagSetInner(key=k, value=v)
+            for k, v in tags.items()
+        ]
+        tags_request = BucketServiceAddBucketTagsRequest(
+            tag_set=tag_list
         )
         api.bucket_service_add_bucket_tags(
             bucket_name=name,
-            namespace=namespace,
             bucket_service_add_bucket_tags_request=tags_request
         )
         return True
@@ -105,10 +109,15 @@ class BucketApi:
     def update_bucket_versioning(self, name: str, namespace: str, enabled: bool) -> bool:
         """Updates the versioning status for a bucket."""
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api import bucket_api as generated_bucket_api
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_set_bucket_versioning_request import BucketServiceSetBucketVersioningRequest
         api = generated_bucket_api.BucketApi(self.api_client)
+        status = 'Enabled' if enabled else 'Suspended'
+        versioning_request = BucketServiceSetBucketVersioningRequest(
+            status=status
+        )
         api.bucket_service_set_bucket_versioning(
             bucket_name=name,
-            namespace=namespace,
-            versioning_enabled=enabled
+            bucket_service_set_bucket_versioning_request=versioning_request,
+            namespace=namespace
         )
         return True
