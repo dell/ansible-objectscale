@@ -40,14 +40,17 @@ class TestBucketCreate:
         mock_module.check_mode = False
         mock_am.return_value = mock_module
         mock_api_instance = MagicMock()
-        mock_api_instance.get_bucket.return_value = None
+        mock_api_instance.get_bucket.side_effect = [
+            None,
+            MOCK_BUCKET.copy(),
+        ]
         mock_api_cls.return_value = mock_api_instance
 
         from ansible_collections.dellemc.objectscale.plugins.modules.bucket import main
         main()
 
         mock_api_instance.create_bucket.assert_called_once_with({'name': 'test-bucket', 'namespace': 'test-ns'})
-        mock_module.exit_json.assert_called_once_with(changed=True)
+        mock_module.exit_json.assert_called_once_with(changed=True, bucket_details=MOCK_BUCKET)
 
     @patch(f'{MODULE}.BucketApi')
     @patch(f'{MODULE}.utils.get_objectscale_connection')
@@ -83,7 +86,7 @@ class TestBucketCreate:
         main()
 
         mock_api_instance.create_bucket.assert_not_called()
-        mock_module.exit_json.assert_called_once_with(changed=False)
+        mock_module.exit_json.assert_called_once_with(changed=False, bucket_details=MOCK_BUCKET)
 
 
 class TestBucketVersioning:
@@ -104,7 +107,9 @@ class TestBucketVersioning:
         main()
 
         mock_api_instance.update_bucket_versioning.assert_called_once_with('test-bucket', 'test-ns', True)
-        mock_module.exit_json.assert_called_once_with(changed=True)
+        call_kwargs = mock_module.exit_json.call_args[1]
+        assert call_kwargs['changed'] is True
+        assert 'bucket_details' in call_kwargs
 
     @patch(f'{MODULE}.BucketApi')
     @patch(f'{MODULE}.utils.get_objectscale_connection')
@@ -140,7 +145,7 @@ class TestBucketVersioning:
         main()
 
         mock_api_instance.update_bucket_versioning.assert_not_called()
-        mock_module.exit_json.assert_called_once_with(changed=False)
+        mock_module.exit_json.assert_called_once_with(changed=False, bucket_details=MOCK_BUCKET)
 
 
 class TestBucketDelete:
@@ -321,3 +326,5 @@ class TestBucketMain:
         main()
 
         mock_module.exit_json.assert_called_once()
+        call_kwargs = mock_module.exit_json.call_args[1]
+        assert 'bucket_details' in call_kwargs

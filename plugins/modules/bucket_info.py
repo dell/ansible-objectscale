@@ -109,13 +109,15 @@ def main():
         namespace = module.params['namespace']
 
         if bucket_name:
-            bucket_details = bucket_api.get_bucket(bucket_name, namespace)
+            bucket_details = bucket_api.get_bucket(
+                bucket_name, namespace
+            )
             if bucket_details:
                 result['buckets'].append(bucket_details)
         else:
-            # In a real implementation, this would list all buckets.
-            # For this test, we just return an empty list if no name is given.
-            pass
+            result['buckets'] = bucket_api.list_buckets(
+                namespace
+            )
 
         module.exit_json(**result)
 

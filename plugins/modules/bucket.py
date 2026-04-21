@@ -88,6 +88,10 @@ changed:
     description: Whether or not the resource has changed.
     type: bool
     returned: success
+bucket_details:
+    description: Details of the bucket.
+    type: dict
+    returned: when state is present
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -131,23 +135,40 @@ def main():
         if state == 'present':
             if not current_bucket:
                 if not module.check_mode:
-                    bucket_api.create_bucket({'name': name, 'namespace': namespace})
+                    bucket_api.create_bucket(
+                        {'name': name, 'namespace': namespace}
+                    )
                 result['changed'] = True
             else:
-                # Check for versioning update
-                if versioning is not None and current_bucket.get('versioning') != versioning:
+                if versioning is not None and \
+                        current_bucket.get('versioning') != versioning:
                     if not module.check_mode:
-                        bucket_api.update_bucket_versioning(name, namespace, versioning)
+                        bucket_api.update_bucket_versioning(
+                            name, namespace, versioning
+                        )
                     result['changed'] = True
+
+            if not module.check_mode:
+                bucket_details = bucket_api.get_bucket(
+                    name, namespace
+                )
+                if bucket_details:
+                    result['bucket_details'] = bucket_details
 
         elif state == 'absent':
             if current_bucket:
                 if not module.check_mode:
                     try:
-                        bucket_api.delete_bucket(name, namespace, force=force)
+                        bucket_api.delete_bucket(
+                            name, namespace, force=force
+                        )
                     except Exception as e:
                         if 'BucketNotEmpty' in str(e):
-                            module.fail_json(msg="'BucketNotEmpty': The bucket you tried to delete is not empty.")
+                            module.fail_json(
+                                msg="'BucketNotEmpty': The bucket"
+                                " you tried to delete is not"
+                                " empty."
+                            )
                         raise
                 result['changed'] = True
 

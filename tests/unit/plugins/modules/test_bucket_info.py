@@ -77,16 +77,18 @@ class TestBucketInfoGet:
         mock_module.params = {**BASE_PARAMS, 'name': None}
         mock_am.return_value = mock_module
         mock_api_instance = MagicMock()
+        mock_api_instance.list_buckets.return_value = [MOCK_BUCKET.copy()]
         mock_api_cls.return_value = mock_api_instance
 
         from ansible_collections.dellemc.objectscale.plugins.modules.bucket_info import main
         main()
 
         mock_api_instance.get_bucket.assert_not_called()
+        mock_api_instance.list_buckets.assert_called_once_with('test-ns')
         mock_module.exit_json.assert_called_once()
         call_kwargs = mock_module.exit_json.call_args[1]
         assert call_kwargs['changed'] is False
-        assert call_kwargs['buckets'] == []
+        assert len(call_kwargs['buckets']) == 1
 
     @patch(f'{MODULE}.BucketApi')
     @patch(f'{MODULE}.utils.get_objectscale_connection')

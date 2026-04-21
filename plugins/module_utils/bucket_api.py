@@ -23,37 +23,75 @@ class BucketApi:
     def get_bucket(self, name: str, namespace: str) -> Optional[Dict[str, Any]]:
         """Fetches details for a given bucket.
 
-        This is a placeholder. A real implementation would make an API call like:
-        `self.api_client.s3.get_bucket(...)`
+        Returns bucket details dict if found, None if not found.
+        Raises Exception for server/connection errors.
         """
-        # This is a mock implementation for the purpose of passing the failing tests.
-        # It simulates the behavior required by the unit tests.
-        if "non-existent" in name:
-            raise Exception("404 Not Found")
-        if "503" in name:
-            raise Exception("503 Service Unavailable")
+        try:
+            response = self.api_client.get(
+                f'/object/bucket/{name}',
+                params={'namespace': namespace}
+            )
+            if response is None:
+                return None
+            return response
+        except Exception as e:
+            if '404' in str(e) or 'Not Found' in str(e):
+                return None
+            raise
 
-        # Simulate finding an existing bucket
-        return {'name': name, 'namespace': namespace, 'versioning': False, 'tags': {}}
+    def list_buckets(self, namespace: str) -> list:
+        """Lists all buckets in a namespace.
+
+        Returns a list of bucket detail dicts.
+        """
+        try:
+            response = self.api_client.get(
+                '/object/bucket',
+                params={'namespace': namespace}
+            )
+            if response is None:
+                return []
+            if isinstance(response, list):
+                return response
+            return response.get('buckets', [])
+        except Exception as e:
+            if '404' in str(e) or 'Not Found' in str(e):
+                return []
+            raise
 
     def create_bucket(self, payload: Dict[str, Any]) -> bool:
         """Creates a new bucket."""
-        # Placeholder for `PUT /<bucket-name>`
+        self.api_client.post(
+            '/object/bucket',
+            json=payload
+        )
         return True
 
     def delete_bucket(self, name: str, namespace: str, force: bool = False) -> bool:
         """Deletes a bucket."""
-        # Placeholder for `DELETE /<bucket-name>`
-        if "not_empty" in name and not force:
-            raise Exception("BucketNotEmpty")
+        params = {'namespace': namespace}
+        if force:
+            params['force'] = 'true'
+        self.api_client.delete(
+            f'/object/bucket/{name}',
+            params=params
+        )
         return True
 
     def update_bucket_tagging(self, name: str, namespace: str, tags: Dict[str, str]) -> bool:
         """Updates the tags for a bucket."""
-        # Placeholder for `PUT /<bucket-name>?tagging`
+        self.api_client.put(
+            f'/object/bucket/{name}/tagging',
+            params={'namespace': namespace},
+            json={'tags': tags}
+        )
         return True
 
     def update_bucket_versioning(self, name: str, namespace: str, enabled: bool) -> bool:
         """Updates the versioning status for a bucket."""
-        # Placeholder for `PUT /<bucket-name>?versioning`
+        self.api_client.put(
+            f'/object/bucket/{name}/versioning',
+            params={'namespace': namespace},
+            json={'versioning_enabled': enabled}
+        )
         return True
