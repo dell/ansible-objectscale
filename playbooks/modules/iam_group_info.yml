@@ -1,0 +1,39 @@
+---
+- name: IAM Group Info Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    namespace_name: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') }}"
+    validate_certs: false
+
+  tasks:
+    - name: List all IAM groups in a namespace
+      dellemc.objectscale.iam_group_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace: "{{ namespace_name }}"
+      register: all_groups
+
+    - name: Display all groups
+      ansible.builtin.debug:
+        var: all_groups.iam_groups
+
+    - name: Get a specific IAM group by name
+      dellemc.objectscale.iam_group_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace: "{{ namespace_name }}"
+        group_name: "developers"
+      register: group_by_name
+
+    - name: Display group details
+      ansible.builtin.debug:
+        var: group_by_name.iam_groups
