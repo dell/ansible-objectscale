@@ -1,0 +1,92 @@
+---
+- name: Management User Management Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    validate_certs: false
+    mgmt_user_id: "operator1"
+    # Prefer Ansible Vault for real credentials:
+    # mgmt_user_password: "{{ vault_mgmt_user_password }}"
+    mgmt_user_password: "{{ lookup('env', 'MGMT_USER_PASSWORD') }}"
+
+  tasks:
+    - name: Create a Management User with System Monitor role
+      dellemc.objectscale.management_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ mgmt_user_id }}"
+        password: "{{ mgmt_user_password }}"
+        is_system_monitor: true
+        state: present
+      no_log: true
+      register: create_result
+
+    - name: Verify the user was created
+      ansible.builtin.assert:
+        that:
+          - create_result.changed
+          - create_result.management_user_details.user_id == mgmt_user_id
+        fail_msg: "Management User was not created"
+
+    - name: Idempotence check - re-run with the same desired state
+      dellemc.objectscale.management_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ mgmt_user_id }}"
+        is_system_monitor: true
+        state: present
+      register: idem
+
+    - name: Assert idempotence
+      ansible.builtin.assert:
+        that:
+          - not idem.changed
+        fail_msg: "Management User create was not idempotent"
+
+    - name: Promote Management User to System Admin
+      dellemc.objectscale.management_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ mgmt_user_id }}"
+        is_system_admin: true
+        state: present
+
+    - name: Get single Management User details
+      dellemc.objectscale.management_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ mgmt_user_id }}"
+      register: single
+
+    - name: Show the promoted user
+      ansible.builtin.debug:
+        var: single.management_user
+
+    - name: List all Management Users
+      dellemc.objectscale.management_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: all_users
+
+    - name: Delete the Management User
+      dellemc.objectscale.management_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ mgmt_user_id }}"
+        state: absent

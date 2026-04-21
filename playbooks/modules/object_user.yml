@@ -1,0 +1,120 @@
+---
+- name: Object User (non-IAM) Management Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    validate_certs: false
+    namespace_name: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') }}"
+    object_user_name: "alice"
+
+  tasks:
+    - name: Create an Object User with tags
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        tags:
+          - { name: env, value: prod }
+          - { name: team, value: platform }
+        state: present
+      register: create_result
+
+    - name: Verify creation
+      ansible.builtin.assert:
+        that:
+          - create_result.changed
+        fail_msg: "Object User was not created"
+
+    - name: Idempotence check
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        tags:
+          - { name: env, value: prod }
+          - { name: team, value: platform }
+        state: present
+      register: idem
+
+    - name: Assert idempotence
+      ansible.builtin.assert:
+        that:
+          - not idem.changed
+        fail_msg: "Object User create was not idempotent"
+
+    - name: Create an S3 secret key for the Object User
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        secret_keys:
+          - state: present
+        state: present
+      register: key_result
+      no_log: true
+
+    - name: Assert secret key was returned (once)
+      ansible.builtin.assert:
+        that:
+          - key_result.created_secret_keys is defined
+          - key_result.created_secret_keys | length >= 1
+        fail_msg: "No secret key was created"
+
+    - name: Lock the Object User
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        locked: true
+
+    - name: Read back the Object User with secret key metadata
+      dellemc.objectscale.object_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        include_secret_keys: true
+      register: read_back
+
+    - name: Show user - plaintext secret values are never returned here
+      ansible.builtin.debug:
+        var: read_back.object_user
+
+    - name: Delete all secret keys for the Object User
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        secret_keys: "{{ read_back.object_user.secret_key_metadata | default([]) | map('combine', {'state': 'absent'}) | list }}"
+        state: present
+
+    - name: Delete the Object User
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        state: absent
