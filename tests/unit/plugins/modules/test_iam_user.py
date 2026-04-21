@@ -1836,14 +1836,14 @@ class TestIamUserCoverageBoost:
         obj._untag_user_raw('alice', ['Env', 'Team'])
 
         first_call = obj._iam_raw_post.call_args_list[0]
-        assert first_call.args[0] == 'TagUser'
-        assert first_call.args[1]['Tags.member.1.Key'] == 'Env'
-        assert first_call.args[1]['Tags.member.2.Value'] == 'qe'
+        assert first_call[0][0] == 'TagUser'
+        assert first_call[0][1]['Tags.member.1.Key'] == 'Env'
+        assert first_call[0][1]['Tags.member.2.Value'] == 'qe'
 
         second_call = obj._iam_raw_post.call_args_list[1]
-        assert second_call.args[0] == 'UntagUser'
-        assert second_call.args[1]['TagKeys.member.1'] == 'Env'
-        assert second_call.args[1]['TagKeys.member.2'] == 'Team'
+        assert second_call[0][0] == 'UntagUser'
+        assert second_call[0][1]['TagKeys.member.1'] == 'Env'
+        assert second_call[0][1]['TagKeys.member.2'] == 'Team'
 
     def test_paginate_list_missing_result_attr(self):
         obj = make_iam_user_obj()

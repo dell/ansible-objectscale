@@ -83,7 +83,20 @@ def get_objectscale_connection(module_params: Dict[str, Any]) -> Any:
     config.verify_ssl = validate_certs
     config.api_key = {'AuthToken': token}
 
-    return objectscale_client.ApiClient(config)
+    client = objectscale_client.ApiClient(config)
+
+    def cleanup_token() -> None:
+        try:
+            from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.authentication_api import AuthenticationApi
+            auth_api = AuthenticationApi(client)
+            auth_api.authentication_resource_logout()
+        except Exception:
+            pass  # Best effort cleanup
+
+    import atexit
+    atexit.register(cleanup_token)
+
+    return client
 
 
 def determine_error(error_obj: Exception) -> str:
