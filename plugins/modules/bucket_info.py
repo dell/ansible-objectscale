@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Copyright: (c) 2026, Dell Technologies
-# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+# GNU General Public License v3.0+ 
+# (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 """Ansible module for retrieving information about ObjectScale buckets"""
 
@@ -32,11 +33,11 @@ options:
     required: false
     default: 4443
   objectscale_username:
-    description: The username for authenticating with the ObjectScale management host.
+    description: Username for authenticating with ObjectScale host.
     type: str
     required: true
   objectscale_password:
-    description: The password for authenticating with the ObjectScale management host.
+    description: Password for authenticating with ObjectScale host.
     type: str
     required: true
   validate_certs:
@@ -52,7 +53,8 @@ options:
     type: str
     required: true
   name:
-    description: The name of the bucket to retrieve information for. If not provided, all buckets in the namespace will be returned.
+    description: Name of bucket to retrieve. If not provided,
+                 all buckets in namespace are returned.
     type: str
     required: false
 '''
@@ -78,7 +80,11 @@ buckets:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.dellemc.objectscale.plugins.module_utils import utils
-from ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api import BucketApi
+from ansible_collections.dellemc.objectscale.plugins.module_utils import (
+    bucket_api
+)
+
+BucketApi = bucket_api.BucketApi
 
 
 def main():
