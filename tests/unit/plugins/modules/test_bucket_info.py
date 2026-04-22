@@ -10,6 +10,10 @@ __metaclass__ = type
 import pytest
 from unittest.mock import MagicMock, patch
 
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
+    ApiException,
+)
+
 MODULE = 'ansible_collections.dellemc.objectscale.plugins.modules.bucket_info'
 
 BASE_PARAMS = dict(
@@ -99,7 +103,7 @@ class TestBucketInfoGet:
         mock_module.fail_json.side_effect = SystemExit(1)
         mock_am.return_value = mock_module
         mock_api_instance = MagicMock()
-        mock_api_instance.get_bucket.side_effect = Exception("API error")
+        mock_api_instance.get_bucket.side_effect = ApiException(status=500, reason="API error")
         mock_api_cls.return_value = mock_api_instance
 
         from ansible_collections.dellemc.objectscale.plugins.modules.bucket_info import main

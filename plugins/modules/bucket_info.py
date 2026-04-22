@@ -82,6 +82,9 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils import utils
 from ansible_collections.dellemc.objectscale.plugins.module_utils import (
     bucket_api
 )
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
+    ApiException,
+)
 
 BucketApi = bucket_api.BucketApi
 
@@ -145,7 +148,7 @@ def main():
                 namespace
             )
 
-    except Exception as e:
+    except ApiException as e:
         module.fail_json(msg=f"Failed to retrieve bucket info: {str(e)}")
 
     module.exit_json(**result)

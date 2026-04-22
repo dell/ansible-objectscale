@@ -42,8 +42,15 @@ class BucketApi:
         except NotFoundException:
             return None
         except ApiException as e:
-            if e.status in (404, 400):
+            if e.status == 404:
                 return None
+            # ObjectScale returns HTTP 400 with specific error codes for 'not found'
+            # Code 1004: "Request parameter cannot be found"
+            # Code 1013: "Bad request body" (entity not found)
+            if e.status == 400 and e.data:
+                error_code = e.data.get('code') if isinstance(e.data, dict) else None
+                if error_code in (1004, 1013):
+                    return None
             raise
 
     def list_buckets(self, namespace: str) -> List[Dict[str, Any]]:

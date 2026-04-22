@@ -97,6 +97,9 @@ bucket_details:
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.dellemc.objectscale.plugins.module_utils import utils
 from ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api import BucketApi
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
+    ApiException,
+)
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils \
@@ -191,7 +194,7 @@ def main():
                         bucket_api.delete_bucket(
                             name, namespace, force=force
                         )
-                    except Exception as e:
+                    except ApiException as e:
                         if 'BucketNotEmpty' in str(e):
                             module.fail_json(
                                 msg="'BucketNotEmpty': The bucket"
@@ -200,7 +203,7 @@ def main():
                             )
                         raise
 
-    except Exception as e:
+    except ApiException as e:
         module.fail_json(msg=f"Module failed: {str(e)}")
 
     module.exit_json(**result)

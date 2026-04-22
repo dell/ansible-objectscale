@@ -10,6 +10,10 @@ __metaclass__ = type
 import pytest
 from unittest.mock import MagicMock, patch
 
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
+    ApiException,
+)
+
 MODULE = 'ansible_collections.dellemc.objectscale.plugins.modules.bucket'
 
 BASE_PARAMS = dict(
@@ -215,7 +219,7 @@ class TestBucketDelete:
         mock_am.return_value = mock_module
         mock_api_instance = MagicMock()
         mock_api_instance.get_bucket.return_value = MOCK_BUCKET.copy()
-        mock_api_instance.delete_bucket.side_effect = Exception("BucketNotEmpty")
+        mock_api_instance.delete_bucket.side_effect = ApiException(status=400, reason="BucketNotEmpty")
         mock_api_cls.return_value = mock_api_instance
 
         from ansible_collections.dellemc.objectscale.plugins.modules.bucket import main
@@ -237,7 +241,7 @@ class TestBucketDelete:
         mock_am.return_value = mock_module
         mock_api_instance = MagicMock()
         mock_api_instance.get_bucket.return_value = MOCK_BUCKET.copy()
-        mock_api_instance.delete_bucket.side_effect = Exception("ServerError: internal error")
+        mock_api_instance.delete_bucket.side_effect = ApiException(status=500, reason="ServerError: internal error")
         mock_api_cls.return_value = mock_api_instance
 
         from ansible_collections.dellemc.objectscale.plugins.modules.bucket import main
@@ -295,7 +299,7 @@ class TestBucketApiError:
         mock_module.check_mode = False
         mock_module.fail_json.side_effect = SystemExit(1)
         mock_am.return_value = mock_module
-        mock_conn.side_effect = Exception("Connection refused")
+        mock_conn.side_effect = ApiException(status=None, reason="Connection refused")
 
         from ansible_collections.dellemc.objectscale.plugins.modules.bucket import main
         with pytest.raises(SystemExit):
