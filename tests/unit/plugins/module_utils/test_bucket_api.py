@@ -6,6 +6,9 @@ from unittest.mock import patch, MagicMock
 
 # This import will fail initially, which is the expected "red" state.
 from ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api import BucketApi
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
+    NotFoundException,
+)
 
 
 class TestBucketApi(unittest.TestCase):
@@ -28,13 +31,17 @@ class TestBucketApi(unittest.TestCase):
         self.assertEqual(result['name'], 'test-bucket')
         mock_get_bucket.assert_called_once_with('test-bucket', 'my-namespace')
 
-    def test_get_bucket_not_found(self):
+    @patch('ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.bucket_api.BucketApi')
+    def test_get_bucket_not_found(self, mock_generated_api_cls):
         """Test handling of a 404 Not Found error when getting a bucket."""
-        # The bucket_api.get_bucket method raises an exception for "non-existent" buckets
-        with self.assertRaises(Exception) as context:
-            self.bucket_api.get_bucket('non-existent-bucket', 'my-namespace')
-
-        self.assertIn("404", str(context.exception))
+        # Mock the generated API to raise NotFoundException
+        mock_api_instance = MagicMock()
+        mock_api_instance.bucket_service_get_bucket_info.side_effect = NotFoundException(status=404, reason="Not Found")
+        mock_generated_api_cls.return_value = mock_api_instance
+        
+        # The bucket_api.get_bucket method returns None for non-existent buckets
+        result = self.bucket_api.get_bucket('non-existent-bucket', 'my-namespace')
+        self.assertIsNone(result)
 
     @patch('ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api.BucketApi.create_bucket')
     def test_create_bucket(self, mock_create_bucket):

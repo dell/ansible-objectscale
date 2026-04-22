@@ -24,7 +24,7 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        bucket_name: "test_info_{{ item }}"
+        name: "test_info_{{ item }}"
         namespace: "test_ns_bucket_info"
         state: present
       loop:
@@ -39,7 +39,7 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        bucket_name: "test_info_bucket1"
+        name: "test_info_bucket1"
         namespace: "test_ns_bucket_info"
       register: bucket_info
 
@@ -72,7 +72,7 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        bucket_name: "test_info_{{ item }}"
+        name: "test_info_{{ item }}"
         namespace: "test_ns_bucket_info"
         state: absent
       loop:

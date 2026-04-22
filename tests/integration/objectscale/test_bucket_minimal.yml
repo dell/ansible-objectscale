@@ -24,7 +24,7 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        bucket_name: "test_bucket_min"
+        name: "test_bucket_min"
         namespace: "test_ns_bucket"
         state: present
       register: result
@@ -43,7 +43,7 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        bucket_name: "test_bucket_min"
+        name: "test_bucket_min"
         namespace: "test_ns_bucket"
         state: present
       register: result_idempotent
@@ -61,7 +61,7 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        bucket_name: "test_bucket_min"
+        name: "test_bucket_min"
         namespace: "test_ns_bucket"
         state: absent
       register: delete_result
@@ -78,7 +78,7 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        bucket_name: "test_bucket_min"
+        name: "test_bucket_min"
         namespace: "test_ns_bucket"
         state: absent
       register: delete_idempotent

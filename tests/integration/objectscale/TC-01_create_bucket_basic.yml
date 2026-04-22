@@ -12,10 +12,10 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
-        bucket_name: "{{ bucket_name }}"
+        name: "{{ bucket_name }}"
         namespace: "{{ objectscale_namespace }}"
         state: absent
-      ignore_errors: true
+      failed_when: false
 
     - name: Create bucket
       dellemc.objectscale.bucket:
@@ -24,7 +24,7 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
-        bucket_name: "{{ bucket_name }}"
+        name: "{{ bucket_name }}"
         namespace: "{{ objectscale_namespace }}"
         state: present
       register: result
@@ -45,7 +45,7 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
-        bucket_name: "{{ bucket_name }}"
+        name: "{{ bucket_name }}"
         namespace: "{{ objectscale_namespace }}"
         state: present
       register: idem
@@ -63,6 +63,6 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
-        bucket_name: "{{ bucket_name }}"
+        name: "{{ bucket_name }}"
         namespace: "{{ objectscale_namespace }}"
         state: absent
