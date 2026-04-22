@@ -1,0 +1,100 @@
+---
+- name: Management User Info Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    validate_certs: false
+    local_user_user_id: "localuser1"
+    ad_ldap_user_user_id: "user1@domain"
+    ad_ldap_group_user_id: "group1@domain"
+
+  tasks:
+    - name: List all Management Users
+      dellemc.objectscale.management_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: all_mgmt_users
+
+    - name: Display all Management Users
+      ansible.builtin.debug:
+        var: all_mgmt_users.management_users
+
+    - name: Verify the list was retrieved
+      ansible.builtin.assert:
+        that:
+          - all_mgmt_users.management_users is defined
+          - all_mgmt_users.management_users | length > 0
+        fail_msg: "Management Users list was not retrieved or is empty"
+        success_msg: "Management Users list retrieved successfully"
+
+    - name: Get a Local User by ID
+      dellemc.objectscale.management_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ local_user_user_id }}"
+      register: single_local_user
+
+    - name: Display single Local User details
+      ansible.builtin.debug:
+        var: single_local_user.management_user
+
+    - name: Verify the user was found
+      ansible.builtin.assert:
+        that:
+          - single_local_user.management_user is defined
+          - single_local_user.management_user.userId == local_user_user_id
+          - single_local_user.management_user.is_external_group == false
+        fail_msg: "Local User was not found"
+        success_msg: "Local User found successfully"
+
+    - name: Get an AD/LDAP User by ID
+      dellemc.objectscale.management_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ ad_ldap_user_user_id }}"
+      register: single_ad_ldap_user
+
+    - name: Display single AD/LDAP User details
+      ansible.builtin.debug:
+        var: single_ad_ldap_user.management_user
+
+    - name: Verify the AD/LDAP user was found
+      ansible.builtin.assert:
+        that:
+          - single_ad_ldap_user.management_user is defined
+          - single_ad_ldap_user.management_user.userId == ad_ldap_user_user_id
+          - single_ad_ldap_user.management_user.is_external_group == false
+        fail_msg: "AD/LDAP User was not found"
+        success_msg: "AD/LDAP User found successfully"
+
+    - name: Get an AD/LDAP Group by ID
+      dellemc.objectscale.management_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ ad_ldap_group_user_id }}"
+      register: single_ad_ldap_group
+
+    - name: Display single AD/LDAP Group details
+      ansible.builtin.debug:
+        var: single_ad_ldap_group.management_user
+
+    - name: Verify the AD/LDAP group was found
+      ansible.builtin.assert:
+        that:
+          - single_ad_ldap_group.management_user is defined
+          - single_ad_ldap_group.management_user.userId == ad_ldap_group_user_id
+          - single_ad_ldap_group.management_user.is_external_group == true
+        fail_msg: "AD/LDAP Group was not found"
+        success_msg: "AD/LDAP Group found successfully"

@@ -57,8 +57,10 @@ class UserManagementServiceGetUserInfoResponse(BaseModel):
     created: StrictStr = Field(description="Gets the user's creation date as an ISO-8601 timestamp.")
     tag: Optional[List[UserManagementServiceAddUserRequestTagsInner]] = Field(
         default=None, description="Gets the tags associated with this user. May be null if the user has no  tags.")
-    centerapassword: StrictStr = Field(description="Gets the user's centerapassword.")
-    swiftpassword: StrictStr = Field(description="Gets the user's swiftpassword.")
+    centerapassword: Optional[StrictStr] = Field(
+        default=None, description="Gets the user's centerapassword.")
+    swiftpassword: Optional[StrictStr] = Field(
+        default=None, description="Gets the user's swiftpassword.")
 
     model_config = ConfigDict(
         validate_by_name=True,

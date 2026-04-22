@@ -1,0 +1,139 @@
+---
+- name: Object User Info Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    validate_certs: false
+    namespace_name: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') }}"
+    object_user_name: "objuser1"
+
+  tasks:
+    - name: List all Object Users in the VDC
+      dellemc.objectscale.object_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: all_users
+
+    - name: Display all Object Users
+      ansible.builtin.debug:
+        var: all_users.object_users
+
+    - name: Verify all Object Users were retrieved
+      ansible.builtin.assert:
+        that:
+          - all_users.object_users is defined
+        fail_msg: "Object Users list was not retrieved"
+        success_msg: "Object Users list retrieved successfully"
+
+    - name: List all Object Users in the VDC with secret key metadata
+      dellemc.objectscale.object_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        include_secret_keys: true
+      register: all_users_with_keys
+
+    - name: Display all Object Users with secret key metadata
+      ansible.builtin.debug:
+        var: all_users_with_keys.object_users
+
+    - name: Verify all Object Users with secret key metadata were retrieved
+      ansible.builtin.assert:
+        that:
+          - all_users_with_keys.object_users is defined
+        fail_msg: "All Object Users with secret key metadata were not retrieved"
+        success_msg: "All Object Users with secret key metadata retrieved successfully"
+
+    - name: List Object Users in a specific namespace
+      dellemc.objectscale.object_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace: "{{ namespace_name }}"
+      register: namespace_users
+
+    - name: Display namespace users
+      ansible.builtin.debug:
+        var: namespace_users.object_users
+
+    - name: Verify namespace users were retrieved
+      ansible.builtin.assert:
+        that:
+          - namespace_users.object_users is defined
+        fail_msg: "Namespace users list was not retrieved"
+        success_msg: "Namespace users list retrieved successfully"
+
+    - name: List users in namespace with secret key metadata
+      dellemc.objectscale.object_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace: "{{ namespace_name }}"
+        include_secret_keys: true
+      register: users_with_keys
+
+    - name: Display namespace users with secret key metadata
+      ansible.builtin.debug:
+        var: users_with_keys.object_users
+
+    - name: Verify namespace users with secret key metadata were retrieved
+      ansible.builtin.assert:
+        that:
+          - users_with_keys.object_users is defined
+        fail_msg: "Namespace users with secret key metadata were not retrieved"
+        success_msg: "Namespace users with secret key metadata retrieved successfully"
+
+    - name: Get a single Object User
+      dellemc.objectscale.object_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+      register: single_user
+
+    - name: Display single Object User details
+      ansible.builtin.debug:
+        var: single_user.object_user
+
+    - name: Verify single Object User was retrieved
+      ansible.builtin.assert:
+        that:
+          - single_user.object_user is defined
+          - single_user.object_user.name == object_user_name
+        fail_msg: "Single Object User was not retrieved or name does not match"
+        success_msg: "Single Object User retrieved successfully"
+
+    - name: Get a single Object User with secret key metadata
+      dellemc.objectscale.object_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        include_secret_keys: true
+      register: user_with_keys
+
+    - name: Display user with secret key metadata (plaintext values never returned)
+      ansible.builtin.debug:
+        var: user_with_keys.object_user
+
+    - name: Verify user with secret key metadata was retrieved
+      ansible.builtin.assert:
+        that:
+          - user_with_keys.object_user is defined
+          - user_with_keys.object_user.name == object_user_name
+          - user_with_keys.object_user.secret_key_metadata is defined
+        fail_msg: "User with secret key metadata was not retrieved or name does not match"
+        success_msg: "User with secret key metadata retrieved successfully"
