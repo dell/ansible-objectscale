@@ -26,24 +26,37 @@ class BaseModel(Generic[_T]):
         pass
 
     def __init__(self, **kw: Any) -> None:
-        pass
+        for key, value in kw.items():
+            object.__setattr__(self, key, value)
+
+    def model_dump(self, by_alias: bool = False, exclude_none: bool = False, **kw: Any) -> dict:
+        data = {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+        if exclude_none:
+            data = {k: v for k, v in data.items() if v is not None}
+        return data
 
     def to_dict(self) -> dict:
-        return {}
+        return self.model_dump(by_alias=True, exclude_none=True)
 
     def to_json(self) -> str:
-        return "{}"
+        import json
+        return json.dumps(self.to_dict())
 
     @classmethod
     def from_dict(cls, obj: Any) -> Any:
+        if isinstance(obj, dict):
+            return cls(**obj)
         return cls()
 
     @classmethod
     def from_json(cls, j: str) -> Any:
-        return cls()
+        import json
+        return cls.from_dict(json.loads(j))
 
     @classmethod
     def model_validate(cls, obj: Any, **kw: Any) -> Any:
+        if isinstance(obj, dict):
+            return cls(**obj)
         return cls()
 
 
@@ -131,7 +144,12 @@ Self = Any
 
 
 StrictBytes = bytes
-SecretStr = str
+
+
+class SecretStr(str):
+    """str subclass that satisfies the generated client's get_secret_value() calls."""
+    def get_secret_value(self) -> str:
+        return str(self)
 
 
 # --- urllib3 stubs ---

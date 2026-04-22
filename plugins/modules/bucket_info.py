@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # Copyright: (c) 2026, Dell Technologies
-# GNU General Public License v3.0+ 
-# (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 """Ansible module for retrieving information about ObjectScale buckets"""
 
@@ -86,8 +85,32 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils import (
 
 BucketApi = bucket_api.BucketApi
 
+try:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils \
+        import objectscale_client
+except ImportError:
+    objectscale_client = None  # type: ignore[assignment]
+
+
+def _ensure_client_stub_compatibility() -> None:
+    """Patch generated stubs for runtime compatibility when pydantic is absent.
+
+    In environments without pydantic, generated stubs may map SecretStr to str.
+    In that case, ApiClient treats normal strings as SecretStr and calls
+    get_secret_value() on them, which fails. This runtime guard keeps behavior
+    compatible without modifying generated module_utils code.
+    """
+    if objectscale_client is not None:
+        secret_str_cls = getattr(objectscale_client, 'SecretStr', None)
+        if secret_str_cls is str:
+            class _CompatSecretStr(str):
+                def get_secret_value(self) -> str:
+                    return str(self)
+            objectscale_client.SecretStr = _CompatSecretStr
+
 
 def main():
+    _ensure_client_stub_compatibility()
     module_params = utils.get_objectscale_management_host_parameters()
     module_params.update(
         name=dict(type='str', required=False),

@@ -42,7 +42,7 @@ class BucketApi:
         except NotFoundException:
             return None
         except ApiException as e:
-            if e.status == 404:
+            if e.status in (404, 400):
                 return None
             raise
 
@@ -97,9 +97,12 @@ class BucketApi:
 
     def update_bucket_tagging(self, name: str, namespace: str, tags: Dict[str, str]) -> bool:
         """Updates the tags for a bucket."""
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api import bucket_api as generated_bucket_api
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_add_bucket_tags_request import BucketServiceAddBucketTagsRequest
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_set_inner import BucketServiceCreateBucketRequestTagSetInner
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api \
+            import bucket_api as generated_bucket_api
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_add_bucket_tags_request \
+            import BucketServiceAddBucketTagsRequest
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_create_bucket_request_tag_set_inner \
+            import BucketServiceCreateBucketRequestTagSetInner
         api = generated_bucket_api.BucketApi(self.api_client)
         tag_list = [
             BucketServiceCreateBucketRequestTagSetInner(key=k, value=v)
@@ -116,8 +119,10 @@ class BucketApi:
 
     def update_bucket_versioning(self, name: str, namespace: str, enabled: bool) -> bool:
         """Updates the versioning status for a bucket."""
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api import bucket_api as generated_bucket_api
-        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_set_bucket_versioning_request import BucketServiceSetBucketVersioningRequest
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api \
+            import bucket_api as generated_bucket_api
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.bucket_service_set_bucket_versioning_request \
+            import BucketServiceSetBucketVersioningRequest
         api = generated_bucket_api.BucketApi(self.api_client)
         status = 'Enabled' if enabled else 'Suspended'
         versioning_request = BucketServiceSetBucketVersioningRequest(
