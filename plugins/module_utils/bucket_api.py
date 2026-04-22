@@ -67,7 +67,16 @@ class BucketApi:
             if response is None:
                 return []
             if hasattr(response, 'object_bucket') and response.object_bucket:
-                return [b.to_dict() for b in response.object_bucket]
+                # Handle both dict and object responses
+                buckets = []
+                for b in response.object_bucket:
+                    if isinstance(b, dict):
+                        buckets.append(b)
+                    elif hasattr(b, 'to_dict'):
+                        buckets.append(b.to_dict())
+                    else:
+                        buckets.append(b)
+                return buckets
             return []
         except NotFoundException:
             return []
