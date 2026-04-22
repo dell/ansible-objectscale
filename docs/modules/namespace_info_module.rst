@@ -59,32 +59,6 @@ Parameters
   <tbody>
   <tr>
     <td valign="top">
-      <div class="ansibleOptionAnchor" id="parameter-limit"></div>
-      <p style="display: inline;"><strong>limit</strong></p>
-      <a class="ansibleOptionLink" href="#parameter-limit" title="Permalink to this option"></a>
-      <p style="font-size: small; margin-bottom: 0;">
-        <span style="color: purple;">integer</span>
-      </p>
-    </td>
-    <td valign="top">
-      <p>Maximum number of namespaces to return.</p>
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <div class="ansibleOptionAnchor" id="parameter-marker"></div>
-      <p style="display: inline;"><strong>marker</strong></p>
-      <a class="ansibleOptionLink" href="#parameter-marker" title="Permalink to this option"></a>
-      <p style="font-size: small; margin-bottom: 0;">
-        <span style="color: purple;">string</span>
-      </p>
-    </td>
-    <td valign="top">
-      <p>Pagination marker for namespace listing.</p>
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
       <div class="ansibleOptionAnchor" id="parameter-match"></div>
       <p style="display: inline;"><strong>match</strong></p>
       <a class="ansibleOptionLink" href="#parameter-match" title="Permalink to this option"></a>
@@ -247,7 +221,6 @@ Examples
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
         match: "team-*"
-        limit: 20
       register: namespace_info_result
 
 

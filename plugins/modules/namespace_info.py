@@ -42,17 +42,6 @@ options:
     type: str
     required: false
 
-  limit:
-    description:
-    - Maximum number of namespaces to return.
-    type: int
-    required: false
-
-  marker:
-    description:
-    - Pagination marker for namespace listing.
-    type: str
-    required: false
 
 notes:
 - The I(check_mode) is supported. This is a read-only info module.
@@ -85,7 +74,6 @@ EXAMPLES = r'''
     objectscale_password: "{{ objectscale_password }}"
     validate_certs: false
     match: "team-*"
-    limit: 20
   register: namespace_info_result
 '''
 
@@ -122,7 +110,10 @@ namespaces:
 from typing import Any, Dict, List, Optional
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.dellemc.objectscale.plugins.module_utils import utils
-from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import HAS_OBJECTSCALE_CLIENT
+from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import (
+    HAS_OBJECTSCALE_CLIENT,
+    paginate_with_next_marker
+)
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import api_client as objectscale_api_client
@@ -171,8 +162,6 @@ class NamespaceInfo(object):
         self.module_params.update(dict(
             namespace_name=dict(type='str', required=False),
             match=dict(type='str', required=False),
-            limit=dict(type='int', required=False),
-            marker=dict(type='str', required=False),
         ))
 
         self.module = AnsibleModule(
@@ -218,20 +207,20 @@ class NamespaceInfo(object):
             return None
 
     def list_namespaces(self) -> List[Dict[str, Any]]:
-        """List namespaces with optional pagination and name matching."""
-        list_kwargs: Dict[str, Any] = {}
-        if self.module.params.get('limit') is not None:
-            list_kwargs['limit'] = str(self.module.params.get('limit'))
-        if self.module.params.get('marker') is not None:
-            list_kwargs['marker'] = str(self.module.params.get('marker'))
+        """List namespaces with auto-pagination and optional name matching."""
+        base_kwargs: Dict[str, Any] = {}
         if self.module.params.get('match'):
-            list_kwargs['name'] = str(self.module.params.get('match'))
+            base_kwargs['name'] = str(self.module.params.get('match'))
 
         try:
-            response = self.namespace_api.namespace_service_get_namespaces(**list_kwargs)
+            all_namespaces = paginate_with_next_marker(
+                api_call=self.namespace_api.namespace_service_get_namespaces,
+                base_kwargs=base_kwargs,
+                items_key='namespace'
+            )
             return [
                 ns.to_dict() if hasattr(ns, 'to_dict') else ns
-                for ns in (response.namespace or [])
+                for ns in (all_namespaces or [])
             ]
         except Exception as e:
             error_msg = utils.determine_error(e)

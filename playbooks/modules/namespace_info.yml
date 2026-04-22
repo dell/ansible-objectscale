@@ -42,38 +42,8 @@
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
         match: "team-*"
-        limit: 20
       register: namespaces_by_prefix
 
     - name: Display namespaces by prefix
       ansible.builtin.debug:
         var: namespaces_by_prefix.namespaces
-
-    - name: List namespaces with pagination
-      dellemc.objectscale.namespace_info:
-        objectscale_host: "{{ objectscale_host }}"
-        objectscale_username: "{{ objectscale_username }}"
-        objectscale_password: "{{ objectscale_password }}"
-        validate_certs: "{{ validate_certs }}"
-        limit: 10
-      register: first_page
-
-    - name: Display first page of namespaces
-      ansible.builtin.debug:
-        var: first_page.namespaces
-
-    - name: Get next page using marker
-      dellemc.objectscale.namespace_info:
-        objectscale_host: "{{ objectscale_host }}"
-        objectscale_username: "{{ objectscale_username }}"
-        objectscale_password: "{{ objectscale_password }}"
-        validate_certs: "{{ validate_certs }}"
-        limit: 10
-        marker: "{{ first_page.namespaces[-1].id }}"
-      register: second_page
-      when: first_page.namespaces | length > 0
-
-    - name: Display second page of namespaces
-      ansible.builtin.debug:
-        var: second_page.namespaces
-      when: first_page.namespaces | length > 0

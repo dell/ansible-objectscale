@@ -112,3 +112,55 @@ def determine_error(error_obj: Exception) -> str:
         except Exception:
             return str(body)
     return str(error_obj)
+
+
+def paginate_with_next_marker(api_call, base_kwargs, items_key):
+    """
+    Auto-paginate an API call that uses NextMarker-based pagination.
+
+    This function handles the following pagination pattern:
+    1. The list API accepts `marker` as a query parameter.
+    2. The list API returns a response with following structure:
+       {
+           "items": [...],
+           "NextMarker": "..."
+       }
+
+    Args:
+        api_call: The API method to call (e.g., self.bucket_api.bucket_service_get_buckets)
+        base_kwargs: Base kwargs to pass to each API call (e.g., {'namespace': 'ns1'})
+        items_key: Key in response.to_dict() containing the items list
+                   (e.g., 'object_bucket', 'namespace', 'blobuser')
+
+    Returns:
+        List of all items across all pages
+
+    Example:
+        def list_all_buckets(self):
+            return paginate_with_next_marker(
+                api_call=self.bucket_api.bucket_service_get_buckets,
+                base_kwargs=dict(namespace=self.namespace),
+                items_key='object_bucket'
+            )
+    """
+    all_items = []
+    marker = None
+
+    while True:
+        kwargs = dict(base_kwargs)
+        if marker:
+            kwargs['marker'] = marker
+
+        response = api_call(**kwargs)
+        result = response.to_dict()
+        items = result.get(items_key) or []
+        all_items.extend(items)
+
+        # Check if there are more results using NextMarker
+        next_marker = result.get('NextMarker')
+        if next_marker:
+            marker = next_marker
+        else:
+            break
+
+    return all_items 
