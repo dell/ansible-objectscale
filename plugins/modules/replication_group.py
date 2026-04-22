@@ -126,7 +126,8 @@ options:
     type: bool
     default: false
 notes:
-  - If no delete endpoint is available in the current client, this module removes all mappings to reach absent state.
+  - Mapping removal is currently not supported on target ObjectScale builds where remove-from-vpool is unavailable.
+  - Deletion requires a direct delete endpoint in the installed objectscale_client; otherwise the module fails.
 '''
 
 EXAMPLES = r'''
@@ -231,14 +232,16 @@ class ReplicationGroup(object):
         )
 
         if not HAS_OBJECTSCALE_CLIENT:
-            self.module.fail_json(
+            self.module.exit_json(
+                failed=True,
                 msg="The objectscale_client Python package is required. "
                     "Install it with: pip install pydantic urllib3 python-dateutil"
             )
             return
 
         if DataVpoolApi is None:
-            self.module.fail_json(
+            self.module.exit_json(
+                failed=True,
                 msg="ObjectScale DataVpool API client is unavailable. Rebuild/install objectscale_client."
             )
             return
@@ -247,7 +250,7 @@ class ReplicationGroup(object):
             self.api_client = utils.get_objectscale_connection(self.module.params)
             self.data_vpool_api = DataVpoolApi(self.api_client)
         except Exception as e:
-            self.module.fail_json(msg="Failed to connect to ObjectScale: %s" % str(e))
+            self.module.exit_json(failed=True, msg="Failed to connect to ObjectScale: %s" % str(e))
             return
 
     @staticmethod
@@ -279,11 +282,11 @@ class ReplicationGroup(object):
         normalized = []
         for item in mappings or []:
             if not isinstance(item, dict):
-                self.module.fail_json(msg="Each mappings entry must be a dict")
+                self.module.exit_json(failed=True, msg="Each mappings entry must be a dict")
             vdc_id = item.get('vdc_id')
             storage_pool_id = item.get('storage_pool_id')
             if not vdc_id or not storage_pool_id:
-                self.module.fail_json(msg="Each mapping requires vdc_id and storage_pool_id")
+                self.module.exit_json(failed=True, msg="Each mapping requires vdc_id and storage_pool_id")
             normalized.append(
                 {
                     'name': vdc_id,
@@ -336,7 +339,7 @@ class ReplicationGroup(object):
             return data.get('data_service_vpool', []) or []
         except Exception as e:
             error_msg = utils.determine_error(e)
-            self.module.fail_json(msg="Listing replication groups failed with error: %s" % error_msg)
+            self.module.exit_json(failed=True, msg="Listing replication groups failed with error: %s" % error_msg)
             return []
 
     def get_replication_group_by_id(self, rg_id: str) -> Optional[Dict[str, Any]]:
@@ -355,7 +358,7 @@ class ReplicationGroup(object):
             if str(status) in ('404', '400'):
                 return None
             error_msg = utils.determine_error(e)
-            self.module.fail_json(msg="Getting replication group %s failed with error: %s" % (rg_id, error_msg))
+            self.module.exit_json(failed=True, msg="Getting replication group %s failed with error: %s" % (rg_id, error_msg))
             return None
 
     def find_replication_group_by_name(self, name: str) -> Optional[Dict[str, Any]]:
@@ -363,7 +366,7 @@ class ReplicationGroup(object):
         if not matches:
             return None
         if len(matches) > 1:
-            self.module.fail_json(msg="Multiple replication groups found for name '%s'. Use id." % name)
+            self.module.exit_json(failed=True, msg="Multiple replication groups found for name '%s'. Use id." % name)
             return None
         rg_id = matches[0].get('id')
         if not rg_id:
@@ -396,7 +399,7 @@ class ReplicationGroup(object):
 
     def is_replication_group_modified(self, current: Dict[str, Any]) -> Dict[str, Any]:
         desired_meta = self._desired_metadata(current)
-        metadata_changes = {}
+        metadata_changes: Dict[str, Any] = {}
 
         if desired_meta.get('name') and desired_meta.get('name') != current.get('name'):
             metadata_changes['name'] = desired_meta['name']
@@ -426,11 +429,11 @@ class ReplicationGroup(object):
     def create_replication_group(self) -> None:
         name = self.module.params.get('name')
         if not name:
-            self.module.fail_json(msg="name is required when state=present and id is not provided")
+            self.module.exit_json(failed=True, msg="name is required when state=present and id is not provided")
             return
 
         requested_mappings = self._normalize_mapping_input(self.module.params.get('mappings'))
-        payload = {
+        payload: Dict[str, Any] = {
             'id': self.module.params.get('id'),
             'name': name,
             'description': self.module.params.get('description'),
@@ -459,7 +462,7 @@ class ReplicationGroup(object):
                     None,
                 )
                 if not callable(serializer):
-                    self.module.fail_json(msg='Create serializer method is unavailable in objectscale_client')
+                    self.module.exit_json(failed=True, msg='Create serializer method is unavailable in objectscale_client')
                     return
                 request = self._build_api_payload(None, payload)
                 params = serializer(
@@ -482,7 +485,7 @@ class ReplicationGroup(object):
                 )
         except Exception as e:
             error_msg = utils.determine_error(e)
-            self.module.fail_json(msg="Creating replication group failed with error: %s" % error_msg)
+            self.module.exit_json(failed=True, msg="Creating replication group failed with error: %s" % error_msg)
 
     def _rename_by_recreate(self, current: Dict[str, Any], modifications: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Fallback rename workflow for builds where PUT rename is not reliable."""
@@ -495,7 +498,7 @@ class ReplicationGroup(object):
             desired_mappings = self._normalize_current_mappings(current)
 
         desired_meta = self._desired_metadata(current)
-        create_payload = {
+        create_payload: Dict[str, Any] = {
             'id': None,
             'name': desired_name,
             'description': desired_meta.get('description'),
@@ -525,12 +528,12 @@ class ReplicationGroup(object):
             )
         except Exception as e:
             error_msg = utils.determine_error(e)
-            self.module.fail_json(msg="Updating replication group %s failed with error: %s" % (rg_id, error_msg))
+            self.module.exit_json(failed=True, msg="Updating replication group %s failed with error: %s" % (rg_id, error_msg))
 
     def add_mappings(self, rg_id: str, mappings_to_add: List[Dict[str, Any]]) -> None:
         if not mappings_to_add:
             return
-        payload = {'mappings': mappings_to_add}
+        payload: Dict[str, Any] = {'mappings': mappings_to_add}
         try:
             request = self._build_api_payload(DataServiceVpoolServiceAddToVpoolRequest, payload)
             self.data_vpool_api.data_service_vpool_service_add_to_vpool(
@@ -539,13 +542,17 @@ class ReplicationGroup(object):
             )
         except Exception as e:
             error_msg = utils.determine_error(e)
-            self.module.fail_json(msg="Adding mappings to replication group %s failed with error: %s" % (rg_id, error_msg))
+            self.module.exit_json(failed=True, msg="Adding mappings to replication group %s failed with error: %s" % (rg_id, error_msg))
 
     def remove_mappings(self, rg_id: str, mappings_to_remove: List[Dict[str, Any]]) -> None:
         if not mappings_to_remove:
             return
         # Runtime workaround: remove-from-vpool operation is not supported on
         # the target ObjectScale build. Skip remove to avoid false failures.
+        self.module.warn(
+            "Requested mapping removal for replication group %s is skipped because remove operation is not supported"
+            % rg_id
+        )
         self.module.log(
             "Skipping mapping removal for replication group %s because remove operation is not supported"
             % rg_id
@@ -554,7 +561,7 @@ class ReplicationGroup(object):
     def delete_replication_group(self, current: Dict[str, Any]) -> None:
         rg_id = current.get('id')
         if not rg_id:
-            self.module.fail_json(msg="Replication group id is required for delete")
+            self.module.exit_json(failed=True, msg="Replication group id is required for delete")
             return
 
         direct_delete = getattr(self.data_vpool_api, 'data_service_vpool_service_delete_data_service_vpool', None)
@@ -564,18 +571,25 @@ class ReplicationGroup(object):
                 return
             except Exception as e:
                 error_msg = utils.determine_error(e)
-                self.module.fail_json(msg="Deleting replication group %s failed with error: %s" % (rg_id, error_msg))
+                self.module.exit_json(failed=True, msg="Deleting replication group %s failed with error: %s" % (rg_id, error_msg))
                 return
 
         # Runtime workaround: do not attempt delete-by-removing-all-mappings.
         # Remove operation is not supported on the target build.
+        self.module.exit_json(
+            failed=True,
+            msg=(
+                "Deleting replication group %s is not supported by the installed objectscale_client "
+                "because direct delete API is unavailable"
+            ) % rg_id,
+        )
         return
 
     def _predict_after_state(self, before: Dict[str, Any], modifications: Dict[str, Any], state: str) -> Dict[str, Any]:
         if state == 'absent':
             return {}
-        after = dict(before)
-        metadata_changes = modifications.get('metadata_changes') or {}
+        after: Dict[str, Any] = dict(before)
+        metadata_changes: Dict[str, Any] = modifications.get('metadata_changes') or {}
         if metadata_changes:
             if 'name' in metadata_changes:
                 after['name'] = metadata_changes['name']
@@ -595,7 +609,7 @@ class ReplicationGroup(object):
         return after
 
     def perform_module_operation(self) -> None:
-        result = dict(changed=False, replication_group=None)
+        result: Dict[str, Any] = dict(changed=False, replication_group=None)
         state = self.module.params['state']
         current = self._resolve_current()
         before_state = self._normalize_state(current)
@@ -633,7 +647,7 @@ class ReplicationGroup(object):
             current = self._resolve_current()
 
         if not current:
-            self.module.fail_json(msg="Unable to resolve replication group after create/update operation")
+            self.module.exit_json(failed=True, msg="Unable to resolve replication group after create/update operation")
             return
 
         modifications = self.is_replication_group_modified(current)
@@ -642,7 +656,7 @@ class ReplicationGroup(object):
             if not self.module.check_mode:
                 rg_id = current.get('id')
                 if not rg_id:
-                    self.module.fail_json(msg="Replication group id is missing")
+                    self.module.exit_json(failed=True, msg="Replication group id is missing")
                     return
                 metadata_changes = modifications.get('metadata_changes') or {}
                 if metadata_changes.get('name') and metadata_changes.get('name') != current.get('name'):

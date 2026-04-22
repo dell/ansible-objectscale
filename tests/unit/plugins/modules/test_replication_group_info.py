@@ -83,8 +83,8 @@ class TestReplicationGroupInfoInit:
 
         ReplicationGroupInfo()
 
-        mock_module.fail_json.assert_called_once()
-        assert 'objectscale_client' in mock_module.fail_json.call_args[1]['msg']
+        mock_module.exit_json.assert_called_once()
+        assert 'objectscale_client' in mock_module.exit_json.call_args[1]['msg']
 
 
 class TestReplicationGroupInfoOperations:
@@ -168,8 +168,8 @@ class TestReplicationGroupInfoOperations:
 
         obj.perform_module_operation()
 
-        obj.module.fail_json.assert_called_once()
-        assert 'mutually exclusive' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'mutually exclusive' in obj.module.exit_json.call_args[1]['msg']
 
     def test_duplicate_name_failure(self):
         obj = make_info_obj(params={'name': 'dup'})
@@ -180,8 +180,8 @@ class TestReplicationGroupInfoOperations:
 
         obj.perform_module_operation()
 
-        obj.module.fail_json.assert_called_once()
-        assert 'Multiple replication groups found' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Multiple replication groups found' in obj.module.exit_json.call_args[1]['msg']
 
     def test_main_function(self):
         with patch(f'{MODULE}.ReplicationGroupInfo') as mock_cls:
@@ -206,8 +206,8 @@ class TestReplicationGroupInfoAdditionalCoverage:
              patch(f'{MODULE}.DataVpoolApi', None):
             ReplicationGroupInfo()
 
-        mock_module.fail_json.assert_called_once()
-        assert 'DataVpool API client is unavailable' in mock_module.fail_json.call_args[1]['msg']
+        mock_module.exit_json.assert_called_once()
+        assert 'DataVpool API client is unavailable' in mock_module.exit_json.call_args[1]['msg']
 
     def test_init_connection_failure(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.replication_group_info import ReplicationGroupInfo
@@ -222,8 +222,8 @@ class TestReplicationGroupInfoAdditionalCoverage:
              patch(f'{MODULE}.utils.get_objectscale_connection', side_effect=Exception('conn err')):
             ReplicationGroupInfo()
 
-        mock_module.fail_json.assert_called_once()
-        assert 'Failed to connect to ObjectScale' in mock_module.fail_json.call_args[1]['msg']
+        mock_module.exit_json.assert_called_once()
+        assert 'Failed to connect to ObjectScale' in mock_module.exit_json.call_args[1]['msg']
 
     def test_to_dict_variants(self):
         obj = make_info_obj()
@@ -240,8 +240,8 @@ class TestReplicationGroupInfoAdditionalCoverage:
         with patch('ansible_collections.dellemc.objectscale.plugins.module_utils.utils.determine_error', return_value='server err'):
             obj.get_by_id('urn:1')
 
-        obj.module.fail_json.assert_called_once()
-        assert 'Getting replication group urn:1 failed' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Getting replication group urn:1 failed' in obj.module.exit_json.call_args[1]['msg']
 
     def test_list_all_error(self):
         obj = make_info_obj()
@@ -250,8 +250,8 @@ class TestReplicationGroupInfoAdditionalCoverage:
         with patch('ansible_collections.dellemc.objectscale.plugins.module_utils.utils.determine_error', return_value='list err'):
             obj.list_all()
 
-        obj.module.fail_json.assert_called_once()
-        assert 'Listing replication groups failed' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Listing replication groups failed' in obj.module.exit_json.call_args[1]['msg']
 
     def test_perform_fetch_full_details_false(self):
         obj = make_info_obj(params={'fetch_full_details': False})

@@ -123,14 +123,16 @@ class ReplicationGroupInfo(object):
         )
 
         if not HAS_OBJECTSCALE_CLIENT:
-            self.module.fail_json(
+            self.module.exit_json(
+                failed=True,
                 msg="The objectscale_client Python package is required. "
                     "Install it with: pip install pydantic urllib3 python-dateutil"
             )
             return
 
         if DataVpoolApi is None:
-            self.module.fail_json(
+            self.module.exit_json(
+                failed=True,
                 msg="ObjectScale DataVpool API client is unavailable. Rebuild/install objectscale_client."
             )
             return
@@ -139,7 +141,7 @@ class ReplicationGroupInfo(object):
             self.api_client = utils.get_objectscale_connection(self.module.params)
             self.data_vpool_api = DataVpoolApi(self.api_client)
         except Exception as e:
-            self.module.fail_json(msg="Failed to connect to ObjectScale: %s" % str(e))
+            self.module.exit_json(failed=True, msg="Failed to connect to ObjectScale: %s" % str(e))
             return
 
     @staticmethod
@@ -167,7 +169,7 @@ class ReplicationGroupInfo(object):
             if str(status) in ('404', '400'):
                 return None
             error_msg = utils.determine_error(e)
-            self.module.fail_json(msg="Getting replication group %s failed with error: %s" % (rg_id, error_msg))
+            self.module.exit_json(failed=True, msg="Getting replication group %s failed with error: %s" % (rg_id, error_msg))
             return None
 
     def list_all(self) -> List[Dict[str, Any]]:
@@ -177,7 +179,7 @@ class ReplicationGroupInfo(object):
             return data.get('data_service_vpool', []) or []
         except Exception as e:
             error_msg = utils.determine_error(e)
-            self.module.fail_json(msg="Listing replication groups failed with error: %s" % error_msg)
+            self.module.exit_json(failed=True, msg="Listing replication groups failed with error: %s" % error_msg)
             return []
 
     def perform_module_operation(self) -> None:
@@ -186,10 +188,10 @@ class ReplicationGroupInfo(object):
         fetch_full = self.module.params.get('fetch_full_details')
 
         if rg_id and rg_name:
-            self.module.fail_json(msg="Parameters 'id' and 'name' are mutually exclusive")
+            self.module.exit_json(failed=True, msg="Parameters 'id' and 'name' are mutually exclusive")
             return
 
-        result_items = []
+        result_items: List[Dict[str, Any]] = []
 
         if rg_id:
             details = self.get_by_id(rg_id)
@@ -200,7 +202,7 @@ class ReplicationGroupInfo(object):
             if rg_name:
                 listed = [item for item in listed if item.get('name') == rg_name]
                 if len(listed) > 1:
-                    self.module.fail_json(msg="Multiple replication groups found for name '%s'. Use id." % rg_name)
+                    self.module.exit_json(failed=True, msg="Multiple replication groups found for name '%s'. Use id." % rg_name)
                     return
 
             if fetch_full:

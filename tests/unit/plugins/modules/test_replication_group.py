@@ -66,8 +66,8 @@ class TestReplicationGroupInit:
 
         ReplicationGroup()
 
-        mock_module.fail_json.assert_called_once()
-        assert 'objectscale_client' in mock_module.fail_json.call_args[1]['msg']
+        mock_module.exit_json.assert_called_once()
+        assert 'objectscale_client' in mock_module.exit_json.call_args[1]['msg']
 
 
 class TestReplicationGroupReadOps:
@@ -100,8 +100,8 @@ class TestReplicationGroupReadOps:
 
         obj.find_replication_group_by_name('dup')
 
-        obj.module.fail_json.assert_called_once()
-        assert 'Multiple replication groups found' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Multiple replication groups found' in obj.module.exit_json.call_args[1]['msg']
 
 
 class TestReplicationGroupDiffLogic:
@@ -247,7 +247,7 @@ class TestReplicationGroupHelpers:
 
         obj._normalize_mapping_input(params['mappings'])
 
-        obj.module.fail_json.assert_called_once()
+        obj.module.exit_json.assert_called_once()
 
     def test_main_function(self):
         with patch(f'{MODULE}.ReplicationGroup') as mock_cls:
@@ -268,8 +268,8 @@ class TestReplicationGroupAdditionalCoverage:
              patch(f'{MODULE}.HAS_OBJECTSCALE_CLIENT', True), \
              patch(f'{MODULE}.DataVpoolApi', None):
             ReplicationGroup()
-        mock_module.fail_json.assert_called_once()
-        assert 'DataVpool API client is unavailable' in mock_module.fail_json.call_args[1]['msg']
+        mock_module.exit_json.assert_called_once()
+        assert 'DataVpool API client is unavailable' in mock_module.exit_json.call_args[1]['msg']
 
     def test_init_connection_failure(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.replication_group import ReplicationGroup
@@ -280,8 +280,8 @@ class TestReplicationGroupAdditionalCoverage:
              patch(f'{MODULE}.DataVpoolApi'), \
              patch(f'{MODULE}.utils.get_objectscale_connection', side_effect=Exception('conn failed')):
             ReplicationGroup()
-        mock_module.fail_json.assert_called_once()
-        assert 'Failed to connect to ObjectScale' in mock_module.fail_json.call_args[1]['msg']
+        mock_module.exit_json.assert_called_once()
+        assert 'Failed to connect to ObjectScale' in mock_module.exit_json.call_args[1]['msg']
 
     def test_to_dict_variants(self):
         obj = make_rg_obj()
@@ -329,8 +329,8 @@ class TestReplicationGroupAdditionalCoverage:
         obj.data_vpool_api.data_service_vpool_service_get_data_service_vpools.side_effect = Exception('list err')
         with patch(f'{UTILS}.determine_error', return_value='list err'):
             obj.get_all_replication_groups()
-        obj.module.fail_json.assert_called_once()
-        assert 'Listing replication groups failed' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Listing replication groups failed' in obj.module.exit_json.call_args[1]['msg']
 
     def test_get_replication_group_by_id_error(self):
         obj = make_rg_obj()
@@ -339,8 +339,8 @@ class TestReplicationGroupAdditionalCoverage:
         obj.data_vpool_api.data_service_vpool_service_get_data_service_store.side_effect = err
         with patch(f'{UTILS}.determine_error', return_value='server err'):
             obj.get_replication_group_by_id('urn:test')
-        obj.module.fail_json.assert_called_once()
-        assert 'Getting replication group urn:test failed' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Getting replication group urn:test failed' in obj.module.exit_json.call_args[1]['msg']
 
     def test_find_by_name_not_found_and_no_id_entry(self):
         obj = make_rg_obj()
@@ -377,8 +377,8 @@ class TestReplicationGroupAdditionalCoverage:
         params['name'] = None
         obj = make_rg_obj(params=params)
         obj.create_replication_group()
-        obj.module.fail_json.assert_called_once()
-        assert 'name is required' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'name is required' in obj.module.exit_json.call_args[1]['msg']
 
     def test_create_replication_group_error(self):
         params = BASE_PARAMS.copy()
@@ -387,8 +387,8 @@ class TestReplicationGroupAdditionalCoverage:
         obj.data_vpool_api.data_service_vpool_service_create_data_service_vpool.side_effect = Exception('create err')
         with patch(f'{UTILS}.determine_error', return_value='create err'):
             obj.create_replication_group()
-        obj.module.fail_json.assert_called_once()
-        assert 'Creating replication group failed' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Creating replication group failed' in obj.module.exit_json.call_args[1]['msg']
 
     def test_update_metadata_noop_and_error(self):
         obj = make_rg_obj()
@@ -399,8 +399,8 @@ class TestReplicationGroupAdditionalCoverage:
         obj.data_vpool_api.data_service_vpool_service_put_data_service_vpool.side_effect = Exception('update err')
         with patch(f'{UTILS}.determine_error', return_value='update err'):
             obj.update_replication_group_metadata('urn:1', {'description': 'd1'})
-        obj.module.fail_json.assert_called_once()
-        assert 'Updating replication group urn:1 failed' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Updating replication group urn:1 failed' in obj.module.exit_json.call_args[1]['msg']
 
     def test_add_remove_mappings_noop_and_error(self):
         obj = make_rg_obj()
@@ -412,18 +412,18 @@ class TestReplicationGroupAdditionalCoverage:
         obj.data_vpool_api.data_service_vpool_service_add_to_vpool.side_effect = Exception('add err')
         with patch(f'{UTILS}.determine_error', return_value='add err'):
             obj.add_mappings('urn:1', [{'name': 'v', 'value': 's', 'is_replication_target': False}])
-        obj.module.fail_json.assert_called_once()
+        obj.module.exit_json.assert_called_once()
 
         obj = make_rg_obj()
         obj.remove_mappings('urn:1', [{'name': 'v', 'value': 's', 'is_replication_target': False}])
         obj.data_vpool_api.data_service_vpool_service_remove_from_vpool.assert_not_called()
-        obj.module.fail_json.assert_not_called()
+        obj.module.exit_json.assert_not_called()
 
     def test_delete_replication_group_paths(self):
         obj = make_rg_obj()
         obj.delete_replication_group({'name': 'x'})
-        obj.module.fail_json.assert_called_once()
-        assert 'id is required for delete' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'id is required for delete' in obj.module.exit_json.call_args[1]['msg']
 
         obj = make_rg_obj()
         obj.data_vpool_api.data_service_vpool_service_delete_data_service_vpool = MagicMock()
@@ -434,12 +434,14 @@ class TestReplicationGroupAdditionalCoverage:
         obj.data_vpool_api.data_service_vpool_service_delete_data_service_vpool = MagicMock(side_effect=Exception('del err'))
         with patch(f'{UTILS}.determine_error', return_value='del err'):
             obj.delete_replication_group({'id': 'urn:1'})
-        obj.module.fail_json.assert_called_once()
+        obj.module.exit_json.assert_called_once()
 
         obj = make_rg_obj()
         obj.data_vpool_api.data_service_vpool_service_delete_data_service_vpool = None
         obj.remove_mappings = MagicMock()
         obj.delete_replication_group({'id': 'urn:1', 'varrayMappings': [{'name': 'v', 'value': 's'}]})
+        obj.module.exit_json.assert_called_once()
+        assert 'direct delete API is unavailable' in obj.module.exit_json.call_args[1]['msg']
         obj.remove_mappings.assert_not_called()
 
     def test_predict_after_state_absent_and_modify(self):
@@ -491,8 +493,8 @@ class TestReplicationGroupAdditionalCoverage:
 
         obj.perform_module_operation()
 
-        obj.module.fail_json.assert_called_once()
-        assert 'Unable to resolve replication group after create/update operation' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Unable to resolve replication group after create/update operation' in obj.module.exit_json.call_args[1]['msg']
 
     def test_perform_present_modified_check_mode_predicts_after(self):
         obj = make_rg_obj()
@@ -523,8 +525,8 @@ class TestReplicationGroupAdditionalCoverage:
 
         obj.perform_module_operation()
 
-        obj.module.fail_json.assert_called_once()
-        assert 'id is missing' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'id is missing' in obj.module.exit_json.call_args[1]['msg']
 
 
 class TestReplicationGroupCoverageImprovements:
@@ -545,8 +547,8 @@ class TestReplicationGroupCoverageImprovements:
              patch(f'{MODULE}.DataServiceVpoolServicePutDataServiceVpoolRequest', None), \
              patch(f'{MODULE}.DataServiceVpoolServiceAddToVpoolRequest', None):
             ReplicationGroup()
-        mock_module.fail_json.assert_called_once()
-        assert 'DataVpool API client is unavailable' in mock_module.fail_json.call_args[1]['msg']
+        mock_module.exit_json.assert_called_once()
+        assert 'DataVpool API client is unavailable' in mock_module.exit_json.call_args[1]['msg']
 
     def test_build_api_payload_stub_base_class(self):
         """Test base class stub check in _build_api_payload (line 244)."""
@@ -568,16 +570,16 @@ class TestReplicationGroupCoverageImprovements:
         params['mappings'] = ['not-a-dict']
         obj = make_rg_obj(params=params)
 
-        # The method calls fail_json but doesn't return, so we need to mock it to raise
-        obj.module.fail_json.side_effect = Exception('fail_json called')
+        # The method calls exit_json but doesn't return, so we need to mock it to raise
+        obj.module.exit_json.side_effect = Exception('exit_json called')
 
         try:
             obj._normalize_mapping_input(params['mappings'])
         except Exception as e:
-            assert str(e) == 'fail_json called'
+            assert str(e) == 'exit_json called'
 
-        obj.module.fail_json.assert_called_once()
-        assert 'Each mappings entry must be a dict' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Each mappings entry must be a dict' in obj.module.exit_json.call_args[1]['msg']
 
     def test_get_replication_group_by_id_empty_response(self):
         """Test empty response handling in get_replication_group_by_id (lines 318-325)."""
@@ -646,8 +648,8 @@ class TestReplicationGroupCoverageImprovements:
 
         obj._create_replication_group_with_payload(payload)
 
-        obj.module.fail_json.assert_called_once()
-        assert 'Create serializer method is unavailable' in obj.module.fail_json.call_args[1]['msg']
+        obj.module.exit_json.assert_called_once()
+        assert 'Create serializer method is unavailable' in obj.module.exit_json.call_args[1]['msg']
 
     def test_rename_by_recreate(self):
         """Test _rename_by_recreate method (lines 462-484)."""
