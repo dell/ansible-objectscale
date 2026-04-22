@@ -131,7 +131,7 @@ def main():
     bucket_name = module.params.get('name')
 
     if not namespace:
-        module.fail_json(msg="missing required arguments: namespace")
+        module.exit_json(failed=True, msg="missing required arguments: namespace")
 
     try:
         api_client = utils.get_objectscale_connection(module.params)
@@ -149,7 +149,7 @@ def main():
             )
 
     except ApiException as e:
-        module.fail_json(msg=f"Failed to retrieve bucket info: {str(e)}")
+        module.exit_json(failed=True, msg=f"Failed to retrieve bucket info: {str(e)}")
 
     module.exit_json(**result)
 

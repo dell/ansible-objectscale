@@ -149,14 +149,14 @@ def main():
     versioning = module.params.get('versioning')
     force = module.params['force']
 
-    if not name:
-        module.fail_json(msg="missing required arguments: name")
+    if not name:        
+        module.exit_json(failed=True, msg="missing required arguments: name")
     if not namespace:
-        module.fail_json(msg="missing required arguments: namespace")
+        module.exit_json(failed=True, msg="missing required arguments: namespace")
 
     # Basic name validation
     if any(c.isupper() for c in name) or len(name) > 63:
-        module.fail_json(msg="'InvalidBucketName': Bucket name is invalid.")
+        module.exit_json(failed=True, msg="'InvalidBucketName': Bucket name is invalid.")
 
     try:
         api_client = utils.get_objectscale_connection(module.params)
@@ -196,7 +196,8 @@ def main():
                         )
                     except ApiException as e:
                         if 'BucketNotEmpty' in str(e):
-                            module.fail_json(
+                            module.exit_json(
+                                failed=True,
                                 msg="'BucketNotEmpty': The bucket"
                                 " you tried to delete is not"
                                 " empty."
@@ -204,7 +205,7 @@ def main():
                         raise
 
     except ApiException as e:
-        module.fail_json(msg=f"Module failed: {str(e)}")
+        module.exit_json(failed=True, msg=f"Module failed: {str(e)}")
 
     module.exit_json(**result)
 
