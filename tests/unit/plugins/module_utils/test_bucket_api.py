@@ -38,7 +38,7 @@ class TestBucketApi(unittest.TestCase):
         mock_api_instance = MagicMock()
         mock_api_instance.bucket_service_get_bucket_info.side_effect = NotFoundException(status=404, reason="Not Found")
         mock_generated_api_cls.return_value = mock_api_instance
-        
+
         # The bucket_api.get_bucket method returns None for non-existent buckets
         result = self.bucket_api.get_bucket('non-existent-bucket', 'my-namespace')
         self.assertIsNone(result)
