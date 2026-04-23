@@ -236,3 +236,149 @@ class TestDetermineError:
         result = determine_error(err)
 
         assert result == 'no body attr'
+
+
+class TestPaginateWithNextMarker:
+
+    def _make_mock_response(self, items, next_marker=None):
+        """Helper to create a mock response with items and optional NextMarker."""
+        mock_response = MagicMock()
+        mock_response.to_dict.return_value = {
+            'namespace': items,
+            'NextMarker': next_marker
+        }
+        return mock_response
+
+    def test_single_page(self):
+        """Test pagination when all items fit on one page."""
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import (
+            paginate_with_next_marker
+        )
+
+        mock_api_call = MagicMock()
+        mock_api_call.return_value = self._make_mock_response(
+            items=[{'id': '1', 'name': 'ns1'}, {'id': '2', 'name': 'ns2'}],
+            next_marker=None
+        )
+
+        result = paginate_with_next_marker(
+            api_call=mock_api_call,
+            base_kwargs={'namespace': 'ns1'},
+            items_key='namespace'
+        )
+
+        assert len(result) == 2
+        assert result[0]['name'] == 'ns1'
+        assert result[1]['name'] == 'ns2'
+        mock_api_call.assert_called_once_with(namespace='ns1')
+
+    def test_multiple_pages(self):
+        """Test pagination across multiple pages."""
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import (
+            paginate_with_next_marker
+        )
+
+        call_count = [0]
+
+        def mock_api_call(**kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return self._make_mock_response(
+                    items=[{'id': '1', 'name': 'ns1'}],
+                    next_marker='marker1'
+                )
+            elif call_count[0] == 2:
+                return self._make_mock_response(
+                    items=[{'id': '2', 'name': 'ns2'}],
+                    next_marker='marker2'
+                )
+            else:
+                return self._make_mock_response(
+                    items=[{'id': '3', 'name': 'ns3'}],
+                    next_marker=None
+                )
+
+        result = paginate_with_next_marker(
+            api_call=mock_api_call,
+            base_kwargs={'namespace': 'ns1'},
+            items_key='namespace'
+        )
+
+        assert len(result) == 3
+        assert result[0]['name'] == 'ns1'
+        assert result[1]['name'] == 'ns2'
+        assert result[2]['name'] == 'ns3'
+        assert call_count[0] == 3
+
+    def test_marker_passed_to_subsequent_calls(self):
+        """Test that marker is correctly passed to subsequent API calls."""
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import (
+            paginate_with_next_marker
+        )
+
+        call_kwargs = []
+
+        def mock_api_call(**kwargs):
+            call_kwargs.append(kwargs.copy())
+            if len(call_kwargs) == 1:
+                return self._make_mock_response(
+                    items=[{'id': '1'}],
+                    next_marker='marker1'
+                )
+            else:
+                return self._make_mock_response(
+                    items=[{'id': '2'}],
+                    next_marker=None
+                )
+
+        paginate_with_next_marker(
+            api_call=mock_api_call,
+            base_kwargs={'namespace': 'ns1'},
+            items_key='namespace'
+        )
+
+        assert call_kwargs[0] == {'namespace': 'ns1'}
+        assert call_kwargs[1] == {'namespace': 'ns1', 'marker': 'marker1'}
+
+    def test_empty_response(self):
+        """Test pagination when API returns empty items."""
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import (
+            paginate_with_next_marker
+        )
+
+        mock_api_call = MagicMock()
+        mock_api_call.return_value = self._make_mock_response(
+            items=[],
+            next_marker=None
+        )
+
+        result = paginate_with_next_marker(
+            api_call=mock_api_call,
+            base_kwargs={'namespace': 'ns1'},
+            items_key='namespace'
+        )
+
+        assert result == []
+
+    def test_base_kwargs_preserved(self):
+        """Test that base_kwargs are preserved in all API calls."""
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import (
+            paginate_with_next_marker
+        )
+
+        call_kwargs = []
+
+        def mock_api_call(**kwargs):
+            call_kwargs.append(kwargs.copy())
+            return self._make_mock_response(
+                items=[{'id': '1'}],
+                next_marker=None
+            )
+
+        paginate_with_next_marker(
+            api_call=mock_api_call,
+            base_kwargs={'namespace': 'ns1', 'filter': 'active'},
+            items_key='namespace'
+        )
+
+        assert call_kwargs[0] == {'namespace': 'ns1', 'filter': 'active'}

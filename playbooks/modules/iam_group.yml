@@ -76,19 +76,17 @@
         state: present
 
     - name: Gather IAM group info
-      dellemc.objectscale.info:
+      dellemc.objectscale.iam_group_info:
         objectscale_host: "{{ objectscale_host }}"
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        gather_subset:
-          - iam_group
         namespace: "{{ objectscale_namespace }}"
       register: group_info
 
     - name: Display groups
       ansible.builtin.debug:
-        var: group_info.IamGroups
+        var: group_info.iam_groups
 
     - name: Delete IAM group
       dellemc.objectscale.iam_group:

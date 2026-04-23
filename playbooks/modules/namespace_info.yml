@@ -1,0 +1,49 @@
+---
+- name: Namespace Info Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    validate_certs: false
+
+  tasks:
+    - name: List all namespaces
+      dellemc.objectscale.namespace_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: all_namespaces
+
+    - name: Display all namespaces
+      ansible.builtin.debug:
+        var: all_namespaces.namespaces
+
+    - name: Get namespace details by name
+      dellemc.objectscale.namespace_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        namespace_name: "testnamespace"
+      register: namespace_by_name
+
+    - name: Display namespace details
+      ansible.builtin.debug:
+        var: namespace_by_name.namespaces
+
+    - name: List namespaces by prefix
+      dellemc.objectscale.namespace_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        match: "team-*"
+      register: namespaces_by_prefix
+
+    - name: Display namespaces by prefix
+      ansible.builtin.debug:
+        var: namespaces_by_prefix.namespaces

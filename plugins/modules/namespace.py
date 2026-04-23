@@ -211,8 +211,8 @@ notes:
 - The I(check_mode) is not supported.
 - The objectscale_client Python package must be installed.
   Generate it with C(make build_client) and install with C(make install_client).
-- Use I(dellemc.objectscale.info) with C(gather_subset=namespace) for listing namespaces
-  and getting namespace details by name.
+- Use I(dellemc.objectscale.namespace_info) for listing namespaces and getting
+  namespace details by name.
 '''
 
 EXAMPLES = r'''
