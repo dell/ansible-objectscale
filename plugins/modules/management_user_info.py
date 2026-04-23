@@ -11,13 +11,15 @@ DOCUMENTATION = r'''
 ---
 module: management_user_info
 
-version_added: '1.1.0'
+version_added: '1.0.0'
 
 short_description: Gathers information about Management Users on Dell ObjectScale
 
 description:
 - Retrieves details for a single Management User or lists all Management Users
   on Dell ObjectScale via the C(/vdc/users) REST API.
+- C(Read) operations require any one of I(SECURITY_ADMIN), I(SYSTEM_ADMIN), or
+  I(SYSTEM_MONITOR) roles.
 
 author:
 - Dell Ansible Team (@dell) <ansible.team@dell.com>

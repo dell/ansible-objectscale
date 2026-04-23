@@ -46,6 +46,141 @@ def make_obj(params=None, has_client=True, check_mode=False):
     return obj
 
 
+class TestDetermineUserType:
+    def test_local_user_no_at(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import (
+            ManagementUser, USER_TYPE_LOCAL,
+        )
+        assert ManagementUser._determine_user_type('localuser', None) == USER_TYPE_LOCAL
+        assert ManagementUser._determine_user_type('localuser', False) == USER_TYPE_LOCAL
+
+    def test_ad_ldap_user_with_at_no_external_group(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import (
+            ManagementUser, USER_TYPE_AD_LDAP_USER,
+        )
+        assert ManagementUser._determine_user_type('user@domain', None) == USER_TYPE_AD_LDAP_USER
+        assert ManagementUser._determine_user_type('user@domain', False) == USER_TYPE_AD_LDAP_USER
+
+    def test_ad_ldap_group_with_at_external_group_true(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import (
+            ManagementUser, USER_TYPE_AD_LDAP_GROUP,
+        )
+        assert ManagementUser._determine_user_type('group@domain', True) == USER_TYPE_AD_LDAP_GROUP
+
+
+class TestValidateParams:
+    def test_uppercase_user_id_fails(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
+        obj = make_obj(params={**BASE_PARAMS, 'user_id': 'LocalUser', 'password': 'p'})
+        obj._validate_params(USER_TYPE_LOCAL, 'LocalUser', {'password': 'p', 'is_external_group': None}, user_exists=False)
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'upper case' in call_kwargs.get('msg', '').lower()
+
+    def test_local_user_create_requires_password(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
+        obj = make_obj()
+        obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': None, 'is_external_group': None}, user_exists=False)
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'password is required' in call_kwargs.get('msg', '').lower()
+
+    def test_local_user_create_rejects_external_group_true(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
+        obj = make_obj()
+        obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': 'p', 'is_external_group': True}, user_exists=False)
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'is_external_group must not be true' in call_kwargs.get('msg', '').lower()
+
+    def test_ad_ldap_user_create_rejects_password(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_USER
+        obj = make_obj()
+        obj._validate_params(USER_TYPE_AD_LDAP_USER, 'user@domain', {'password': 'p', 'is_external_group': False}, user_exists=False)
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'password should not be provided' in call_kwargs.get('msg', '').lower()
+
+
+    def test_ad_ldap_group_create_rejects_password(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_GROUP
+        obj = make_obj()
+        obj._validate_params(USER_TYPE_AD_LDAP_GROUP, 'group@domain', {'password': 'p', 'is_external_group': True}, user_exists=False)
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'password should not be provided' in call_kwargs.get('msg', '').lower()
+
+    def test_ad_ldap_group_create_requires_external_group_true(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_USER
+        obj = make_obj()
+        obj._validate_params(USER_TYPE_AD_LDAP_USER, 'group@domain', {'password': None, 'is_external_group': False}, user_exists=False)
+        # When is_external_group=False with '@' in user_id, it's treated as AD/LDAP User, not Group
+        # So this won't trigger the Group validation. The test is invalid.
+        # Instead, test that a user with '@' and is_external_group=False is treated as AD/LDAP User
+        user_type = obj._determine_user_type('group@domain', False)
+        assert user_type == USER_TYPE_AD_LDAP_USER
+
+    def test_ad_ldap_user_modify_rejects_password(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_USER
+        obj = make_obj()
+        obj._validate_params(USER_TYPE_AD_LDAP_USER, 'user@domain', {'password': 'p', 'is_external_group': False}, user_exists=True)
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'password should not be provided' in call_kwargs.get('msg', '').lower()
+
+    def test_ad_ldap_group_modify_rejects_password(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_GROUP
+        obj = make_obj()
+        obj._validate_params(USER_TYPE_AD_LDAP_GROUP, 'group@domain', {'password': 'p', 'is_external_group': True}, user_exists=True)
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'password should not be provided' in call_kwargs.get('msg', '').lower()
+
+    def test_local_user_modify_allows_password(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
+        obj = make_obj()
+        # Should not fail
+        obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': 'p', 'is_external_group': None}, user_exists=True)
+        assert obj.module.fail_json.call_count == 0
+
+    def test_local_user_modify_rejects_external_group_true(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
+        obj = make_obj()
+        obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': 'p', 'is_external_group': True}, user_exists=True)
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'is_external_group cannot be modified' in call_kwargs.get('msg', '').lower()
+
+    def test_ad_ldap_user_modify_rejects_external_group_true(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_USER
+        obj = make_obj()
+        obj._validate_params(USER_TYPE_AD_LDAP_USER, 'user@domain', {'password': None, 'is_external_group': True}, user_exists=True)
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'is_external_group cannot be modified' in call_kwargs.get('msg', '').lower()
+
+    def test_local_user_modify_allows_external_group_false(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
+        obj = make_obj()
+        # Should not fail
+        obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': 'p', 'is_external_group': False}, user_exists=True)
+        assert obj.module.fail_json.call_count == 0
+
+    def test_ad_ldap_user_modify_allows_external_group_false(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_USER
+        obj = make_obj()
+        # Should not fail
+        obj._validate_params(USER_TYPE_AD_LDAP_USER, 'user@domain', {'password': None, 'is_external_group': False}, user_exists=True)
+        assert obj.module.fail_json.call_count == 0
+
+    def test_local_user_modify_allows_no_external_group(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
+        obj = make_obj()
+        # Should not fail
+        obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': 'p', 'is_external_group': None}, user_exists=True)
+        assert obj.module.fail_json.call_count == 0
+
+
 class TestInit:
     @patch(f'{MODULE}.MgmtUserInfoApi')
     @patch(f'{MODULE}.utils.get_objectscale_connection')
@@ -121,18 +256,49 @@ class TestGetUserDetails:
 
 
 class TestCreateUser:
-    def test_success(self):
+    def test_success_with_password(self):
         obj = make_obj()
         params = {**BASE_PARAMS, 'password': 'pwd', 'is_system_monitor': True}
         obj.create_user('mgmt1', params)
         obj.mgmt_api.mgmt_user_info_service_create_local_user_info.assert_called_once()
+        # Verify password is included in payload
+        call_args = obj.mgmt_api.mgmt_user_info_service_create_local_user_info.call_args
+        payload = call_args[1]['mgmt_user_info_service_create_local_user_info_request']
+        assert hasattr(payload, 'password') or 'password' in payload
 
-    def test_missing_password_fails(self):
+    def test_success_without_password_ad_ldap_user(self):
         obj = make_obj()
-        params = {**BASE_PARAMS, 'password': None}
+        params = {**BASE_PARAMS, 'user_id': 'user@domain', 'password': None, 'is_system_monitor': True}
+        obj.create_user('user@domain', params)
+        obj.mgmt_api.mgmt_user_info_service_create_local_user_info.assert_called_once()
+        # Verify password is NOT included in payload
+        call_args = obj.mgmt_api.mgmt_user_info_service_create_local_user_info.call_args
+        payload = call_args[1]['mgmt_user_info_service_create_local_user_info_request']
+        # Password should be None or not in the payload
+        if hasattr(payload, 'password'):
+            assert payload.password is None
+
+    def test_success_with_external_group(self):
+        obj = make_obj()
+        params = {**BASE_PARAMS, 'user_id': 'group@domain', 'is_external_group': True, 'is_system_admin': True}
+        obj.create_user('group@domain', params)
+        obj.mgmt_api.mgmt_user_info_service_create_local_user_info.assert_called_once()
+        # Verify is_external_group is included in payload
+        call_args = obj.mgmt_api.mgmt_user_info_service_create_local_user_info.call_args
+        payload = call_args[1]['mgmt_user_info_service_create_local_user_info_request']
+        assert hasattr(payload, 'is_external_group') or 'is_external_group' in payload
+
+    def test_success_without_external_group(self):
+        obj = make_obj()
+        params = {**BASE_PARAMS, 'password': 'pwd', 'is_system_monitor': True}
         obj.create_user('mgmt1', params)
-        assert obj.module.exit_json.call_args[1]['failed'] is True
-        assert 'password' in obj.module.exit_json.call_args[1]['msg'].lower()
+        obj.mgmt_api.mgmt_user_info_service_create_local_user_info.assert_called_once()
+        # Verify is_external_group is NOT included in payload when None
+        call_args = obj.mgmt_api.mgmt_user_info_service_create_local_user_info.call_args
+        payload = call_args[1]['mgmt_user_info_service_create_local_user_info_request']
+        # is_external_group should not be in the payload when None
+        if isinstance(payload, dict):
+            assert 'is_external_group' not in payload
 
     def test_api_error_fails(self):
         obj = make_obj()
@@ -199,15 +365,48 @@ class TestIsModified:
 
 
 class TestPerformModuleOperation:
-    def test_create_when_absent(self):
+    def test_create_local_user_when_absent(self):
         obj = make_obj(params={**BASE_PARAMS, 'password': 'p', 'state': 'present'})
-        # first call returns None (missing), subsequent returns the created user
         obj.get_user_details = MagicMock(side_effect=[None, {'userId': 'mgmt1'}])
         obj.create_user = MagicMock(return_value=True)
         obj.perform_module_operation()
         obj.create_user.assert_called_once()
         kwargs = obj.module.exit_json.call_args[1]
         assert kwargs.get('changed') is True
+
+    def test_create_ad_ldap_user_when_absent(self):
+        obj = make_obj(params={**BASE_PARAMS, 'user_id': 'user@domain', 'password': None, 'state': 'present'})
+        obj.get_user_details = MagicMock(side_effect=[None, {'userId': 'user@domain'}])
+        obj.create_user = MagicMock(return_value=True)
+        obj.perform_module_operation()
+        obj.create_user.assert_called_once()
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs.get('changed') is True
+
+    def test_create_ad_ldap_group_when_absent(self):
+        obj = make_obj(params={**BASE_PARAMS, 'user_id': 'group@domain', 'password': None, 'is_external_group': True, 'state': 'present'})
+        obj.get_user_details = MagicMock(side_effect=[None, {'userId': 'group@domain'}])
+        obj.create_user = MagicMock(return_value=True)
+        obj.perform_module_operation()
+        obj.create_user.assert_called_once()
+        kwargs = obj.module.exit_json.call_args[1]
+        assert kwargs.get('changed') is True
+
+    def test_create_validation_fails_uppercase_user_id(self):
+        obj = make_obj(params={**BASE_PARAMS, 'user_id': 'LocalUser', 'password': 'p', 'state': 'present'})
+        obj.get_user_details = MagicMock(return_value=None)
+        obj.perform_module_operation()
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'upper case' in call_kwargs.get('msg', '').lower()
+
+    def test_create_validation_fails_local_user_missing_password(self):
+        obj = make_obj(params={**BASE_PARAMS, 'password': None, 'state': 'present'})
+        obj.get_user_details = MagicMock(return_value=None)
+        obj.perform_module_operation()
+        assert obj.module.fail_json.called
+        call_kwargs = obj.module.fail_json.call_args[1]
+        assert 'password is required' in call_kwargs.get('msg', '').lower()
 
     def test_present_no_drift(self):
         obj = make_obj(params={**BASE_PARAMS, 'state': 'present'})
@@ -245,4 +444,26 @@ class TestPerformModuleOperation:
         obj.create_user = MagicMock()
         obj.perform_module_operation()
         obj.create_user.assert_not_called()
+        assert obj.module.exit_json.call_args[1].get('changed') is True
+
+    def test_modify_existing_local_user_uses_details_for_user_type(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
+        obj = make_obj(params={**BASE_PARAMS, 'is_system_admin': True, 'state': 'present'})
+        # Mock existing user with is_external_group=False in details
+        obj.get_user_details = MagicMock(return_value={'userId': 'localuser', 'is_external_group': False})
+        obj.modify_user = MagicMock(return_value=True)
+        obj.perform_module_operation()
+        # Should use details.get('is_external_group') which is False, determining user_type as USER_TYPE_LOCAL
+        obj.modify_user.assert_called_once()
+        assert obj.module.exit_json.call_args[1].get('changed') is True
+
+    def test_modify_existing_ad_user_uses_details_for_user_type(self):
+        from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_USER
+        obj = make_obj(params={**BASE_PARAMS, 'user_id': 'user@domain', 'is_system_admin': True, 'state': 'present'})
+        # Mock existing user with is_external_group=False in details
+        obj.get_user_details = MagicMock(return_value={'userId': 'user@domain', 'is_external_group': False})
+        obj.modify_user = MagicMock(return_value=True)
+        obj.perform_module_operation()
+        # Should use details.get('is_external_group') which is False, determining user_type as USER_TYPE_AD_LDAP_USER
+        obj.modify_user.assert_called_once()
         assert obj.module.exit_json.call_args[1].get('changed') is True

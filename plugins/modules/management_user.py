@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: management_user
 
-version_added: '1.1.0'
+version_added: '1.0.0'
 
 short_description: Manages VDC-level Management Users on Dell ObjectScale
 
@@ -21,6 +21,9 @@ description:
   assignments, changing password, and deleting Management Users via the
   C(/vdc/users) REST API. These users are VDC-scoped and are not associated with
   a namespace.
+- C(Create), C(Update), and C(Delete) operations require the I(SECURITY_ADMIN) role.
+- C(Read) operations require any one of I(SECURITY_ADMIN), I(SYSTEM_ADMIN), or
+  I(SYSTEM_MONITOR) roles.
 
 author:
 - Dell Ansible Team (@dell) <ansible.team@dell.com>
@@ -51,15 +54,21 @@ options:
     type: int
     default: 30
   user_id:
-    description: Unique identifier of the Management User.
+    description:
+    - Unique identifier of the Management User. Upper case letters are not allowed.
+    - If user_id does not contain C(@), the user is treated as a Local User.
+    - If user_id contains C(@), the user is treated as an AD/LDAP User or
+      AD/LDAP Group depending on I(is_external_group).
     type: str
     required: true
   password:
     description:
-    - Password to set on the Management User. Required when creating.
-    - When provided during modify, the password is (re)set; the module has no
-      way to know the current password so providing this value always counts
-      as a change.
+    - Password to set on the Management User.
+    - Required when creating a Local User. Must not be provided for AD/LDAP
+      Users or AD/LDAP Groups.
+    - When provided during modify of a Local User, the password is (re)set;
+      the module has no way to know the current password so providing this
+      value always counts as a change.
     type: str
   is_system_admin:
     description: Assign/remove the System Admin role.
@@ -73,6 +82,8 @@ options:
   is_external_group:
     description:
     - Indicates the user is an external (domain) group. Only honored on create.
+    - Must be set to C(true) when creating an AD/LDAP Group.
+    - Must not be set to C(true) for Local Users or AD/LDAP Users.
     type: bool
   state:
     description: Desired state of the Management User.
@@ -82,25 +93,47 @@ options:
 '''
 
 EXAMPLES = r'''
-- name: Create a Management User with System Monitor role
+- name: Create a Local User with System Monitor role
   dellemc.objectscale.management_user:
     objectscale_host: "{{ objectscale_host }}"
     objectscale_username: "{{ objectscale_username }}"
     objectscale_password: "{{ objectscale_password }}"
     validate_certs: false
-    user_id: operator1
-    password: "{{ operator1_password }}"
+    user_id: localuser1
+    password: "{{ local_user_password }}"
     is_system_monitor: true
     state: present
 
-- name: Promote Management User to System Admin
+- name: Update Local User to System Admin and Security Admin roles
   dellemc.objectscale.management_user:
     objectscale_host: "{{ objectscale_host }}"
     objectscale_username: "{{ objectscale_username }}"
     objectscale_password: "{{ objectscale_password }}"
     validate_certs: false
-    user_id: operator1
+    user_id: localuser1
     is_system_admin: true
+    is_security_admin: true
+    state: present
+
+- name: Create an AD/LDAP User with System Monitor role
+  dellemc.objectscale.management_user:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    user_id: user1@domain
+    is_system_monitor: true
+    state: present
+
+- name: Create an AD/LDAP Group with System Admin role
+  dellemc.objectscale.management_user:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    user_id: group1@domain
+    is_system_admin: true
+    is_external_group: true
     state: present
 
 - name: Delete a Management User
@@ -109,7 +142,7 @@ EXAMPLES = r'''
     objectscale_username: "{{ objectscale_username }}"
     objectscale_password: "{{ objectscale_password }}"
     validate_certs: false
-    user_id: operator1
+    user_id: localuser1
     state: absent
 '''
 
@@ -187,6 +220,10 @@ ROLE_FIELDS = (
     ('is_security_admin', 'isSecurityAdmin', 'is_security_admin'),
 )
 
+USER_TYPE_LOCAL = 'local'
+USER_TYPE_AD_LDAP_USER = 'ad_ldap_user'
+USER_TYPE_AD_LDAP_GROUP = 'ad_ldap_group'
+
 
 class ManagementUser(object):
     """Class with operations on ObjectScale Management Users."""
@@ -246,6 +283,68 @@ class ManagementUser(object):
             state=dict(type='str', choices=['present', 'absent'], default='present'),
         )
 
+    @staticmethod
+    def _determine_user_type(user_id: str, is_external_group: Optional[bool]) -> str:
+        """Determine the management user type from supplied parameters.
+
+        - No '@' in user_id -> Local User
+        - '@' in user_id and is_external_group is True -> AD/LDAP Group
+        - '@' in user_id otherwise -> AD/LDAP User
+        """
+        if '@' not in user_id:
+            return USER_TYPE_LOCAL
+        if is_external_group:
+            return USER_TYPE_AD_LDAP_GROUP
+        return USER_TYPE_AD_LDAP_USER
+
+    def _validate_params(self, user_type: str, user_id: str, params: Dict[str, Any], user_exists: bool) -> None:
+        """Validate parameter combinations based on user type and operation."""
+        if user_id != user_id.lower():
+            self.module.fail_json(
+                msg="Upper case letters are not allowed in user_id. Got: '%s'." % user_id,
+            )
+
+        password = params.get('password')
+        is_creating = not user_exists
+
+        if is_creating:
+            if user_type == USER_TYPE_LOCAL:
+                if not password:
+                    self.module.fail_json(
+                        msg="password is required when creating a Local Management User ('%s')." % user_id,
+                    )
+                if params.get('is_external_group'):
+                    self.module.fail_json(
+                        msg="is_external_group must not be true for a Local User ('%s')." % user_id,
+                    )
+            elif user_type == USER_TYPE_AD_LDAP_USER:
+                if password:
+                    self.module.fail_json(
+                        msg="password should not be provided when creating an AD/LDAP User ('%s')." % user_id,
+                    )
+                if params.get('is_external_group'):
+                    self.module.fail_json(
+                        msg="is_external_group must not be true for an AD/LDAP User ('%s')." % user_id,
+                    )
+            else:  # AD/LDAP Group
+                if password:
+                    self.module.fail_json(
+                        msg="password should not be provided when creating an AD/LDAP Group ('%s')." % user_id,
+                    )
+                if not params.get('is_external_group'):
+                    self.module.fail_json(
+                        msg="is_external_group must be true when creating an AD/LDAP Group ('%s')." % user_id,
+                    )
+        else:  # modifying
+            if user_type in (USER_TYPE_AD_LDAP_USER, USER_TYPE_AD_LDAP_GROUP) and password:
+                self.module.fail_json(
+                    msg="password should not be provided when updating an AD/LDAP User or Group ('%s')." % user_id,
+                )
+            if user_type in (USER_TYPE_LOCAL, USER_TYPE_AD_LDAP_USER) and params.get('is_external_group') is True:
+                self.module.fail_json(
+                    msg="is_external_group cannot be modified for a Local User or AD/LDAP User ('%s')." % user_id,
+                )
+
     def get_user_details(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Return user dict, or None when the user does not exist."""
         try:
@@ -263,22 +362,17 @@ class ManagementUser(object):
             return None
 
     def create_user(self, user_id: str, params: Dict[str, Any]) -> Optional[bool]:
-        password = params.get('password')
-        if not password:
-            self.module.exit_json(
-                failed=True,
-                msg="password is required when creating Management User '%s'." % user_id,
-            )
-            return None
-
-        payload = dict(
+        payload: Dict[str, Any] = dict(
             user_id=user_id,
-            password=password,
             is_system_admin=params.get('is_system_admin'),
             is_system_monitor=params.get('is_system_monitor'),
             is_security_admin=params.get('is_security_admin'),
-            is_external_group=params.get('is_external_group'),
         )
+
+        if params.get('password'):
+            payload['password'] = params['password']
+        if params.get('is_external_group') is not None:
+            payload['is_external_group'] = params['is_external_group']
 
         try:
             request = self._build_api_payload(
@@ -372,6 +466,12 @@ class ManagementUser(object):
         details = self.get_user_details(user_id)
         diff_before = self._public_details(details) or {}
         diff_after = dict(diff_before)
+
+        if state == 'present':
+            user_exists = details is not None
+            is_external_group = details.get('is_external_group') if user_exists else params.get('is_external_group')
+            user_type = self._determine_user_type(user_id, is_external_group)
+            self._validate_params(user_type, user_id, params, user_exists)
 
         if state == 'absent':
             if details:

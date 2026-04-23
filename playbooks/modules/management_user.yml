@@ -8,31 +8,33 @@
     objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
     objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
     validate_certs: false
-    mgmt_user_id: "operator1"
-    # Prefer Ansible Vault for real credentials:
-    # mgmt_user_password: "{{ vault_mgmt_user_password }}"
-    mgmt_user_password: "{{ lookup('env', 'MGMT_USER_PASSWORD') }}"
+    local_user_user_id: "localuser1"
+    ad_ldap_user_user_id: "user1@domain"
+    ad_ldap_group_user_id: "group1@domain"
+    local_user_password: "{{ lookup('env', 'LOCAL_USER_PASSWORD') }}"
+    local_user_password_new: "{{ lookup('env', 'LOCAL_USER_PASSWORD_NEW') }}"
 
   tasks:
-    - name: Create a Management User with System Monitor role
+    # ==================== Local User Tasks ====================
+    - name: Create a Local User with System Monitor role
       dellemc.objectscale.management_user:
         objectscale_host: "{{ objectscale_host }}"
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
-        user_id: "{{ mgmt_user_id }}"
-        password: "{{ mgmt_user_password }}"
+        user_id: "{{ local_user_user_id }}"
+        password: "{{ local_user_password }}"
         is_system_monitor: true
         state: present
       no_log: true
-      register: create_result
+      register: create_local_user
 
     - name: Verify the user was created
       ansible.builtin.assert:
         that:
-          - create_result.changed
-          - create_result.management_user_details.user_id == mgmt_user_id
-        fail_msg: "Management User was not created"
+          - create_local_user.changed
+          - create_local_user.management_user_details.user_id == local_user_user_id
+        fail_msg: "Local User was not created"
 
     - name: Idempotence check - re-run with the same desired state
       dellemc.objectscale.management_user:
@@ -40,7 +42,7 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
-        user_id: "{{ mgmt_user_id }}"
+        user_id: "{{ local_user_user_id }}"
         is_system_monitor: true
         state: present
       register: idem
@@ -49,44 +51,105 @@
       ansible.builtin.assert:
         that:
           - not idem.changed
-        fail_msg: "Management User create was not idempotent"
+        fail_msg: "Local User create was not idempotent"
 
-    - name: Promote Management User to System Admin
+    - name: Update Local User to have System Admin and Security Admin roles and a new password
       dellemc.objectscale.management_user:
         objectscale_host: "{{ objectscale_host }}"
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
-        user_id: "{{ mgmt_user_id }}"
+        user_id: "{{ local_user_user_id }}"
+        password: "{{ local_user_password_new }}"
         is_system_admin: true
+        is_security_admin: true
+        state: present
+      no_log: true
+
+    - name: Delete the Local User
+      dellemc.objectscale.management_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ local_user_user_id }}"
+        state: absent
+
+    # ==================== AD LDAP User Tasks ====================
+    - name: Create an AD/LDAP User with System Monitor role
+      dellemc.objectscale.management_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ ad_ldap_user_user_id }}"
+        is_system_monitor: true
+        state: present
+      register: create_ad_ldap_user
+
+    - name: Verify the AD/LDAP user was created
+      ansible.builtin.assert:
+        that:
+          - create_ad_ldap_user.changed
+          - create_ad_ldap_user.management_user_details.user_id == ad_ldap_user_user_id
+        fail_msg: "AD/LDAP User was not created"
+
+    - name: Update AD/LDAP User to have System Admin and Security Admin roles
+      dellemc.objectscale.management_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ ad_ldap_user_user_id }}"
+        is_system_admin: true
+        is_security_admin: true
         state: present
 
-    - name: Get single Management User details
-      dellemc.objectscale.management_user_info:
-        objectscale_host: "{{ objectscale_host }}"
-        objectscale_username: "{{ objectscale_username }}"
-        objectscale_password: "{{ objectscale_password }}"
-        validate_certs: "{{ validate_certs }}"
-        user_id: "{{ mgmt_user_id }}"
-      register: single
-
-    - name: Show the promoted user
-      ansible.builtin.debug:
-        var: single.management_user
-
-    - name: List all Management Users
-      dellemc.objectscale.management_user_info:
-        objectscale_host: "{{ objectscale_host }}"
-        objectscale_username: "{{ objectscale_username }}"
-        objectscale_password: "{{ objectscale_password }}"
-        validate_certs: "{{ validate_certs }}"
-      register: all_users
-
-    - name: Delete the Management User
+    - name: Delete the AD/LDAP User
       dellemc.objectscale.management_user:
         objectscale_host: "{{ objectscale_host }}"
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
-        user_id: "{{ mgmt_user_id }}"
+        user_id: "{{ ad_ldap_user_user_id }}"
+        state: absent
+
+    # ==================== AD LDAP Group Tasks ====================
+    - name: Create an AD/LDAP Group with System Monitor role
+      dellemc.objectscale.management_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ ad_ldap_group_user_id }}"
+        is_system_monitor: true
+        is_external_group: true
+        state: present
+      register: create_ad_ldap_group
+
+    - name: Verify the AD/LDAP group was created
+      ansible.builtin.assert:
+        that:
+          - create_ad_ldap_group.changed
+          - create_ad_ldap_group.management_user_details.user_id == ad_ldap_group_user_id
+        fail_msg: "AD/LDAP Group was not created"
+
+    - name: Update AD/LDAP Group to have System Admin and Security Admin roles
+      dellemc.objectscale.management_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ ad_ldap_group_user_id }}"
+        is_system_admin: true
+        is_security_admin: true
+        state: present
+
+    - name: Delete the AD/LDAP Group
+      dellemc.objectscale.management_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user_id: "{{ ad_ldap_group_user_id }}"
         state: absent
