@@ -77,12 +77,13 @@ buckets:
     returned: success
 '''
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.dellemc.objectscale.plugins.module_utils import utils
-from ansible_collections.dellemc.objectscale.plugins.module_utils import (
+# noqa: E402 - module level imports after documentation is standard for Ansible modules
+from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+from ansible_collections.dellemc.objectscale.plugins.module_utils import utils  # noqa: E402
+from ansible_collections.dellemc.objectscale.plugins.module_utils import (  # noqa: E402
     bucket_api
 )
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (  # noqa: E402
     ApiException,
 )
 
@@ -131,7 +132,7 @@ def main():
     bucket_name = module.params.get('name')
 
     if not namespace:
-        module.exit_json(failed=True, msg="missing required arguments: namespace")
+        module.fail_json(msg="missing required arguments: namespace")
 
     try:
         api_client = utils.get_objectscale_connection(module.params)
@@ -149,7 +150,7 @@ def main():
             )
 
     except ApiException as e:
-        module.exit_json(failed=True, msg=f"Failed to retrieve bucket info: {str(e)}")
+        module.fail_json(msg=f"Failed to retrieve bucket info: {str(e)}")
 
     module.exit_json(**result)
 

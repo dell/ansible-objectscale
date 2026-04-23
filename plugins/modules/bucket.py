@@ -94,10 +94,11 @@ bucket_details:
     returned: when state is present
 '''
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.dellemc.objectscale.plugins.module_utils import utils
-from ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api import BucketApi
-from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
+# noqa: E402 - module level imports after documentation is standard for Ansible modules
+from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+from ansible_collections.dellemc.objectscale.plugins.module_utils import utils  # noqa: E402
+from ansible_collections.dellemc.objectscale.plugins.module_utils.bucket_api import BucketApi  # noqa: E402
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (  # noqa: E402
     ApiException,
 )
 
@@ -149,14 +150,14 @@ def main():
     versioning = module.params.get('versioning')
     force = module.params['force']
 
-    if not name:        
-        module.exit_json(failed=True, msg="missing required arguments: name")
+    if not name:
+        module.fail_json(msg="missing required arguments: name")
     if not namespace:
-        module.exit_json(failed=True, msg="missing required arguments: namespace")
+        module.fail_json(msg="missing required arguments: namespace")
 
     # Basic name validation
     if any(c.isupper() for c in name) or len(name) > 63:
-        module.exit_json(failed=True, msg="'InvalidBucketName': Bucket name is invalid.")
+        module.fail_json(msg="'InvalidBucketName': Bucket name is invalid.")
 
     try:
         api_client = utils.get_objectscale_connection(module.params)
@@ -196,8 +197,7 @@ def main():
                         )
                     except ApiException as e:
                         if 'BucketNotEmpty' in str(e):
-                            module.exit_json(
-                                failed=True,
+                            module.fail_json(
                                 msg="'BucketNotEmpty': The bucket"
                                 " you tried to delete is not"
                                 " empty."
@@ -205,7 +205,7 @@ def main():
                         raise
 
     except ApiException as e:
-        module.exit_json(failed=True, msg=f"Module failed: {str(e)}")
+        module.fail_json(msg=f"Module failed: {str(e)}")
 
     module.exit_json(**result)
 
