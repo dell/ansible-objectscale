@@ -163,4 +163,4 @@ def paginate_with_next_marker(api_call, base_kwargs, items_key):
         else:
             break
 
-    return all_items 
+    return all_items
