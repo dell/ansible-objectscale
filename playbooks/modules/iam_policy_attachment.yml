@@ -1,0 +1,78 @@
+---
+# Example playbook for dellemc.objectscale.iam_policy_attachment module
+# Demonstrates attaching/detaching managed IAM policies to users, groups, and roles.
+
+- name: Manage IAM Policy Attachments on Dell ObjectScale
+  hosts: localhost
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('10.0.0.1', true) }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('admin', true) }}"
+    os_credential: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('changeme', true) }}"
+    os_namespace: "my-namespace"
+
+  tasks:
+    - name: Attach read-only policies to an IAM user
+      dellemc.objectscale.iam_policy_attachment:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        user_name: "userTest1"
+        policy_arns:
+          - "urn:ecs:iam:::policy/ECSS3ReadOnlyAccess"
+          - "urn:ecs:iam:::policy/IAMReadOnlyAccess"
+        state: present
+      register: user_attach_result
+
+    - name: Show user attachment result
+      ansible.builtin.debug:
+        var: user_attach_result
+
+    - name: Attach full-access policy to an IAM group
+      dellemc.objectscale.iam_policy_attachment:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        group_name: "developers"
+        policy_arns:
+          - "urn:ecs:iam:::policy/ECSS3FullAccess"
+        state: present
+
+    - name: Attach policy to an IAM role
+      dellemc.objectscale.iam_policy_attachment:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        role_name: "admin-role"
+        policy_arns:
+          - "urn:ecs:iam:::policy/IAMFullAccess"
+        state: present
+
+    - name: Detach all policies from the user
+      dellemc.objectscale.iam_policy_attachment:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        user_name: "userTest1"
+        state: absent
+
+    - name: Preview policy attachment in check mode
+      dellemc.objectscale.iam_policy_attachment:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        user_name: "userTest1"
+        policy_arns:
+          - "urn:ecs:iam:::policy/ECSS3ReadOnlyAccess"
+        state: present
+      check_mode: true

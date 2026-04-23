@@ -395,6 +395,92 @@ class IamApi(object):
         )
 
     # ------------------------------------------------------------------
+    # Public API -- User managed (attached) policies
+    # ------------------------------------------------------------------
+
+    def attach_user_policy(self, user_name, policy_arn, namespace):
+        # type: (str, str, str) -> None
+        """Attach a managed policy to a user."""
+        params = {'UserName': user_name, 'PolicyArn': policy_arn}
+
+        status, body = self._make_request('AttachUserPolicy', params, namespace)
+
+        if status < 200 or status >= 300:
+            self._handle_error(status, body, 'AttachUserPolicy')
+
+    def detach_user_policy(self, user_name, policy_arn, namespace):
+        # type: (str, str, str) -> None
+        """Detach a managed policy from a user. Idempotent -- returns None on 404."""
+        params = {'UserName': user_name, 'PolicyArn': policy_arn}
+
+        status, body = self._make_request('DetachUserPolicy', params, namespace)
+
+        if status == 404:
+            return None
+
+        if status >= 400:
+            try:
+                err = IamApiException(status=status, body=body, action='DetachUserPolicy')
+                if err.error_code == 'NoSuchEntity':
+                    return None
+            except Exception:
+                pass
+            self._handle_error(status, body, 'DetachUserPolicy')
+
+    def list_attached_user_policies(self, user_name, namespace):
+        # type: (str, str) -> List[Dict[str, Optional[str]]]
+        """List managed policies attached to a user, with automatic pagination."""
+        params = {'UserName': user_name}
+
+        return self._paginate(
+            action='ListAttachedUserPolicies', params=params, namespace=namespace,
+            result_tag='AttachedPolicies', extractor=self._extract_attached_policy,
+        )
+
+    # ------------------------------------------------------------------
+    # Public API -- Role managed (attached) policies
+    # ------------------------------------------------------------------
+
+    def attach_role_policy(self, role_name, policy_arn, namespace):
+        # type: (str, str, str) -> None
+        """Attach a managed policy to a role."""
+        params = {'RoleName': role_name, 'PolicyArn': policy_arn}
+
+        status, body = self._make_request('AttachRolePolicy', params, namespace)
+
+        if status < 200 or status >= 300:
+            self._handle_error(status, body, 'AttachRolePolicy')
+
+    def detach_role_policy(self, role_name, policy_arn, namespace):
+        # type: (str, str, str) -> None
+        """Detach a managed policy from a role. Idempotent -- returns None on 404."""
+        params = {'RoleName': role_name, 'PolicyArn': policy_arn}
+
+        status, body = self._make_request('DetachRolePolicy', params, namespace)
+
+        if status == 404:
+            return None
+
+        if status >= 400:
+            try:
+                err = IamApiException(status=status, body=body, action='DetachRolePolicy')
+                if err.error_code == 'NoSuchEntity':
+                    return None
+            except Exception:
+                pass
+            self._handle_error(status, body, 'DetachRolePolicy')
+
+    def list_attached_role_policies(self, role_name, namespace):
+        # type: (str, str) -> List[Dict[str, Optional[str]]]
+        """List managed policies attached to a role, with automatic pagination."""
+        params = {'RoleName': role_name}
+
+        return self._paginate(
+            action='ListAttachedRolePolicies', params=params, namespace=namespace,
+            result_tag='AttachedPolicies', extractor=self._extract_attached_policy,
+        )
+
+    # ------------------------------------------------------------------
     # Public API -- Inline policies
     # ------------------------------------------------------------------
 

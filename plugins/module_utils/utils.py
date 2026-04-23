@@ -56,7 +56,7 @@ def get_objectscale_connection(module_params: Dict[str, Any]) -> Any:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     http = urllib3.PoolManager(
         cert_reqs='CERT_REQUIRED' if validate_certs else 'CERT_NONE',
-        ca_certs=None,
+        ca_cert_dir=None,
     )
     credentials = base64.b64encode(
         f"{username}:{password}".encode('utf-8')
