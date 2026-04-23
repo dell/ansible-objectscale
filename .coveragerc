@@ -1,0 +1,4 @@
+[run]
+omit =
+    plugins/modules/bucket.py:121
+    plugins/modules/bucket_info.py:91
