@@ -19,8 +19,6 @@ PARAMS = dict(
     timeout=30,
     namespace_name=None,
     match=None,
-    limit=None,
-    marker=None,
 )
 
 
@@ -141,32 +139,28 @@ class TestNamespaceInfoReadOperations:
         ns2 = MagicMock()
         ns2.to_dict.return_value = {'id': 'ns2', 'name': 'ns2'}
         response = MagicMock()
-        response.namespace = [ns1, ns2]
+        response.to_dict.return_value = {'namespace': [ns1, ns2], 'NextMarker': None}
         obj.namespace_api.namespace_service_get_namespaces.return_value = response
 
         result = obj.list_namespaces()
 
         assert result == [{'id': 'ns1', 'name': 'ns1'}, {'id': 'ns2', 'name': 'ns2'}]
 
-    def test_list_namespaces_with_query_options(self):
+    def test_list_namespaces_with_match(self):
         obj = make_obj(params={
             **PARAMS,
             'match': 'team-*',
-            'limit': 20,
-            'marker': 'cursor-1',
         })
         response = MagicMock()
         ns = MagicMock()
         ns.to_dict.return_value = {'id': 'team-a'}
-        response.namespace = [ns]
+        response.to_dict.return_value = {'namespace': [ns], 'NextMarker': None}
         obj.namespace_api.namespace_service_get_namespaces.return_value = response
 
         result = obj.list_namespaces()
 
         obj.namespace_api.namespace_service_get_namespaces.assert_called_once_with(
             name='team-*',
-            limit='20',
-            marker='cursor-1',
         )
         assert result == [{'id': 'team-a'}]
 
