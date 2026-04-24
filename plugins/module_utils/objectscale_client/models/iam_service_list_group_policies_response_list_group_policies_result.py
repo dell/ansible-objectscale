@@ -45,6 +45,7 @@ except ImportError:
 class IamServiceListGroupPoliciesResponseListGroupPoliciesResult(BaseModel):
     """IamServiceListGroupPoliciesResponseListGroupPoliciesResult"""
     policy_names: Optional[List[StrictStr]] = Field(default=None, description="Name of inline Policy.", alias="PolicyNames")
+    is_truncated: Optional[bool] = Field(default=None, alias="IsTruncated")
     marker: Optional[StrictStr] = Field(
         default=None,
         description="When IsTruncated is true, this element is present and contains the value to use for the Marker parameter in a subsequent pagination request.",  # noqa: E501
