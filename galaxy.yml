@@ -18,6 +18,7 @@ readme: README.md
 # @nicks:irc/im.site#channel'
 authors:
   - Rounak Adhikary <ansible.team@dell.com>
+  - shrinidhi.katte <ansible.team@dell.com>
 
 
 ### OPTIONAL but strongly recommended
@@ -65,6 +66,11 @@ build_ignore:
   - RETROSPECTIVE.md
   - COMPATIBILITY_GUIDE.md
   - .venv*
+  - .ansible-lint
+  - .github
+  - .gitignore
+  - catalog-info.yaml
+  - .pytest_cache
 
 # A dict controlling use of manifest directives used in building the collection artifact. The key 'directives' is a
 # list of MANIFEST.in style
