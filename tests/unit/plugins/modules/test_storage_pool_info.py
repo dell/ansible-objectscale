@@ -410,6 +410,7 @@ class TestStoragePoolInfoClientCompatibility:
     def test_ensure_client_stub_compatibility_secret_str_not_str(self, mock_api_client):
         from ansible_collections.dellemc.objectscale.plugins.modules.storage_pool_info import StoragePoolInfo
         # Simulate SecretStr being a proper class (not str)
+
         class ProperSecretStr:
             def get_secret_value(self):
                 return 'secret'
@@ -425,6 +426,7 @@ class TestStoragePoolInfoClientCompatibility:
     def test_ensure_client_stub_compatibility_base_model_without_model_dump(self, mock_stubs):
         from ansible_collections.dellemc.objectscale.plugins.modules.storage_pool_info import StoragePoolInfo
         # Simulate BaseModel without model_dump method using a simple class
+
         class SimpleBaseModel:
             pass
         mock_stubs.BaseModel = SimpleBaseModel
