@@ -63,16 +63,19 @@ options:
   vdc_id:
     description:
     - VDC identifier to list storage pools for that VDC.
+    - Mutually exclusive with C(storage_pool_id).
     type: str
 
   storage_pool_id:
     description:
     - Storage pool identifier to fetch a specific storage pool.
+    - Mutually exclusive with C(vdc_id) and C(name).
     type: str
 
   name:
     description:
     - Optional exact name filter applied client-side.
+    - Mutually exclusive with C(storage_pool_id).
     type: str
 
 notes:
@@ -186,7 +189,7 @@ class StoragePoolInfo(object):
         self.module = AnsibleModule(
             argument_spec=self.module_params,
             supports_check_mode=True,
-            mutually_exclusive=[('storage_pool_id', 'vdc_id')],
+            mutually_exclusive=[('storage_pool_id', 'vdc_id'), ('storage_pool_id', 'name')],
         )
 
         if not HAS_OBJECTSCALE_CLIENT:

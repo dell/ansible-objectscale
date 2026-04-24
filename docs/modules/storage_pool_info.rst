@@ -59,6 +59,7 @@ Parameters
     </td>
     <td valign="top">
       <p>Optional exact name filter applied client-side.</p>
+      <p style="margin-top: 8px;">Mutually exclusive with <code class='docutils literal notranslate'>storage_pool_id</code>.</p>
     </td>
   </tr>
   <tr>
@@ -128,6 +129,7 @@ Parameters
     </td>
     <td valign="top">
       <p>Storage pool identifier to fetch a specific storage pool.</p>
+      <p style="margin-top: 8px;">Mutually exclusive with <code class='docutils literal notranslate'>vdc_id</code> and <code class='docutils literal notranslate'>name</code>.</p>
     </td>
   </tr>
   <tr>
@@ -174,6 +176,7 @@ Parameters
     </td>
     <td valign="top">
       <p>VDC identifier to list storage pools for that VDC.</p>
+      <p style="margin-top: 8px;">Mutually exclusive with <code class='docutils literal notranslate'>storage_pool_id</code>.</p>
     </td>
   </tr>
   </tbody>
