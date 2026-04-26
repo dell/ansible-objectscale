@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: object_user_info
 
-version_added: '1.1.0'
+version_added: '1.0.0'
 
 short_description: Gathers information about non-IAM Object Users on Dell ObjectScale
 
