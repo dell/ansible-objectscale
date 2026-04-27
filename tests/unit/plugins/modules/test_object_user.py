@@ -481,7 +481,11 @@ class TestPerformModuleOperation:
 
     def test_create_with_locked_true_calls_sync_lock(self):
         obj = make_obj(params={**BASE_PARAMS, 'state': 'present', 'locked': True})
-        obj.get_user_details = MagicMock(side_effect=[None, {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []}, {'name': 'alice', 'namespace': 'ns1', 'locked': True, 'tag': []}])
+        obj.get_user_details = MagicMock(side_effect=[
+            None,
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []},
+            {'name': 'alice', 'namespace': 'ns1', 'locked': True, 'tag': []}
+        ])
         obj.create_user = MagicMock()
         obj.sync_lock = MagicMock(return_value=True)
         obj.sync_secret_keys = MagicMock(return_value=(False, []))
@@ -491,7 +495,11 @@ class TestPerformModuleOperation:
 
     def test_create_with_locked_false_calls_sync_lock(self):
         obj = make_obj(params={**BASE_PARAMS, 'state': 'present', 'locked': False})
-        obj.get_user_details = MagicMock(side_effect=[None, {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []}, {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []}])
+        obj.get_user_details = MagicMock(side_effect=[
+            None,
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []},
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []}
+        ])
         obj.create_user = MagicMock()
         obj.sync_lock = MagicMock(return_value=True)
         obj.sync_secret_keys = MagicMock(return_value=(False, []))
