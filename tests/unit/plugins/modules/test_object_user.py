@@ -145,7 +145,9 @@ class TestSyncTags:
         # Verify the payload uses 'tags' field
         call_args = obj.user_mgmt_api.user_management_service_add_user_tag.call_args
         assert call_args[1]['namespace'] == 'ns1'  # namespace as method parameter
-        assert hasattr(call_args[1]['user_management_service_add_user_tag_request'], 'tags')
+        payload = call_args[1]['user_management_service_add_user_tag_request']
+        # Check for 'tags' in either dict or object
+        assert hasattr(payload, 'tags') or 'tags' in payload
 
     def test_update_tags_uses_correct_payload_structure(self):
         obj = make_obj()
@@ -156,7 +158,9 @@ class TestSyncTags:
         # Verify the payload uses 'tags' field
         call_args = obj.user_mgmt_api.user_management_service_update_user_tag.call_args
         assert call_args[1]['namespace'] == 'ns1'  # namespace as method parameter
-        assert hasattr(call_args[1]['user_management_service_update_user_tag_request'], 'tags')
+        payload = call_args[1]['user_management_service_update_user_tag_request']
+        # Check for 'tags' in either dict or object
+        assert hasattr(payload, 'tags') or 'tags' in payload
 
     def test_remove_tags_uses_correct_payload_structure(self):
         obj = make_obj()
@@ -167,7 +171,9 @@ class TestSyncTags:
         # Verify the payload uses 'tags' field
         call_args = obj.user_mgmt_api.user_management_service_remove_user_tags.call_args
         assert call_args[1]['namespace'] == 'ns1'  # namespace as method parameter
-        assert hasattr(call_args[1]['user_management_service_remove_user_tags_request'], 'tags')
+        payload = call_args[1]['user_management_service_remove_user_tags_request']
+        # Check for 'tags' in either dict or object
+        assert hasattr(payload, 'tags') or 'tags' in payload
 
     def test_noop_when_equal(self):
         obj = make_obj()
@@ -273,7 +279,12 @@ class TestSyncSecretKeys:
         obj.secret_key_api.user_secret_key_service_create_new_key_for_user.assert_called_once()
         # Verify expiry time was passed in the payload
         call_args = obj.secret_key_api.user_secret_key_service_create_new_key_for_user.call_args
-        assert call_args[1]['user_secret_key_service_create_new_key_for_user_request'].existing_key_expiry_time_mins == '60'
+        payload = call_args[1]['user_secret_key_service_create_new_key_for_user_request']
+        # Check for expiry time in either dict or object
+        if hasattr(payload, 'existing_key_expiry_time_mins'):
+            assert payload.existing_key_expiry_time_mins == '60'
+        else:
+            assert payload.get('existing_key_expiry_time_mins') == '60'
 
     def test_create_api_error_fails(self):
         obj = make_obj()
