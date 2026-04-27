@@ -374,7 +374,7 @@ except Exception as e:
     else:
         raise
 """
-        ], capture_output=True, text=True, cwd='/root/Storage/collections/ansible_collections/dellemc/objectscale')
+        ], capture_output=True, text=True, check=False, cwd='/root/Storage/collections/ansible_collections/dellemc/objectscale')
 
         # Should not crash - the main guard should handle execution
         assert result.returncode == 0 or 'AnsibleModule' in result.stderr
