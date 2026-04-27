@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: object_user
 
-version_added: '1.1.0'
+version_added: '1.0.0'
 
 short_description: Manages non-IAM Object Users on Dell ObjectScale
 
@@ -82,8 +82,11 @@ options:
     - For C(state=present) with no existing keys matching, a new key is
       generated and its plaintext returned once under
       C(created_secret_keys).
-    - For C(state=absent) with C(secret_key_id) or C(secret_key), the matching
-      key is deleted.
+    - For C(state=absent), BOTH C(secret_key_id) AND C(secret_key) must be provided
+      to delete a specific key. The API requires the actual secret key value for
+      security verification. Since secret keys are only returned once at creation,
+      you must save the key value if you plan to delete it later. Note that even
+      deleting all keys requires the actual key values for namespace-scoped users.
     type: list
     elements: dict
   state:
@@ -118,6 +121,7 @@ EXAMPLES = r'''
       - state: present
     state: present
   register: s3_keys
+  no_log: true
 
 - name: Lock the Object User
   dellemc.objectscale.object_user:
@@ -128,6 +132,21 @@ EXAMPLES = r'''
     user: alice
     namespace: ns1
     locked: true
+
+- name: Delete a specific secret key (requires both ID and the actual key value)
+  dellemc.objectscale.object_user:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    validate_certs: false
+    user: alice
+    namespace: ns1
+    secret_keys:
+      - secret_key_id: "{{ saved_key_id }}"
+        secret_key: "{{ saved_key_value }}"
+        state: absent
+    state: present
+  no_log: true
 
 - name: Delete the Object User
   dellemc.objectscale.object_user:
@@ -371,29 +390,32 @@ class ObjectUser(object):
             if to_add:
                 req = self._build_api_payload(
                     UserManagementServiceAddUserTagRequest,
-                    dict(namespace=namespace, tag=to_add),
+                    dict(tags=to_add),
                 )
                 self.user_mgmt_api.user_management_service_add_user_tag(
                     uid=user,
                     user_management_service_add_user_tag_request=req,
+                    namespace=namespace,
                 )
             if to_update:
                 req = self._build_api_payload(
                     UserManagementServiceUpdateUserTagRequest,
-                    dict(namespace=namespace, tag=to_update),
+                    dict(tags=to_update),
                 )
                 self.user_mgmt_api.user_management_service_update_user_tag(
                     uid=user,
                     user_management_service_update_user_tag_request=req,
+                    namespace=namespace,
                 )
             if to_remove:
                 req = self._build_api_payload(
                     UserManagementServiceRemoveUserTagsRequest,
-                    dict(namespace=namespace, tag_name=[t['name'] for t in to_remove]),
+                    dict(tags=[{'name': t['name']} for t in to_remove]),
                 )
                 self.user_mgmt_api.user_management_service_remove_user_tags(
                     uid=user,
                     user_management_service_remove_user_tags_request=req,
+                    namespace=namespace,
                 )
         except Exception as e:
             error_msg = utils.determine_error(e)
@@ -537,6 +559,14 @@ class ObjectUser(object):
                 # Skip if target is already gone
                 if entry_id and entry_id not in existing_ids:
                     continue
+                # Validate that both secret_key_id and secret_key are provided for deletion
+                if entry_id and not entry_secret:
+                    self.module.fail_json(
+                        msg="Deleting secret keys requires both 'secret_key_id' and 'secret_key'. "
+                            "The API requires the actual secret key value for security verification. "
+                            "Since secret keys are only returned once at creation time, you must save "
+                            "the key value if you plan to delete it later."
+                    )
                 payload = dict(
                     secret_key=entry_secret,
                     secret_key_id=entry_id,

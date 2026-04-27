@@ -136,6 +136,39 @@ class TestSyncTags:
         changed = obj.sync_tags('alice', 'ns1', current, desired, purge_tags=True)
         assert changed is True
 
+    def test_add_tags_uses_correct_payload_structure(self):
+        obj = make_obj()
+        current = []
+        desired = [{'name': 'env', 'value': 'prod'}]
+        changed = obj.sync_tags('alice', 'ns1', current, desired, purge_tags=True)
+        assert changed is True
+        # Verify the payload uses 'tags' field
+        call_args = obj.user_mgmt_api.user_management_service_add_user_tag.call_args
+        assert call_args[1]['namespace'] == 'ns1'  # namespace as method parameter
+        assert hasattr(call_args[1]['user_management_service_add_user_tag_request'], 'tags')
+
+    def test_update_tags_uses_correct_payload_structure(self):
+        obj = make_obj()
+        current = [{'name': 'env', 'value': 'dev'}]
+        desired = [{'name': 'env', 'value': 'prod'}]
+        changed = obj.sync_tags('alice', 'ns1', current, desired, purge_tags=True)
+        assert changed is True
+        # Verify the payload uses 'tags' field
+        call_args = obj.user_mgmt_api.user_management_service_update_user_tag.call_args
+        assert call_args[1]['namespace'] == 'ns1'  # namespace as method parameter
+        assert hasattr(call_args[1]['user_management_service_update_user_tag_request'], 'tags')
+
+    def test_remove_tags_uses_correct_payload_structure(self):
+        obj = make_obj()
+        current = [{'name': 'env', 'value': 'dev'}, {'name': 'old', 'value': 'x'}]
+        desired = []
+        changed = obj.sync_tags('alice', 'ns1', current, desired, purge_tags=True)
+        assert changed is True
+        # Verify the payload uses 'tags' field
+        call_args = obj.user_mgmt_api.user_management_service_remove_user_tags.call_args
+        assert call_args[1]['namespace'] == 'ns1'  # namespace as method parameter
+        assert hasattr(call_args[1]['user_management_service_remove_user_tags_request'], 'tags')
+
     def test_noop_when_equal(self):
         obj = make_obj()
         current = [{'name': 'env', 'value': 'prod'}]
@@ -149,6 +182,27 @@ class TestSyncTags:
         desired = [{'name': 'new', 'value': 'y'}]
         changed = obj.sync_tags('alice', 'ns1', current, desired, purge_tags=False)
         assert changed is True
+
+    def test_api_error_on_add_fails(self):
+        obj = make_obj()
+        obj.user_mgmt_api.user_management_service_add_user_tag.side_effect = Exception('add err')
+        with patch(f'{UTILS}.determine_error', return_value='add err'):
+            obj.sync_tags('alice', 'ns1', [], [{'name': 'env', 'value': 'prod'}], purge_tags=True)
+        assert obj.module.exit_json.call_args[1]['failed'] is True
+
+    def test_api_error_on_update_fails(self):
+        obj = make_obj()
+        obj.user_mgmt_api.user_management_service_update_user_tag.side_effect = Exception('upd err')
+        with patch(f'{UTILS}.determine_error', return_value='upd err'):
+            obj.sync_tags('alice', 'ns1', [{'name': 'env', 'value': 'dev'}], [{'name': 'env', 'value': 'prod'}], purge_tags=True)
+        assert obj.module.exit_json.call_args[1]['failed'] is True
+
+    def test_api_error_on_remove_fails(self):
+        obj = make_obj()
+        obj.user_mgmt_api.user_management_service_remove_user_tags.side_effect = Exception('rm err')
+        with patch(f'{UTILS}.determine_error', return_value='rm err'):
+            obj.sync_tags('alice', 'ns1', [{'name': 'env', 'value': 'dev'}], [], purge_tags=True)
+        assert obj.module.exit_json.call_args[1]['failed'] is True
 
 
 class TestSyncLock:
@@ -169,8 +223,27 @@ class TestSyncLock:
         changed = obj.sync_lock('alice', 'ns1', current_locked=False, desired_locked=None)
         assert changed is False
 
+    def test_api_error_fails(self):
+        obj = make_obj()
+        obj.user_mgmt_api.user_management_service_set_user_lock.side_effect = Exception('lock err')
+        with patch(f'{UTILS}.determine_error', return_value='lock err'):
+            obj.sync_lock('alice', 'ns1', current_locked=False, desired_locked=True)
+        assert obj.module.exit_json.call_args[1]['failed'] is True
+
 
 class TestSyncSecretKeys:
+    def test_returns_false_when_desired_is_none(self):
+        obj = make_obj()
+        changed, created = obj.sync_secret_keys('alice', 'ns1', None)
+        assert changed is False
+        assert len(created) == 0
+
+    def test_returns_false_when_desired_is_empty(self):
+        obj = make_obj()
+        changed, created = obj.sync_secret_keys('alice', 'ns1', [])
+        assert changed is False
+        assert len(created) == 0
+
     def test_create_when_none_exist(self):
         obj = make_obj()
         obj._list_existing_secret_keys = MagicMock(return_value=[])
@@ -185,14 +258,69 @@ class TestSyncSecretKeys:
         assert len(created) == 1
         assert created[0]['secret_key_id'] == 'abc'
 
-    def test_delete_by_id(self):
+    def test_create_with_expiry_time(self):
+        obj = make_obj()
+        obj._list_existing_secret_keys = MagicMock(return_value=[])
+        resp = MagicMock()
+        resp.to_dict.return_value = {'secret_key': 's3cr3t', 'secret_key_id': 'abc', 'key_timestamp': '2026'}
+        obj.secret_key_api.user_secret_key_service_create_new_key_for_user.return_value = resp
+
+        changed, created = obj.sync_secret_keys(
+            'alice', 'ns1', [{'state': 'present', 'existing_key_expiry_time_mins': '60'}]
+        )
+        assert changed is True
+        assert len(created) == 1
+        obj.secret_key_api.user_secret_key_service_create_new_key_for_user.assert_called_once()
+        # Verify expiry time was passed in the payload
+        call_args = obj.secret_key_api.user_secret_key_service_create_new_key_for_user.call_args
+        assert call_args[1]['user_secret_key_service_create_new_key_for_user_request'].existing_key_expiry_time_mins == '60'
+
+    def test_create_api_error_fails(self):
+        obj = make_obj()
+        obj._list_existing_secret_keys = MagicMock(return_value=[])
+        obj.secret_key_api.user_secret_key_service_create_new_key_for_user.side_effect = Exception('create err')
+        with patch(f'{UTILS}.determine_error', return_value='create err'):
+            changed, created = obj.sync_secret_keys(
+                'alice', 'ns1', [{'state': 'present'}]
+            )
+        assert obj.module.exit_json.call_args[1]['failed'] is True
+
+    def test_delete_by_id_only_fails_validation(self):
         obj = make_obj()
         obj._list_existing_secret_keys = MagicMock(return_value=[{'secret_key_id': 'abc'}])
         changed, created = obj.sync_secret_keys(
             'alice', 'ns1', [{'state': 'absent', 'secret_key_id': 'abc'}]
         )
+        # Should fail with validation error
+        assert obj.module.fail_json.called
+        assert 'secret_key' in obj.module.fail_json.call_args[1]['msg']
+
+    def test_delete_by_id_and_secret(self):
+        obj = make_obj()
+        obj._list_existing_secret_keys = MagicMock(return_value=[{'secret_key_id': 'abc'}])
+        changed, created = obj.sync_secret_keys(
+            'alice', 'ns1', [{'state': 'absent', 'secret_key_id': 'abc', 'secret_key': 's3cr3t'}]
+        )
         assert changed is True
         obj.secret_key_api.user_secret_key_service_delete_key_for_user.assert_called_once()
+
+    def test_delete_by_secret_only(self):
+        obj = make_obj()
+        obj._list_existing_secret_keys = MagicMock(return_value=[{'secret_key_id': 'abc'}])
+        changed, created = obj.sync_secret_keys(
+            'alice', 'ns1', [{'state': 'absent', 'secret_key': 's3cr3t'}]
+        )
+        assert changed is True
+        obj.secret_key_api.user_secret_key_service_delete_key_for_user.assert_called_once()
+
+    def test_delete_skip_when_key_already_gone(self):
+        obj = make_obj()
+        obj._list_existing_secret_keys = MagicMock(return_value=[])  # No keys exist
+        changed, created = obj.sync_secret_keys(
+            'alice', 'ns1', [{'state': 'absent', 'secret_key_id': 'abc', 'secret_key': 's3cr3t'}]
+        )
+        assert changed is False
+        obj.secret_key_api.user_secret_key_service_delete_key_for_user.assert_not_called()
 
     def test_noop_when_key_present_and_desired_present(self):
         obj = make_obj()
@@ -201,6 +329,16 @@ class TestSyncSecretKeys:
             'alice', 'ns1', [{'state': 'present', 'secret_key_id': 'abc'}]
         )
         assert changed is False
+
+    def test_delete_api_error_fails(self):
+        obj = make_obj()
+        obj._list_existing_secret_keys = MagicMock(return_value=[{'secret_key_id': 'abc'}])
+        obj.secret_key_api.user_secret_key_service_delete_key_for_user.side_effect = Exception('del err')
+        with patch(f'{UTILS}.determine_error', return_value='del err'):
+            changed, created = obj.sync_secret_keys(
+                'alice', 'ns1', [{'state': 'absent', 'secret_key_id': 'abc', 'secret_key': 's3cr3t'}]
+            )
+        assert obj.module.exit_json.call_args[1]['failed'] is True
 
 
 class TestPerformModuleOperation:
@@ -211,6 +349,31 @@ class TestPerformModuleOperation:
         obj.perform_module_operation()
         obj.create_user.assert_called_once()
         assert obj.module.exit_json.call_args[1].get('changed') is True
+
+    def test_update_existing_user_with_tags(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'present', 'tags': [{'name': 'env', 'value': 'prod'}]})
+        obj.get_user_details = MagicMock(return_value={'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []})
+        obj.sync_tags = MagicMock(return_value=True)
+        obj.perform_module_operation()
+        obj.sync_tags.assert_called_once()
+        assert obj.module.exit_json.call_args[1].get('changed') is True
+
+    def test_update_existing_user_with_lock(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'present', 'locked': True})
+        obj.get_user_details = MagicMock(return_value={'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []})
+        obj.sync_lock = MagicMock(return_value=True)
+        obj.perform_module_operation()
+        obj.sync_lock.assert_called_once()
+        assert obj.module.exit_json.call_args[1].get('changed') is True
+
+    def test_update_existing_user_with_secret_keys(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'present', 'secret_keys': [{'state': 'present'}]})
+        obj.get_user_details = MagicMock(return_value={'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []})
+        obj.sync_secret_keys = MagicMock(return_value=(True, [{'secret_key': 's3cr3t', 'secret_key_id': 'abc'}]))
+        obj.perform_module_operation()
+        obj.sync_secret_keys.assert_called_once()
+        assert obj.module.exit_json.call_args[1].get('changed') is True
+        assert obj.module.exit_json.call_args[1].get('created_secret_keys') is not None
 
     def test_absent_existing(self):
         obj = make_obj(params={**BASE_PARAMS, 'state': 'absent'})
@@ -233,3 +396,11 @@ class TestPerformModuleOperation:
         obj.perform_module_operation()
         obj.create_user.assert_not_called()
         assert obj.module.exit_json.call_args[1].get('changed') is True
+
+    def test_check_mode_secret_keys(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'present', 'secret_keys': [{'state': 'present'}]}, check_mode=True)
+        obj.get_user_details = MagicMock(return_value={'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []})
+        obj.sync_secret_keys = MagicMock()
+        obj.perform_module_operation()
+        obj.sync_secret_keys.assert_not_called()
+        assert obj.module.exit_json.call_args[1].get('changed') is False
