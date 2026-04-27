@@ -101,7 +101,6 @@ class TestValidateParams:
         call_kwargs = obj.module.fail_json.call_args[1]
         assert 'password should not be provided' in call_kwargs.get('msg', '').lower()
 
-
     def test_ad_ldap_group_create_rejects_password(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_GROUP
         obj = make_obj()
