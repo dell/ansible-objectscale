@@ -359,10 +359,11 @@ class ObjectUser(object):
     def sync_tags(
         self,
         user: str,
-        namespace: str,
+        namespace: Optional[str],
         current_tags: Optional[List[Dict[str, Any]]],
         desired_tags: Optional[List[Dict[str, Any]]],
         purge_tags: bool = True,
+        check_mode: bool = False,
     ) -> bool:
         if desired_tags is None:
             return False
@@ -385,6 +386,9 @@ class ObjectUser(object):
 
         if not (to_add or to_update or to_remove):
             return False
+
+        if check_mode:
+            return True
 
         try:
             if to_add:
@@ -435,11 +439,14 @@ class ObjectUser(object):
         namespace: Optional[str],
         current_locked: Optional[bool],
         desired_locked: Optional[bool],
+        check_mode: bool = False,
     ) -> bool:
         if desired_locked is None:
             return False
         if bool(current_locked) == bool(desired_locked):
             return False
+        if check_mode:
+            return True
         try:
             payload: Dict[str, Any] = dict(user=user, is_locked=bool(desired_locked))
             if namespace:
@@ -498,6 +505,7 @@ class ObjectUser(object):
         user: str,
         namespace: Optional[str],
         desired: Optional[List[Dict[str, Any]]],
+        check_mode: bool = False,
     ) -> Tuple[bool, List[Dict[str, Any]]]:
         """Reconcile secret keys against declarations.
 
@@ -525,6 +533,9 @@ class ObjectUser(object):
                 if not entry_id and len(existing) >= 2:
                     continue
                 # Otherwise create a new key
+                if check_mode:
+                    changed = True
+                    continue
                 payload = dict(
                     namespace=namespace,
                     secretkey=entry_secret,
@@ -567,6 +578,9 @@ class ObjectUser(object):
                             "Since secret keys are only returned once at creation time, you must save "
                             "the key value if you plan to delete it later."
                     )
+                if check_mode:
+                    changed = True
+                    continue
                 payload = dict(
                     secret_key=entry_secret,
                     secret_key_id=entry_id,
@@ -615,26 +629,44 @@ class ObjectUser(object):
                     self.create_user(user, namespace, params.get('tags'))
                     details = self.get_user_details(user, namespace)
                 result['changed'] = True
+
+                # Set lock state after creation if specified
+                if params.get('locked') is not None:
+                    if self.sync_lock(
+                        user, namespace,
+                        False,  # New users are unlocked by default
+                        params['locked'],
+                        check_mode=self.module.check_mode,
+                    ):
+                        result['changed'] = True
+                        if not self.module.check_mode:
+                            details = self.get_user_details(user, namespace)
             else:
-                if params.get('tags') is not None and not self.module.check_mode:
+                if params.get('tags') is not None:
                     if self.sync_tags(
                         user, namespace,
                         details.get('tag'), params['tags'], params.get('purge_tags', True),
+                        check_mode=self.module.check_mode,
                     ):
                         result['changed'] = True
-                        details = self.get_user_details(user, namespace)
+                        if not self.module.check_mode:
+                            details = self.get_user_details(user, namespace)
 
-                if params.get('locked') is not None and not self.module.check_mode:
+                if params.get('locked') is not None:
                     if self.sync_lock(
                         user, namespace,
                         bool(details.get('locked')) if details else False,
                         params['locked'],
+                        check_mode=self.module.check_mode,
                     ):
                         result['changed'] = True
-                        details = self.get_user_details(user, namespace)
+                        if not self.module.check_mode:
+                            details = self.get_user_details(user, namespace)
 
-            if params.get('secret_keys') and not self.module.check_mode:
-                key_changed, created_keys = self.sync_secret_keys(user, namespace, params['secret_keys'])
+            if params.get('secret_keys'):
+                key_changed, created_keys = self.sync_secret_keys(
+                    user, namespace, params['secret_keys'], check_mode=self.module.check_mode,
+                )
                 if key_changed:
                     result['changed'] = True
 
