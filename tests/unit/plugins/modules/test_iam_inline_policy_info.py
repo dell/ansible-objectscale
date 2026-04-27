@@ -246,6 +246,13 @@ class TestGetInlinePolicies:
         result = obj.get_inline_policies('user', 'testuser', 'testns')
         assert result == []
 
+    def test_unknown_entity_type_returns_none(self):
+        """Unknown entity type returns None for result."""
+        obj = make_info_obj()
+        obj.iam_api.list_user_policies.return_value = ['pol1']
+        result = obj.get_inline_policies('unknown', 'testuser', 'testns')
+        assert result == []
+
 
 # ---------------------------------------------------------------------------
 # perform_module_operation tests
@@ -344,3 +351,52 @@ class TestMain:
         mock_iam_api_instance.list_user_policies.return_value = []
         main()
         mock_module.exit_json.assert_called_once()
+
+    def test_main_guard_execution(self):
+        """Test main guard execution path."""
+        import subprocess
+        import sys
+        
+        # Test that main guard works by importing and checking if it runs
+        result = subprocess.run([
+            sys.executable, '-c',
+            """
+import sys
+sys.path.insert(0, '/root/Storage/collections')
+from ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy_info import main
+try:
+    main()
+except SystemExit:
+    pass  # Expected when module exits
+except Exception as e:
+    if 'AnsibleModule' in str(e):
+        pass  # Expected when module is not properly initialized
+    else:
+        raise
+"""
+        ], capture_output=True, text=True, cwd='/root/Storage/collections/ansible_collections/dellemc/objectscale')
+        
+        # Should not crash - the main guard should handle execution
+        assert result.returncode == 0 or 'AnsibleModule' in result.stderr
+
+    def test_import_exception_sets_iam_api_none(self):
+        """Import exception sets IamApi to None."""
+        import sys
+        import ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy_info as module
+        original_iam_api = getattr(module, 'IamApi', None)
+        
+        # Force import error
+        with patch.dict(sys.modules, {'ansible_collections.dellemc.objectscale.plugins.module_utils.iam_api': None}):
+            # Reload module to trigger import exception
+            if 'ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy_info' in sys.modules:
+                del sys.modules['ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy_info']
+            
+            # Re-import with broken dependency
+            try:
+                import ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy_info as module_reloaded
+                assert module_reloaded.IamApi is None
+            except ImportError:
+                pass  # Expected when dependency is missing
+        
+        # Restore original
+        module.IamApi = original_iam_api

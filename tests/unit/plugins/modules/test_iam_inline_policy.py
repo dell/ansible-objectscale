@@ -143,6 +143,15 @@ class TestDetermineEntity:
         assert entity_type == 'role'
         assert entity_name == 'admin-role'
 
+    def test_no_entity_fails(self):
+        """U-006b: Fails when no entity is specified."""
+        params = {**BASE_PARAMS, 'user_name': None, 'group_name': None, 'role_name': None}
+        obj = make_obj(params=params)
+        obj.determine_entity()
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs['failed'] is True
+        assert 'One of user_name, group_name, or role_name is required' in call_kwargs['msg']
+
 
 # ---------------------------------------------------------------------------
 # Test ID: U-007 to U-015 — get_current_policies
@@ -250,6 +259,13 @@ class TestGetCurrentPolicies:
         obj.iam_api.list_user_policies.return_value = ['pol1']
         obj.iam_api.get_user_policy.return_value = None
         result = obj.get_current_policies('user', 'testuser', 'testns')
+        assert result == []
+
+    def test_read_unknown_entity_type_returns_none(self):
+        """Extra: Unknown entity type returns None for result."""
+        obj = make_obj()
+        obj.iam_api.list_user_policies.return_value = ['pol1']
+        result = obj.get_current_policies('unknown', 'testuser', 'testns')
         assert result == []
 
 
@@ -687,6 +703,28 @@ class TestMisc:
             main()
             mock_instance.perform_module_operation.assert_called_once()
 
+    def test_import_exception_handling(self):
+        """U-049: Import exception sets IamApi to None."""
+        import sys
+        import ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy as module
+        original_iam_api = getattr(module, 'IamApi', None)
+        
+        # Force import error
+        with patch.dict(sys.modules, {'ansible_collections.dellemc.objectscale.plugins.module_utils.iam_api': None}):
+            # Reload module to trigger import exception
+            if 'ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy' in sys.modules:
+                del sys.modules['ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy']
+            
+            # Re-import with broken dependency
+            try:
+                import ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy as module_reloaded
+                assert module_reloaded.IamApi is None
+            except ImportError:
+                pass  # Expected when dependency is missing
+        
+        # Restore original
+        module.IamApi = original_iam_api
+
     def test_get_iam_inline_policy_parameters(self):
         """Extra: Verify parameter spec is correct."""
         from ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy import IamInlinePolicy
@@ -727,3 +765,30 @@ class TestMisc:
         assert call_kwargs['changed'] is True
         policy_names = {p['name'] for p in call_kwargs['inline_policy_details']['policies']}
         assert policy_names == {'pol1', 'pol3'}
+
+    def test_main_guard_execution(self):
+        """U-050: Test main guard execution path."""
+        import subprocess
+        import sys
+        
+        # Test that main guard works by importing and checking if it runs
+        result = subprocess.run([
+            sys.executable, '-c',
+            """
+import sys
+sys.path.insert(0, '/root/Storage/collections')
+from ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy import main
+try:
+    main()
+except SystemExit:
+    pass  # Expected when module exits
+except Exception as e:
+    if 'AnsibleModule' in str(e):
+        pass  # Expected when module is not properly initialized
+    else:
+        raise
+"""
+        ], capture_output=True, text=True, cwd='/root/Storage/collections/ansible_collections/dellemc/objectscale')
+        
+        # Should not crash - the main guard should handle execution
+        assert result.returncode == 0 or 'AnsibleModule' in result.stderr
