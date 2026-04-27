@@ -356,7 +356,7 @@ class TestMain:
         """Test main guard execution path."""
         import subprocess
         import sys
-        
+
         # Test that main guard works by importing and checking if it runs
         result = subprocess.run([
             sys.executable, '-c',
@@ -375,7 +375,7 @@ except Exception as e:
         raise
 """
         ], capture_output=True, text=True, cwd='/root/Storage/collections/ansible_collections/dellemc/objectscale')
-        
+
         # Should not crash - the main guard should handle execution
         assert result.returncode == 0 or 'AnsibleModule' in result.stderr
 
@@ -384,19 +384,19 @@ except Exception as e:
         import sys
         import ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy_info as module
         original_iam_api = getattr(module, 'IamApi', None)
-        
+
         # Force import error
         with patch.dict(sys.modules, {'ansible_collections.dellemc.objectscale.plugins.module_utils.iam_api': None}):
             # Reload module to trigger import exception
             if 'ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy_info' in sys.modules:
                 del sys.modules['ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy_info']
-            
+
             # Re-import with broken dependency
             try:
                 import ansible_collections.dellemc.objectscale.plugins.modules.iam_inline_policy_info as module_reloaded
                 assert module_reloaded.IamApi is None
             except ImportError:
                 pass  # Expected when dependency is missing
-        
+
         # Restore original
         module.IamApi = original_iam_api
