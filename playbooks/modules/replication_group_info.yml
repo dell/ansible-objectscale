@@ -69,7 +69,7 @@
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
         name: rg-ansible-01
-      check_mode: yes
+      check_mode: true
       register: check_result
 
     - name: Display check mode result
