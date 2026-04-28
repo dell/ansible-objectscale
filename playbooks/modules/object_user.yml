@@ -1,0 +1,297 @@
+---
+- name: Object User (non-IAM) Management Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    validate_certs: false
+    namespace_name: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') }}"
+    object_user_name: "alice"
+
+  tasks:
+    # ==================== Create User with Tags ====================
+    - name: Create an Object User with tags
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        tags:
+          - { name: env, value: prod }
+          - { name: team, value: platform }
+        state: present
+      register: create_result
+
+    - name: Verify creation
+      ansible.builtin.assert:
+        that:
+          - create_result.changed
+        fail_msg: "Object User was not created"
+
+    - name: Idempotence check
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        tags:
+          - { name: env, value: prod }
+          - { name: team, value: platform }
+        state: present
+      register: idem
+
+    - name: Assert idempotence
+      ansible.builtin.assert:
+        that:
+          - not idem.changed
+        fail_msg: "Object User create was not idempotent"
+
+    # ==================== Tag Management ====================
+    - name: Update tags - add new tag and update existing tag (purge_tags defaults to true)
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        tags:
+          - { name: env, value: staging }  # Updated value
+          - { name: team, value: platform }  # Kept
+          - { name: location, value: us-east }  # Added
+        state: present
+      register: update_tags
+
+    - name: Verify tags were updated
+      ansible.builtin.assert:
+        that:
+          - update_tags.changed
+        fail_msg: "Tags were not updated"
+
+    - name: Add tag without purging existing tags (purge_tags set to false)
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        tags:
+          - { name: owner, value: devops }
+        purge_tags: false
+        state: present
+      register: add_tag_no_purge
+
+    - name: Verify tag was added without purging
+      ansible.builtin.assert:
+        that:
+          - add_tag_no_purge.changed
+        fail_msg: "Tag was not added"
+
+    - name: Read user to verify all tags are present
+      dellemc.objectscale.object_user_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+      register: user_info
+
+    - name: Show current tags
+      ansible.builtin.debug:
+        var: user_info.object_user.tag
+
+    - name: Remove all tags by setting empty list with purge_tags set to true
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        tags: []
+        state: present
+      register: remove_tags
+
+    - name: Verify tags were removed
+      ansible.builtin.assert:
+        that:
+          - remove_tags.changed
+        fail_msg: "Tags were not removed"
+
+    # ==================== Lock State Management ====================
+    - name: Lock the Object User
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        locked: true
+      register: lock_user
+
+    - name: Verify user was locked
+      ansible.builtin.assert:
+        that:
+          - lock_user.changed
+        fail_msg: "User was not locked"
+
+    - name: Idempotence check for locked state
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        locked: true
+        state: present
+      register: lock_idem
+
+    - name: Assert lock idempotence
+      ansible.builtin.assert:
+        that:
+          - not lock_idem.changed
+        fail_msg: "Lock operation was not idempotent"
+
+    - name: Unlock the Object User
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        locked: false
+      register: unlock_user
+
+    - name: Verify user was unlocked
+      ansible.builtin.assert:
+        that:
+          - unlock_user.changed
+        fail_msg: "User was not unlocked"
+
+    # ==================== Secret Key Management ====================
+    - name: Create an S3 secret key for the Object User
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        secret_keys:
+          - state: present
+        state: present
+      register: key_result
+      no_log: true
+
+    - name: Assert secret key was created
+      ansible.builtin.assert:
+        that:
+          - key_result.created_secret_keys is defined
+          - key_result.created_secret_keys | length >= 1
+        fail_msg: "No secret key was created"
+
+    - name: Save first secret key ID and value for later deletion
+      ansible.builtin.set_fact:
+        saved_key_1_id: "{{ key_result.created_secret_keys[0].secret_key_id }}"
+        saved_key_1_value: "{{ key_result.created_secret_keys[0].secret_key }}"
+
+    - name: Create a second secret key with custom expiry time
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        secret_keys:
+          - state: present
+            existing_key_expiry_time_mins: "60"  # Expire any existing keys after 60 minutes
+        state: present
+      register: key_with_expiry
+      no_log: true
+
+    - name: Verify second key was created
+      ansible.builtin.assert:
+        that:
+          - key_with_expiry.created_secret_keys is defined
+          - key_with_expiry.created_secret_keys | length >= 1
+        fail_msg: "Second secret key was not created"
+
+    - name: Save second secret key ID and value for later deletion
+      ansible.builtin.set_fact:
+        saved_key_2_id: "{{ key_with_expiry.created_secret_keys[0].secret_key_id }}"
+        saved_key_2_value: "{{ key_with_expiry.created_secret_keys[0].secret_key }}"
+
+    - name: Delete first secret key using saved ID and value
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        secret_keys:
+          - secret_key_id: "{{ saved_key_1_id }}"
+            secret_key: "{{ saved_key_1_value }}"
+            state: absent
+        state: present
+      register: delete_key_1
+      no_log: true
+
+    - name: Verify first key was deleted
+      ansible.builtin.assert:
+        that:
+          - delete_key_1.changed
+        fail_msg: "First secret key was not deleted"
+
+    - name: Delete second secret key using saved ID and value
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        secret_keys:
+          - secret_key_id: "{{ saved_key_2_id }}"
+            secret_key: "{{ saved_key_2_value }}"
+            state: absent
+        state: present
+      register: delete_key_2
+      no_log: true
+
+    - name: Verify second key was deleted
+      ansible.builtin.assert:
+        that:
+          - delete_key_2.changed
+        fail_msg: "Second secret key was not deleted"
+
+    # ==================== Cleanup ====================
+    - name: Delete the Object User
+      dellemc.objectscale.object_user:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        user: "{{ object_user_name }}"
+        namespace: "{{ namespace_name }}"
+        state: absent
+      register: delete_user
+
+    - name: Verify user was deleted
+      ansible.builtin.assert:
+        that:
+          - delete_user.changed
+        fail_msg: "Object User was not deleted"
