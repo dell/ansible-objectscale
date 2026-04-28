@@ -27,7 +27,13 @@
         replicate_to_all_sites: false
       register: create_result
 
-    - name: Update replication group with additional mappings
+    - name: Display create result
+      ansible.builtin.debug:
+        var: create_result
+
+    # Note: Mapping removal is not supported on current ObjectScale builds
+    # Only adding mappings is supported. To change mappings, specify the complete desired list.
+    - name: Update replication group mappings
       dellemc.objectscale.replication_group:
         objectscale_host: "{{ objectscale_host }}"
         objectscale_username: "{{ objectscale_username }}"
@@ -35,7 +41,7 @@
         validate_certs: false
         state: present
         name: rg-ansible-01
-        description: Updated by Ansible
+        description: Updated mappings by Ansible
         mappings:
           - vdc_id: "{{ vdc_id }}"
             storage_pool_id: "{{ storage_pool_id }}"
@@ -67,6 +73,8 @@
           - vdc_id: "{{ vdc_id }}"
             storage_pool_id: "{{ storage_pool_id }}"
 
+    # Note: Deletion requires direct delete endpoint support in objectscale_client
+    # If not available, the module will fail with an error message
     - name: Delete replication group
       dellemc.objectscale.replication_group:
         objectscale_host: "{{ objectscale_host }}"
@@ -75,3 +83,22 @@
         validate_certs: false
         state: absent
         name: rg-ansible-01-renamed
+
+    - name: Check mode - preview replication group creation
+      dellemc.objectscale.replication_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        state: present
+        name: rg-ansible-check
+        description: Check mode example
+        mappings:
+          - vdc_id: "{{ vdc_id }}"
+            storage_pool_id: "{{ storage_pool_id }}"
+      check_mode: yes
+      register: check_result
+
+    - name: Display check mode result
+      ansible.builtin.debug:
+        var: check_result
