@@ -405,6 +405,7 @@ class TestPerformModuleOperation:
         obj = make_obj(params={**BASE_PARAMS, 'user_id': 'LocalUser', 'password': 'p', 'state': 'present'})
         obj.get_user_details = MagicMock(return_value=None)
         # Make exit_json raise an exception when failed=True to simulate actual exit
+
         def exit_json_side_effect(**kwargs):
             if kwargs.get('failed'):
                 raise SystemExit(1)
@@ -420,6 +421,7 @@ class TestPerformModuleOperation:
         obj = make_obj(params={**BASE_PARAMS, 'password': None, 'state': 'present'})
         obj.get_user_details = MagicMock(return_value=None)
         # Make exit_json raise an exception when failed=True to simulate actual exit
+
         def exit_json_side_effect(**kwargs):
             if kwargs.get('failed'):
                 raise SystemExit(1)

@@ -572,7 +572,8 @@ class ObjectUser(object):
                     continue
                 # Validate that both secret_key_id and secret_key are provided for deletion
                 if entry_id and not entry_secret:
-                    self.module.exit_json(failed=True,
+                    self.module.exit_json(
+                        failed=True,
                         msg="Deleting secret keys requires both 'secret_key_id' and 'secret_key'. "
                             "The API requires the actual secret key value for security verification. "
                             "Since secret keys are only returned once at creation time, you must save "
