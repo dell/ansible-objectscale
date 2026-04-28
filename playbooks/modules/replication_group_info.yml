@@ -1,0 +1,77 @@
+---
+- name: Replication Group Info Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('objectscale.example.com', true) }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('admin', true) }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('password', true) }}"
+    validate_certs: false
+
+  tasks:
+    - name: List all replication groups
+      dellemc.objectscale.replication_group_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: all_replication_groups
+
+    - name: Display all replication groups
+      ansible.builtin.debug:
+        var: all_replication_groups.replication_groups
+
+    # Note: id and name parameters are mutually exclusive
+    - name: Get replication group by ID
+      dellemc.objectscale.replication_group_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        id: urn:storageos:ReplicationGroupInfo:111:global
+      register: rg_by_id
+
+    - name: Display replication group details
+      ansible.builtin.debug:
+        var: rg_by_id.replication_groups
+
+    - name: Get replication group by name
+      dellemc.objectscale.replication_group_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        name: rg-ansible-01
+      register: rg_by_name
+
+    - name: Display replication group by name
+      ansible.builtin.debug:
+        var: rg_by_name.replication_groups
+
+    - name: List replication groups without full details (faster)
+      dellemc.objectscale.replication_group_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        fetch_full_details: false
+      register: rg_list_basic
+
+    - name: Display basic replication group list
+      ansible.builtin.debug:
+        var: rg_list_basic.replication_groups
+
+    - name: Check mode - preview replication group info
+      dellemc.objectscale.replication_group_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        name: rg-ansible-01
+      check_mode: true
+      register: check_result
+
+    - name: Display check mode result
+      ansible.builtin.debug:
+        var: check_result.replication_groups

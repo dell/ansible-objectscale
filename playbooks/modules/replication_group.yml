@@ -1,0 +1,104 @@
+---
+- name: Replication Group Management Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('objectscale.example.com', true) }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('admin', true) }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('password', true) }}"
+    vdc_id: "urn:storageos:VirtualDataCenterData:111"
+    storage_pool_id: "urn:storageos:VirtualArray:111"
+
+  tasks:
+    - name: Create a replication group
+      dellemc.objectscale.replication_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        state: present
+        name: rg-ansible-01
+        description: Created by Ansible
+        replication_type: active
+        mappings:
+          - vdc_id: "{{ vdc_id }}"
+            storage_pool_id: "{{ storage_pool_id }}"
+        replicate_to_all_sites: false
+      register: create_result
+
+    - name: Display create result
+      ansible.builtin.debug:
+        var: create_result
+
+    # Note: Mapping removal is not supported on current ObjectScale builds
+    # Only adding mappings is supported. To change mappings, specify the complete desired list.
+    - name: Update replication group mappings
+      dellemc.objectscale.replication_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        state: present
+        name: rg-ansible-01
+        description: Updated mappings by Ansible
+        mappings:
+          - vdc_id: "{{ vdc_id }}"
+            storage_pool_id: "{{ storage_pool_id }}"
+            is_replication_target: true
+        enable_rebalancing: true
+
+    - name: Rename replication group
+      dellemc.objectscale.replication_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        state: present
+        name: rg-ansible-01
+        new_name: rg-ansible-01-renamed
+        description: Renamed by Ansible
+
+    - name: Update replication group by ID
+      dellemc.objectscale.replication_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        state: present
+        id: urn:storageos:ReplicationGroupInfo:111:global
+        new_name: rg-ansible-01-updated
+        description: Updated by ID
+        mappings:
+          - vdc_id: "{{ vdc_id }}"
+            storage_pool_id: "{{ storage_pool_id }}"
+
+    # Note: Deletion requires direct delete endpoint support in objectscale_client
+    # If not available, the module will fail with an error message
+    - name: Delete replication group
+      dellemc.objectscale.replication_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        state: absent
+        name: rg-ansible-01-renamed
+
+    - name: Check mode - preview replication group creation
+      dellemc.objectscale.replication_group:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        state: present
+        name: rg-ansible-check
+        description: Check mode example
+        mappings:
+          - vdc_id: "{{ vdc_id }}"
+            storage_pool_id: "{{ storage_pool_id }}"
+      check_mode: true
+      register: check_result
+
+    - name: Display check mode result
+      ansible.builtin.debug:
+        var: check_result
