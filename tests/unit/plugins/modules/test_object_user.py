@@ -27,12 +27,13 @@ BASE_PARAMS = dict(
 )
 
 
-def make_obj(params=None, has_client=True, check_mode=False):
+def make_obj(params=None, has_client=True, check_mode=False, diff_mode=False):
     from ansible_collections.dellemc.objectscale.plugins.modules.object_user import ObjectUser
 
     module_mock = MagicMock()
     module_mock.params = (params or BASE_PARAMS).copy()
     module_mock.check_mode = check_mode
+    module_mock._diff = diff_mode
     api_client_mock = MagicMock()
 
     with patch(f'{MODULE}.AnsibleModule', return_value=module_mock), \
@@ -534,3 +535,67 @@ class TestPerformModuleOperation:
         obj.perform_module_operation()
         obj.sync_lock.assert_called_once()
         assert obj.module.exit_json.call_args[1].get('changed') is True
+
+    def test_diff_mode_create(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'present'}, diff_mode=True)
+        obj.get_user_details = MagicMock(side_effect=[
+            None,
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []}
+        ])
+        obj.create_user = MagicMock()
+        obj.sync_secret_keys = MagicMock(return_value=(False, []))
+        obj.perform_module_operation()
+        result = obj.module.exit_json.call_args[1]
+        assert result.get('changed') is True
+        assert result.get('diff') is not None
+        assert result['diff']['before'] == {}
+        assert result['diff']['after']['name'] == 'alice'
+
+    def test_diff_mode_update(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'present', 'tags': [{'name': 'env', 'value': 'prod'}]}, diff_mode=True)
+        obj.get_user_details = MagicMock(side_effect=[
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []},
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': [{'name': 'env', 'value': 'prod'}]}
+        ])
+        obj.sync_tags = MagicMock(return_value=True)
+        obj.sync_secret_keys = MagicMock(return_value=(False, []))
+        obj.perform_module_operation()
+        result = obj.module.exit_json.call_args[1]
+        assert result.get('changed') is True
+        assert result.get('diff') is not None
+        assert result['diff']['before']['tag'] == []
+        assert result['diff']['after']['tag'] == [{'name': 'env', 'value': 'prod'}]
+
+    def test_diff_mode_delete(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'absent'}, diff_mode=True)
+        obj.get_user_details = MagicMock(return_value={'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []})
+        obj.delete_user = MagicMock()
+        obj.sync_secret_keys = MagicMock(return_value=(False, []))
+        obj.perform_module_operation()
+        result = obj.module.exit_json.call_args[1]
+        assert result.get('changed') is True
+        assert result.get('diff') is not None
+        assert result['diff']['before']['name'] == 'alice'
+        assert result['diff']['after'] == {}
+
+    def test_diff_mode_no_change_no_diff(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'present'}, diff_mode=True)
+        obj.get_user_details = MagicMock(return_value={'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []})
+        obj.sync_secret_keys = MagicMock(return_value=(False, []))
+        obj.perform_module_operation()
+        result = obj.module.exit_json.call_args[1]
+        assert result.get('changed') is False
+        assert result.get('diff') is None
+
+    def test_no_diff_mode_no_diff_output(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'present'}, diff_mode=False)
+        obj.get_user_details = MagicMock(side_effect=[
+            None,
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []}
+        ])
+        obj.create_user = MagicMock()
+        obj.sync_secret_keys = MagicMock(return_value=(False, []))
+        obj.perform_module_operation()
+        result = obj.module.exit_json.call_args[1]
+        assert result.get('changed') is True
+        assert result.get('diff') is None

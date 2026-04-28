@@ -616,6 +616,8 @@ class ObjectUser(object):
         created_keys: List[Dict[str, Any]] = []
 
         details = self.get_user_details(user, namespace)
+        diff_before = dict(details) if details else {}
+        diff_after = dict(diff_before)
 
         if state == 'absent':
             if details:
@@ -623,12 +625,14 @@ class ObjectUser(object):
                     self.delete_user(user, namespace)
                 result['changed'] = True
                 details = None
+                diff_after = {}
         else:
             if not details:
                 if not self.module.check_mode:
                     self.create_user(user, namespace, params.get('tags'))
                     details = self.get_user_details(user, namespace)
                 result['changed'] = True
+                diff_after = dict(details) if details else {}
 
                 # Set lock state after creation if specified
                 if params.get('locked') is not None:
@@ -641,6 +645,7 @@ class ObjectUser(object):
                         result['changed'] = True
                         if not self.module.check_mode:
                             details = self.get_user_details(user, namespace)
+                            diff_after = dict(details) if details else {}
             else:
                 if params.get('tags') is not None:
                     if self.sync_tags(
@@ -651,6 +656,7 @@ class ObjectUser(object):
                         result['changed'] = True
                         if not self.module.check_mode:
                             details = self.get_user_details(user, namespace)
+                            diff_after = dict(details) if details else {}
 
                 if params.get('locked') is not None:
                     if self.sync_lock(
@@ -662,6 +668,7 @@ class ObjectUser(object):
                         result['changed'] = True
                         if not self.module.check_mode:
                             details = self.get_user_details(user, namespace)
+                            diff_after = dict(details) if details else {}
 
             if params.get('secret_keys'):
                 key_changed, created_keys = self.sync_secret_keys(
@@ -669,10 +676,16 @@ class ObjectUser(object):
                 )
                 if key_changed:
                     result['changed'] = True
+                    if not self.module.check_mode:
+                        details = self.get_user_details(user, namespace)
+                        diff_after = dict(details) if details else {}
 
         result['object_user_details'] = details
         if created_keys:
             result['created_secret_keys'] = created_keys
+
+        if self.module._diff and result['changed']:
+            result['diff'] = {'before': diff_before, 'after': diff_after}
 
         self.module.exit_json(**result)
 
