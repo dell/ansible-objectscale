@@ -6,6 +6,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 from unittest.mock import MagicMock, patch
+import pytest
 
 MODULE = 'ansible_collections.dellemc.objectscale.plugins.modules.management_user'
 UTILS = 'ansible_collections.dellemc.objectscale.plugins.module_utils.utils'
@@ -73,40 +74,45 @@ class TestValidateParams:
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
         obj = make_obj(params={**BASE_PARAMS, 'user_id': 'LocalUser', 'password': 'p'})
         obj._validate_params(USER_TYPE_LOCAL, 'LocalUser', {'password': 'p', 'is_external_group': None}, user_exists=False)
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'upper case' in call_kwargs.get('msg', '').lower()
 
     def test_local_user_create_requires_password(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
         obj = make_obj()
         obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': None, 'is_external_group': None}, user_exists=False)
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'password is required' in call_kwargs.get('msg', '').lower()
 
     def test_local_user_create_rejects_external_group_true(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
         obj = make_obj()
         obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': 'p', 'is_external_group': True}, user_exists=False)
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'is_external_group must not be true' in call_kwargs.get('msg', '').lower()
 
     def test_ad_ldap_user_create_rejects_password(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_USER
         obj = make_obj()
         obj._validate_params(USER_TYPE_AD_LDAP_USER, 'user@domain', {'password': 'p', 'is_external_group': False}, user_exists=False)
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'password should not be provided' in call_kwargs.get('msg', '').lower()
 
     def test_ad_ldap_group_create_rejects_password(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_GROUP
         obj = make_obj()
         obj._validate_params(USER_TYPE_AD_LDAP_GROUP, 'group@domain', {'password': 'p', 'is_external_group': True}, user_exists=False)
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'password should not be provided' in call_kwargs.get('msg', '').lower()
 
     def test_ad_ldap_group_create_requires_external_group_true(self):
@@ -123,16 +129,18 @@ class TestValidateParams:
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_USER
         obj = make_obj()
         obj._validate_params(USER_TYPE_AD_LDAP_USER, 'user@domain', {'password': 'p', 'is_external_group': False}, user_exists=True)
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'password should not be provided' in call_kwargs.get('msg', '').lower()
 
     def test_ad_ldap_group_modify_rejects_password(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_GROUP
         obj = make_obj()
         obj._validate_params(USER_TYPE_AD_LDAP_GROUP, 'group@domain', {'password': 'p', 'is_external_group': True}, user_exists=True)
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'password should not be provided' in call_kwargs.get('msg', '').lower()
 
     def test_local_user_modify_allows_password(self):
@@ -140,22 +148,24 @@ class TestValidateParams:
         obj = make_obj()
         # Should not fail
         obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': 'p', 'is_external_group': None}, user_exists=True)
-        assert obj.module.fail_json.call_count == 0
+        assert obj.module.exit_json.call_count == 0
 
     def test_local_user_modify_rejects_external_group_true(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
         obj = make_obj()
         obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': 'p', 'is_external_group': True}, user_exists=True)
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'is_external_group cannot be modified' in call_kwargs.get('msg', '').lower()
 
     def test_ad_ldap_user_modify_rejects_external_group_true(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_USER
         obj = make_obj()
         obj._validate_params(USER_TYPE_AD_LDAP_USER, 'user@domain', {'password': None, 'is_external_group': True}, user_exists=True)
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'is_external_group cannot be modified' in call_kwargs.get('msg', '').lower()
 
     def test_local_user_modify_allows_external_group_false(self):
@@ -163,21 +173,21 @@ class TestValidateParams:
         obj = make_obj()
         # Should not fail
         obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': 'p', 'is_external_group': False}, user_exists=True)
-        assert obj.module.fail_json.call_count == 0
+        assert obj.module.exit_json.call_count == 0
 
     def test_ad_ldap_user_modify_allows_external_group_false(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_AD_LDAP_USER
         obj = make_obj()
         # Should not fail
         obj._validate_params(USER_TYPE_AD_LDAP_USER, 'user@domain', {'password': None, 'is_external_group': False}, user_exists=True)
-        assert obj.module.fail_json.call_count == 0
+        assert obj.module.exit_json.call_count == 0
 
     def test_local_user_modify_allows_no_external_group(self):
         from ansible_collections.dellemc.objectscale.plugins.modules.management_user import USER_TYPE_LOCAL
         obj = make_obj()
         # Should not fail
         obj._validate_params(USER_TYPE_LOCAL, 'localuser', {'password': 'p', 'is_external_group': None}, user_exists=True)
-        assert obj.module.fail_json.call_count == 0
+        assert obj.module.exit_json.call_count == 0
 
 
 class TestInit:
@@ -394,17 +404,31 @@ class TestPerformModuleOperation:
     def test_create_validation_fails_uppercase_user_id(self):
         obj = make_obj(params={**BASE_PARAMS, 'user_id': 'LocalUser', 'password': 'p', 'state': 'present'})
         obj.get_user_details = MagicMock(return_value=None)
-        obj.perform_module_operation()
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        # Make exit_json raise an exception when failed=True to simulate actual exit
+        def exit_json_side_effect(**kwargs):
+            if kwargs.get('failed'):
+                raise SystemExit(1)
+        obj.module.exit_json.side_effect = exit_json_side_effect
+        with pytest.raises(SystemExit):
+            obj.perform_module_operation()
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'upper case' in call_kwargs.get('msg', '').lower()
 
     def test_create_validation_fails_local_user_missing_password(self):
         obj = make_obj(params={**BASE_PARAMS, 'password': None, 'state': 'present'})
         obj.get_user_details = MagicMock(return_value=None)
-        obj.perform_module_operation()
-        assert obj.module.fail_json.called
-        call_kwargs = obj.module.fail_json.call_args[1]
+        # Make exit_json raise an exception when failed=True to simulate actual exit
+        def exit_json_side_effect(**kwargs):
+            if kwargs.get('failed'):
+                raise SystemExit(1)
+        obj.module.exit_json.side_effect = exit_json_side_effect
+        with pytest.raises(SystemExit):
+            obj.perform_module_operation()
+        assert obj.module.exit_json.called
+        call_kwargs = obj.module.exit_json.call_args[1]
+        assert call_kwargs.get('failed') is True
         assert 'password is required' in call_kwargs.get('msg', '').lower()
 
     def test_present_no_drift(self):

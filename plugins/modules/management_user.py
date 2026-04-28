@@ -300,7 +300,7 @@ class ManagementUser(object):
     def _validate_params(self, user_type: str, user_id: str, params: Dict[str, Any], user_exists: bool) -> None:
         """Validate parameter combinations based on user type and operation."""
         if user_id != user_id.lower():
-            self.module.fail_json(
+            self.module.exit_json(failed=True,
                 msg="Upper case letters are not allowed in user_id. Got: '%s'." % user_id,
             )
 
@@ -310,38 +310,38 @@ class ManagementUser(object):
         if is_creating:
             if user_type == USER_TYPE_LOCAL:
                 if not password:
-                    self.module.fail_json(
+                    self.module.exit_json(failed=True,
                         msg="password is required when creating a Local Management User ('%s')." % user_id,
                     )
                 if params.get('is_external_group'):
-                    self.module.fail_json(
+                    self.module.exit_json(failed=True,
                         msg="is_external_group must not be true for a Local User ('%s')." % user_id,
                     )
             elif user_type == USER_TYPE_AD_LDAP_USER:
                 if password:
-                    self.module.fail_json(
+                    self.module.exit_json(failed=True,
                         msg="password should not be provided when creating an AD/LDAP User ('%s')." % user_id,
                     )
                 if params.get('is_external_group'):
-                    self.module.fail_json(
+                    self.module.exit_json(failed=True,
                         msg="is_external_group must not be true for an AD/LDAP User ('%s')." % user_id,
                     )
             else:  # AD/LDAP Group
                 if password:
-                    self.module.fail_json(
+                    self.module.exit_json(failed=True,
                         msg="password should not be provided when creating an AD/LDAP Group ('%s')." % user_id,
                     )
                 if not params.get('is_external_group'):
-                    self.module.fail_json(
+                    self.module.exit_json(failed=True,
                         msg="is_external_group must be true when creating an AD/LDAP Group ('%s')." % user_id,
                     )
         else:  # modifying
             if user_type in (USER_TYPE_AD_LDAP_USER, USER_TYPE_AD_LDAP_GROUP) and password:
-                self.module.fail_json(
+                self.module.exit_json(failed=True,
                     msg="password should not be provided when updating an AD/LDAP User or Group ('%s')." % user_id,
                 )
             if user_type in (USER_TYPE_LOCAL, USER_TYPE_AD_LDAP_USER) and params.get('is_external_group') is True:
-                self.module.fail_json(
+                self.module.exit_json(failed=True,
                     msg="is_external_group cannot be modified for a Local User or AD/LDAP User ('%s')." % user_id,
                 )
 

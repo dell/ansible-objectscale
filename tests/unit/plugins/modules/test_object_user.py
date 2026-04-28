@@ -334,8 +334,9 @@ class TestSyncSecretKeys:
             'alice', 'ns1', [{'state': 'absent', 'secret_key_id': 'abc'}]
         )
         # Should fail with validation error
-        assert obj.module.fail_json.called
-        assert 'secret_key' in obj.module.fail_json.call_args[1]['msg']
+        assert obj.module.exit_json.called
+        assert obj.module.exit_json.call_args[1].get('failed') is True
+        assert 'secret_key' in obj.module.exit_json.call_args[1]['msg']
 
     def test_delete_by_id_and_secret(self):
         obj = make_obj()
