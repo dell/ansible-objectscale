@@ -345,7 +345,8 @@ class IamInlinePolicy(object):
         if doc_str is None:
             return ''
         try:
-            parsed = json.loads(doc_str)
+            # Ansible's jinja2_native may pass a dict instead of a JSON string
+            parsed = doc_str if isinstance(doc_str, dict) else json.loads(doc_str)
             # ObjectScale normalizes single-value Action/Resource strings
             # to arrays.  Mirror that so comparisons are stable.
             if isinstance(parsed, dict):
@@ -443,7 +444,11 @@ class IamInlinePolicy(object):
             desired_doc = self._normalize_document(p.get('document', ''))
             current_doc = current_map.get(name)
             if current_doc is None or current_doc != desired_doc:
-                to_put.append({'name': name, 'document': p.get('document', '')})
+                raw_doc = p.get('document', '')
+                # Ensure document is a JSON string, not a dict
+                if isinstance(raw_doc, dict):
+                    raw_doc = json.dumps(raw_doc, separators=(',', ':'))
+                to_put.append({'name': name, 'document': raw_doc})
 
         to_delete = [n for n in current_map if n not in desired_names]
         changed = bool(to_put or to_delete)
@@ -477,6 +482,10 @@ class IamInlinePolicy(object):
         for policy in sorted(to_put, key=lambda p: p['name']):
             pname = policy['name']
             pdoc = policy.get('document', '')
+            # Ansible's jinja2_native may convert JSON strings to dicts;
+            # ensure the document is always a JSON string for the API.
+            if isinstance(pdoc, dict):
+                pdoc = json.dumps(pdoc, separators=(',', ':'))
             self.module.log('Putting inline policy %s on %s %s' % (pname, entity_type, entity_name))
             try:
                 if not self.module.check_mode:
