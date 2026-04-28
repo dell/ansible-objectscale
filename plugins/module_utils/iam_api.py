@@ -563,6 +563,170 @@ class IamApi(object):
         )
 
     # ------------------------------------------------------------------
+    # Public API -- User inline policies
+    # ------------------------------------------------------------------
+
+    def put_user_policy(self, user_name, policy_name, policy_document, namespace):
+        # type: (str, str, str, str) -> None
+        """Create or update an inline policy on a user."""
+        params = {
+            'UserName': user_name,
+            'PolicyName': policy_name,
+            'PolicyDocument': policy_document,
+        }
+
+        status, body = self._make_request('PutUserPolicy', params, namespace)
+
+        if status < 200 or status >= 300:
+            self._handle_error(status, body, 'PutUserPolicy')
+
+    def get_user_policy(self, user_name, policy_name, namespace):
+        # type: (str, str, str) -> Optional[Dict[str, Optional[str]]]
+        """Retrieve an inline policy on a user. Returns None on 404."""
+        params = {'UserName': user_name, 'PolicyName': policy_name}
+
+        status, body = self._make_request('GetUserPolicy', params, namespace)
+
+        if status == 404:
+            return None
+
+        if status >= 400:
+            try:
+                err = IamApiException(status=status, body=body, action='GetUserPolicy')
+                if err.error_code == 'NoSuchEntity':
+                    return None
+            except Exception:
+                pass
+            self._handle_error(status, body, 'GetUserPolicy')
+
+        root = self._parse_xml(body)
+
+        result_el = self._find_descendant(root, 'GetUserPolicyResult')
+        if result_el is None:
+            return None
+
+        return {
+            'UserName': self._extract_text(result_el, 'UserName'),
+            'PolicyName': self._extract_text(result_el, 'PolicyName'),
+            'PolicyDocument': self._extract_text(result_el, 'PolicyDocument'),
+        }
+
+    def delete_user_policy(self, user_name, policy_name, namespace):
+        # type: (str, str, str) -> None
+        """Delete an inline policy from a user. Idempotent -- returns None on 404."""
+        params = {'UserName': user_name, 'PolicyName': policy_name}
+
+        status, body = self._make_request('DeleteUserPolicy', params, namespace)
+
+        if status == 404:
+            return None
+
+        if status >= 400:
+            try:
+                err = IamApiException(status=status, body=body, action='DeleteUserPolicy')
+                if err.error_code == 'NoSuchEntity':
+                    return None
+            except Exception:
+                pass
+            self._handle_error(status, body, 'DeleteUserPolicy')
+
+    def list_user_policies(self, user_name, namespace):
+        # type: (str, str) -> List[str]
+        """List names of inline policies on a user, with automatic pagination."""
+        params = {'UserName': user_name}
+
+        def _extract_policy_name(member_el):
+            # type: (ET.Element) -> str
+            return member_el.text or ''
+
+        return self._paginate(
+            action='ListUserPolicies', params=params, namespace=namespace,
+            result_tag='PolicyNames', extractor=_extract_policy_name,
+        )
+
+    # ------------------------------------------------------------------
+    # Public API -- Role inline policies
+    # ------------------------------------------------------------------
+
+    def put_role_policy(self, role_name, policy_name, policy_document, namespace):
+        # type: (str, str, str, str) -> None
+        """Create or update an inline policy on a role."""
+        params = {
+            'RoleName': role_name,
+            'PolicyName': policy_name,
+            'PolicyDocument': policy_document,
+        }
+
+        status, body = self._make_request('PutRolePolicy', params, namespace)
+
+        if status < 200 or status >= 300:
+            self._handle_error(status, body, 'PutRolePolicy')
+
+    def get_role_policy(self, role_name, policy_name, namespace):
+        # type: (str, str, str) -> Optional[Dict[str, Optional[str]]]
+        """Retrieve an inline policy on a role. Returns None on 404."""
+        params = {'RoleName': role_name, 'PolicyName': policy_name}
+
+        status, body = self._make_request('GetRolePolicy', params, namespace)
+
+        if status == 404:
+            return None
+
+        if status >= 400:
+            try:
+                err = IamApiException(status=status, body=body, action='GetRolePolicy')
+                if err.error_code == 'NoSuchEntity':
+                    return None
+            except Exception:
+                pass
+            self._handle_error(status, body, 'GetRolePolicy')
+
+        root = self._parse_xml(body)
+
+        result_el = self._find_descendant(root, 'GetRolePolicyResult')
+        if result_el is None:
+            return None
+
+        return {
+            'RoleName': self._extract_text(result_el, 'RoleName'),
+            'PolicyName': self._extract_text(result_el, 'PolicyName'),
+            'PolicyDocument': self._extract_text(result_el, 'PolicyDocument'),
+        }
+
+    def delete_role_policy(self, role_name, policy_name, namespace):
+        # type: (str, str, str) -> None
+        """Delete an inline policy from a role. Idempotent -- returns None on 404."""
+        params = {'RoleName': role_name, 'PolicyName': policy_name}
+
+        status, body = self._make_request('DeleteRolePolicy', params, namespace)
+
+        if status == 404:
+            return None
+
+        if status >= 400:
+            try:
+                err = IamApiException(status=status, body=body, action='DeleteRolePolicy')
+                if err.error_code == 'NoSuchEntity':
+                    return None
+            except Exception:
+                pass
+            self._handle_error(status, body, 'DeleteRolePolicy')
+
+    def list_role_policies(self, role_name, namespace):
+        # type: (str, str) -> List[str]
+        """List names of inline policies on a role, with automatic pagination."""
+        params = {'RoleName': role_name}
+
+        def _extract_policy_name(member_el):
+            # type: (ET.Element) -> str
+            return member_el.text or ''
+
+        return self._paginate(
+            action='ListRolePolicies', params=params, namespace=namespace,
+            result_tag='PolicyNames', extractor=_extract_policy_name,
+        )
+
+    # ------------------------------------------------------------------
     # Public API -- User-group queries
     # ------------------------------------------------------------------
 
