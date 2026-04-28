@@ -1,0 +1,62 @@
+---
+- name: Storage Pool Info Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') }}"
+    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') }}"
+    validate_certs: false
+
+  tasks:
+    - name: List all storage pools
+      dellemc.objectscale.storage_pool_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: all_storage_pools
+
+    - name: Display all storage pools
+      ansible.builtin.debug:
+        var: all_storage_pools.storage_pools
+
+    - name: Get storage pool by ID
+      dellemc.objectscale.storage_pool_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        storage_pool_id: urn:storageos:VirtualArray:111
+      register: sp_by_id
+
+    - name: Display storage pool details
+      ansible.builtin.debug:
+        var: sp_by_id.storage_pools
+
+    - name: List storage pools for a specific VDC
+      dellemc.objectscale.storage_pool_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        vdc_id: urn:storageos:VirtualDataCenterData:111
+      register: sp_by_vdc
+
+    - name: Display storage pools by VDC
+      ansible.builtin.debug:
+        var: sp_by_vdc.storage_pools
+
+    - name: Filter storage pools by name
+      dellemc.objectscale.storage_pool_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        name: sp_ansible
+      register: sp_by_name
+
+    - name: Display storage pool by name
+      ansible.builtin.debug:
+        var: sp_by_name.storage_pools
