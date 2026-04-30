@@ -135,6 +135,7 @@ def main():
         state=dict(type='str', required=True, choices=['present', 'absent']),
         versioning=dict(type='bool', required=False),
         force=dict(type='bool', default=False),
+        vpool=dict(type='str', required=False),
     )
 
     module = AnsibleModule(
@@ -149,6 +150,7 @@ def main():
     state = module.params['state']
     versioning = module.params.get('versioning')
     force = module.params['force']
+    vpool = module.params.get('vpool')
 
     if not name:
         module.fail_json(msg="missing required arguments: name")
@@ -169,9 +171,10 @@ def main():
             if not current_bucket:
                 result['changed'] = True
                 if not module.check_mode:
-                    bucket_api.create_bucket(
-                        {'name': name, 'namespace': namespace}
-                    )
+                    create_payload = {'name': name, 'namespace': namespace}
+                    if vpool:
+                        create_payload['vpool'] = vpool
+                    bucket_api.create_bucket(create_payload)
             else:
                 if versioning is not None and \
                         current_bucket.get('versioning_status', '').lower() \
