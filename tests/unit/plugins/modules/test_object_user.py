@@ -412,6 +412,53 @@ class TestSyncSecretKeys:
         assert changed is False
 
 
+class TestEnrichDiffWithSecretKeys:
+    def test_returns_unchanged_when_diff_dict_empty(self):
+        obj = make_obj()
+        obj._list_existing_secret_keys = MagicMock()
+        diff_dict = {}
+        result = obj._enrich_diff_with_secret_keys(diff_dict, 'alice', 'ns1')
+        assert result == {}
+        obj._list_existing_secret_keys.assert_not_called()
+
+    def test_enriches_diff_dict_with_secret_keys(self):
+        obj = make_obj()
+        obj._list_existing_secret_keys = MagicMock(return_value=[
+            {'secret_key_id': 'abc123', 'key_timestamp': '2026-04-30T10:00:00Z', 'key_expiry_timestamp': ''}
+        ])
+        diff_dict = {'name': 'alice', 'namespace': 'ns1'}
+        result = obj._enrich_diff_with_secret_keys(diff_dict, 'alice', 'ns1')
+        assert result['name'] == 'alice'
+        assert result['namespace'] == 'ns1'
+        assert result['secret_keys'] == [
+            {'secret_key_id': 'abc123', 'key_timestamp': '2026-04-30T10:00:00Z', 'key_expiry_timestamp': ''}
+        ]
+        obj._list_existing_secret_keys.assert_called_once_with('alice', 'ns1')
+
+    def test_enriches_diff_dict_with_empty_secret_keys(self):
+        obj = make_obj()
+        obj._list_existing_secret_keys = MagicMock(return_value=[])
+        diff_dict = {'name': 'alice', 'namespace': 'ns1'}
+        result = obj._enrich_diff_with_secret_keys(diff_dict, 'alice', 'ns1')
+        assert result['name'] == 'alice'
+        assert result['namespace'] == 'ns1'
+        assert result['secret_keys'] == []
+        obj._list_existing_secret_keys.assert_called_once_with('alice', 'ns1')
+
+    def test_enriches_diff_dict_with_multiple_secret_keys(self):
+        obj = make_obj()
+        obj._list_existing_secret_keys = MagicMock(return_value=[
+            {'secret_key_id': 'abc123', 'key_timestamp': '2026-04-30T10:00:00Z', 'key_expiry_timestamp': ''},
+            {'secret_key_id': 'def456', 'key_timestamp': '2026-04-30T10:05:00Z', 'key_expiry_timestamp': ''}
+        ])
+        diff_dict = {'name': 'alice', 'namespace': 'ns1'}
+        result = obj._enrich_diff_with_secret_keys(diff_dict, 'alice', 'ns1')
+        assert result['name'] == 'alice'
+        assert result['namespace'] == 'ns1'
+        assert len(result['secret_keys']) == 2
+        obj._list_existing_secret_keys.assert_called_once_with('alice', 'ns1')
+
+
 class TestPerformModuleOperation:
     def test_create_when_absent(self):
         obj = make_obj(params={**BASE_PARAMS, 'state': 'present'})
@@ -600,3 +647,41 @@ class TestPerformModuleOperation:
         result = obj.module.exit_json.call_args[1]
         assert result.get('changed') is True
         assert result.get('diff') is None
+
+    def test_diff_mode_with_secret_keys_create(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'present', 'secret_keys': [{'state': 'present'}]}, diff_mode=True)
+        obj.get_user_details = MagicMock(side_effect=[
+            None,
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []},
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []}
+        ])
+        obj.create_user = MagicMock()
+        obj.sync_secret_keys = MagicMock(return_value=(True, [{'secret_key': 's3cr3t', 'secret_key_id': 'abc'}]))
+        obj._list_existing_secret_keys = MagicMock(return_value=[
+            {'secret_key_id': 'abc', 'key_timestamp': '2026-04-30T10:00:00Z', 'key_expiry_timestamp': ''}
+        ])
+        obj.perform_module_operation()
+        result = obj.module.exit_json.call_args[1]
+        assert result.get('changed') is True
+        assert result.get('diff') is not None
+        assert result['diff']['before'] == {}
+        assert result['diff']['after']['name'] == 'alice'
+        # Verify that secret_keys field is present in diff output
+        assert 'secret_keys' in result['diff']['after']
+
+    def test_diff_mode_with_secret_keys_delete(self):
+        obj = make_obj(params={**BASE_PARAMS, 'state': 'present', 'secret_keys': [{'state': 'absent', 'secret_key': 's3cr3t'}]}, diff_mode=True)
+        obj.get_user_details = MagicMock(side_effect=[
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []},
+            {'name': 'alice', 'namespace': 'ns1', 'locked': False, 'tag': []}
+        ])
+        obj.sync_secret_keys = MagicMock(return_value=(True, []))
+        obj._list_existing_secret_keys = MagicMock(return_value=[
+            {'secret_key_id': 'abc', 'key_timestamp': '2026-04-30T10:00:00Z', 'key_expiry_timestamp': ''}
+        ])
+        obj.perform_module_operation()
+        result = obj.module.exit_json.call_args[1]
+        assert result.get('changed') is True
+        assert result.get('diff') is not None
+        # Verify that secret_keys field is present in diff output
+        assert 'secret_keys' in result['diff']['before']

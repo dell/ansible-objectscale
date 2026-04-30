@@ -604,6 +604,16 @@ class ObjectUser(object):
                     )
         return changed, created
 
+    def _enrich_diff_with_secret_keys(
+        self, diff_dict: Dict[str, Any], user: str, namespace: Optional[str]
+    ) -> Dict[str, Any]:
+        """Enrich diff dictionary with secret key metadata."""
+        if not diff_dict:
+            return diff_dict
+        secret_keys = self._list_existing_secret_keys(user, namespace)
+        diff_dict['secret_keys'] = secret_keys
+        return diff_dict
+
     # ------------------------------------------------------------------
     # Main operation
     # ------------------------------------------------------------------
@@ -620,6 +630,11 @@ class ObjectUser(object):
         diff_before = dict(details) if details else {}
         diff_after = dict(diff_before)
 
+        # Enrich diff with secret keys if diff mode is enabled
+        if self.module._diff:
+            diff_before = self._enrich_diff_with_secret_keys(diff_before, user, namespace)
+            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+
         if state == 'absent':
             if details:
                 if not self.module.check_mode:
@@ -634,6 +649,8 @@ class ObjectUser(object):
                     details = self.get_user_details(user, namespace)
                 result['changed'] = True
                 diff_after = dict(details) if details else {}
+                if self.module._diff:
+                    diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
 
                 # Set lock state after creation if specified
                 if params.get('locked') is not None:
@@ -647,6 +664,8 @@ class ObjectUser(object):
                         if not self.module.check_mode:
                             details = self.get_user_details(user, namespace)
                             diff_after = dict(details) if details else {}
+                            if self.module._diff:
+                                diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
             else:
                 if params.get('tags') is not None:
                     if self.sync_tags(
@@ -658,6 +677,8 @@ class ObjectUser(object):
                         if not self.module.check_mode:
                             details = self.get_user_details(user, namespace)
                             diff_after = dict(details) if details else {}
+                            if self.module._diff:
+                                diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
 
                 if params.get('locked') is not None:
                     if self.sync_lock(
@@ -670,6 +691,8 @@ class ObjectUser(object):
                         if not self.module.check_mode:
                             details = self.get_user_details(user, namespace)
                             diff_after = dict(details) if details else {}
+                            if self.module._diff:
+                                diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
 
             if params.get('secret_keys'):
                 key_changed, created_keys = self.sync_secret_keys(
@@ -680,6 +703,8 @@ class ObjectUser(object):
                     if not self.module.check_mode:
                         details = self.get_user_details(user, namespace)
                         diff_after = dict(details) if details else {}
+                        if self.module._diff:
+                            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
 
         result['object_user_details'] = details
         if created_keys:
