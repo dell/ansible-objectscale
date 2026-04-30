@@ -739,3 +739,150 @@ class IamApi(object):
             action='ListGroupsForUser', params=params, namespace=namespace,
             result_tag='Groups', extractor=self._extract_group,
         )
+
+    # ------------------------------------------------------------------
+    # Public API -- SAML Identity Provider CRUD
+    # ------------------------------------------------------------------
+
+    def _extract_saml_provider_list_entry(self, member_element):
+        # type: (ET.Element) -> Dict[str, Optional[str]]
+        """Extract a SAML provider summary from a ``<member>`` element."""
+        return {
+            'Arn': self._extract_text(member_element, 'Arn'),
+            'CreateDate': self._extract_text(member_element, 'CreateDate'),
+            'ValidUntil': self._extract_text(member_element, 'ValidUntil'),
+        }
+
+    def create_saml_provider(self, name, saml_metadata_document, namespace):
+        # type: (str, str, str) -> Dict[str, Optional[str]]
+        """Create a SAML identity provider.
+
+        Returns a dict with ``SAMLProviderArn``.
+        """
+        params = {
+            'Name': name,
+            'SAMLMetadataDocument': saml_metadata_document,
+        }  # type: Dict[str, str]
+
+        status, body = self._make_request('CreateSAMLProvider', params, namespace)
+
+        if status < 200 or status >= 300:
+            self._handle_error(status, body, 'CreateSAMLProvider')
+
+        root = self._parse_xml(body)
+        result_el = self._find_descendant(root, 'CreateSAMLProviderResult')
+        if result_el is None:
+            result_el = self._find_descendant(root, 'createSAMLProviderResult')
+        if result_el is None:
+            self._handle_error(status, body, 'CreateSAMLProvider')
+            raise AssertionError("unreachable")
+
+        return {
+            'SAMLProviderArn': self._extract_text(result_el, 'SAMLProviderArn'),
+        }
+
+    def get_saml_provider(self, saml_provider_arn, namespace):
+        # type: (str, str) -> Optional[Dict[str, Optional[str]]]
+        """Get details of a SAML identity provider.
+
+        Returns a dict with ``SAMLMetadataDocument``, ``CreateDate``, ``ValidUntil``
+        or *None* if the provider does not exist.
+        """
+        params = {'SAMLProviderArn': saml_provider_arn}  # type: Dict[str, str]
+
+        status, body = self._make_request('GetSAMLProvider', params, namespace)
+
+        if status == 404:
+            return None
+        if status >= 400:
+            # Check for NoSuchEntity
+            try:
+                xml_body = body.decode('utf-8') if isinstance(body, bytes) else body
+                root = ET.fromstring(xml_body)
+                error_el = root.find(_ns('Error'))
+                if error_el is None:
+                    error_el = root.find('Error')
+                if error_el is not None:
+                    code_el = error_el.find(_ns('Code'))
+                    if code_el is None:
+                        code_el = error_el.find('Code')
+                    if code_el is not None and code_el.text == 'NoSuchEntity':
+                        return None
+            except Exception:
+                pass
+            self._handle_error(status, body, 'GetSAMLProvider')
+
+        root = self._parse_xml(body)
+        result_el = self._find_descendant(root, 'GetSAMLProviderResult')
+        if result_el is None:
+            result_el = self._find_descendant(root, 'getSAMLProviderResult')
+        if result_el is None:
+            self._handle_error(status, body, 'GetSAMLProvider')
+            raise AssertionError("unreachable")
+
+        return {
+            'SAMLMetadataDocument': self._extract_text(result_el, 'SAMLMetadataDocument'),
+            'CreateDate': self._extract_text(result_el, 'CreateDate'),
+            'ValidUntil': self._extract_text(result_el, 'ValidUntil'),
+        }
+
+    def list_saml_providers(self, namespace):
+        # type: (str) -> List[Dict[str, Optional[str]]]
+        """List all SAML identity providers in a namespace."""
+        params = {}  # type: Dict[str, str]
+
+        status, body = self._make_request('ListSAMLProviders', params, namespace)
+
+        if status < 200 or status >= 300:
+            self._handle_error(status, body, 'ListSAMLProviders')
+
+        root = self._parse_xml(body)
+
+        results = []  # type: List[Dict[str, Optional[str]]]
+        # Try both cased variants used by ObjectScale
+        for tag in ('SAMLProviderList', 'samlProviderList'):
+            provider_list_el = self._find_descendant(root, tag)
+            if provider_list_el is not None:
+                for member in self._findall_children(provider_list_el, 'member'):
+                    results.append(self._extract_saml_provider_list_entry(member))
+                break
+
+        return results
+
+    def update_saml_provider(self, saml_provider_arn, saml_metadata_document, namespace):
+        # type: (str, str, str) -> Dict[str, Optional[str]]
+        """Update a SAML identity provider's metadata document.
+
+        Returns a dict with ``SAMLProviderArn``.
+        """
+        params = {
+            'SAMLProviderArn': saml_provider_arn,
+            'SAMLMetadataDocument': saml_metadata_document,
+        }  # type: Dict[str, str]
+
+        status, body = self._make_request('UpdateSAMLProvider', params, namespace)
+
+        if status < 200 or status >= 300:
+            self._handle_error(status, body, 'UpdateSAMLProvider')
+
+        root = self._parse_xml(body)
+        result_el = self._find_descendant(root, 'UpdateSAMLProviderResult')
+        if result_el is None:
+            result_el = self._find_descendant(root, 'updateSAMLProviderResult')
+        if result_el is None:
+            self._handle_error(status, body, 'UpdateSAMLProvider')
+            raise AssertionError("unreachable")
+
+        return {
+            'SAMLProviderArn': self._extract_text(result_el, 'SAMLProviderArn'),
+        }
+
+    def delete_saml_provider(self, saml_provider_arn, namespace):
+        # type: (str, str) -> None
+        """Delete a SAML identity provider."""
+        params = {'SAMLProviderArn': saml_provider_arn}  # type: Dict[str, str]
+
+        status, body = self._make_request('DeleteSAMLProvider', params, namespace)
+
+        if status < 200 or status >= 300:
+            self._handle_error(status, body, 'DeleteSAMLProvider')
