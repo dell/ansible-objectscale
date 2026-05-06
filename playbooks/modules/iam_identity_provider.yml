@@ -9,7 +9,7 @@
     objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('10.247.101.243', true) }}"
     objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('root', true) }}"
     objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('ChangeMe', true) }}"
-    namespace: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') | default('ns1', true) }}"
+    objectscale_namespace: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') | default('ns1', true) }}"
     provider_name: "test-saml-idp"
     saml_metadata: "{{ lookup('file', 'saml-metadata.xml', errors='ignore') | default(omit) }}"
 
@@ -21,7 +21,7 @@
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
         provider_name: "{{ provider_name }}"
-        namespace: "{{ namespace }}"
+        namespace: "{{ objectscale_namespace }}"
         saml_metadata_document: "{{ saml_metadata }}"
         state: present
       register: create_result
@@ -39,7 +39,7 @@
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
         provider_name: "{{ provider_name }}"
-        namespace: "{{ namespace }}"
+        namespace: "{{ objectscale_namespace }}"
         saml_metadata_document: "{{ saml_metadata }}"
         state: present
       check_mode: true
@@ -58,7 +58,7 @@
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
         provider_name: "{{ provider_name }}"
-        namespace: "{{ namespace }}"
+        namespace: "{{ objectscale_namespace }}"
         state: absent
       register: delete_result
 
@@ -73,7 +73,7 @@
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
         provider_name: "{{ provider_name }}"
-        namespace: "{{ namespace }}"
+        namespace: "{{ objectscale_namespace }}"
         state: absent
       register: delete_again
 

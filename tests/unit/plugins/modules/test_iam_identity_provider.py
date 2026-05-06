@@ -5,7 +5,7 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 MODULE = 'ansible_collections.dellemc.objectscale.plugins.modules.iam_identity_provider'
 UTILS = 'ansible_collections.dellemc.objectscale.plugins.module_utils.utils'

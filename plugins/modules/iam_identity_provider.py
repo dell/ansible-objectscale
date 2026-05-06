@@ -57,7 +57,6 @@ options:
     - Password for authenticating with the ObjectScale management endpoint.
     type: str
     required: true
-    no_log: true
 
   validate_certs:
     description:
@@ -96,7 +95,6 @@ options:
     - Must be between 1000 and 10000000 characters in length.
     type: str
     required: false
-    no_log: true
 
   state:
     description:
