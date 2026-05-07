@@ -7,7 +7,7 @@
   vars:
     objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('192.168.1.100', true) }}"
     objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('admin', true) }}"
-    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('YourSecurePassword123!', true) }}"
+    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('xxxxxxx', true) }}"
     objectscale_namespace: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') | default('ns1', true) }}"
 
   tasks:
