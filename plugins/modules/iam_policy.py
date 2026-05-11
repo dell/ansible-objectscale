@@ -509,7 +509,7 @@ class IamPolicy(object):
             return
         try:
             json.loads(document)
-        except (json.JSONDecodeError, ValueError) as e:
+        except ValueError as e:
             self.module.exit_json(
                 failed=True,
                 msg="policy_document must be a valid JSON string: %s" % str(e)
@@ -573,7 +573,7 @@ class IamPolicy(object):
             current_parsed = json.loads(current_document) if isinstance(current_document, str) else current_document
             new_parsed = json.loads(new_document) if isinstance(new_document, str) else new_document
             return self._normalize_policy_doc(current_parsed) != self._normalize_policy_doc(new_parsed)
-        except (json.JSONDecodeError, ValueError):
+        except ValueError:
             return current_document != new_document
 
     def _resolve_policy_arn(self) -> Optional[str]:

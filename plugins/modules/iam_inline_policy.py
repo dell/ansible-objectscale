@@ -337,6 +337,15 @@ class IamInlinePolicy(object):
     # ------------------------------------------------------------------
 
     @staticmethod
+    def _normalize_statement(stmt):
+        """Normalize a single IAM policy statement's fields to arrays."""
+        if not isinstance(stmt, dict):
+            return
+        for key in ('Action', 'NotAction', 'Resource', 'NotResource'):
+            if key in stmt and isinstance(stmt[key], str):
+                stmt[key] = [stmt[key]]
+
+    @staticmethod
     def _normalize_document(doc_str: Optional[str]) -> str:
         """Normalize a JSON policy document for reliable comparison.
 
@@ -348,18 +357,12 @@ class IamInlinePolicy(object):
         if doc_str is None:
             return ''
         try:
-            # Ansible's jinja2_native may pass a dict instead of a JSON string
             parsed = doc_str if isinstance(doc_str, dict) else json.loads(doc_str)
-            # ObjectScale normalizes single-value Action/Resource strings
-            # to arrays.  Mirror that so comparisons are stable.
             if isinstance(parsed, dict):
                 for stmt in parsed.get('Statement', []):
-                    if isinstance(stmt, dict):
-                        for key in ('Action', 'NotAction', 'Resource', 'NotResource'):
-                            if key in stmt and isinstance(stmt[key], str):
-                                stmt[key] = [stmt[key]]
+                    IamInlinePolicy._normalize_statement(stmt)
             return json.dumps(parsed, sort_keys=True, separators=(',', ':'))
-        except (json.JSONDecodeError, TypeError, ValueError):
+        except (TypeError, ValueError):
             return doc_str
 
     # ------------------------------------------------------------------

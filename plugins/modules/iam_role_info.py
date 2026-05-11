@@ -401,7 +401,7 @@ class IamRoleInfo(object):
         decoded_doc = url_decode(encoded_doc)
         try:
             return json.loads(decoded_doc)
-        except (json.JSONDecodeError, ValueError):
+        except ValueError:
             # Return raw decoded string if it's not valid JSON
             return decoded_doc
 

@@ -317,7 +317,7 @@ class IamUser(object):
         if resp.status >= 400:
             import json
             body = json.loads(resp.data.decode('utf-8')) if resp.data else {}
-            raise Exception(str(body))
+            raise RuntimeError(str(body))
         return resp
 
     def _tag_user_raw(self, user_name, tags_dict):
@@ -431,7 +431,7 @@ class IamUser(object):
                 from urllib.parse import unquote
                 try:
                     doc = json.loads(unquote(doc))
-                except (json.JSONDecodeError, ValueError):
+                except ValueError:
                     pass
             return doc
         except Exception:
@@ -492,11 +492,8 @@ class IamUser(object):
             msg = "Deleting IAM user %s failed with error: %s" % (user_name, error_msg)
             self.module.fail_json(msg=msg)
 
-    def force_delete_cleanup(self, user_name):
-        """Remove all dependencies before deleting a user."""
-        errors = []
-
-        # Delete all access keys
+    def _cleanup_access_keys(self, user_name, errors):
+        """Delete all access keys for a user during force-delete cleanup."""
         try:
             for key in self.list_access_keys(user_name):
                 try:
@@ -510,7 +507,8 @@ class IamUser(object):
         except Exception as e:
             errors.append("Failed to list access keys: %s" % str(e))
 
-        # Detach all managed policies
+    def _cleanup_policies(self, user_name, errors):
+        """Detach managed and delete inline policies during force-delete cleanup."""
         try:
             for pol in self.list_attached_policies(user_name):
                 try:
@@ -524,7 +522,6 @@ class IamUser(object):
         except Exception as e:
             errors.append("Failed to list attached policies: %s" % str(e))
 
-        # Delete all inline policies
         try:
             for pol_name in self.list_inline_policy_names(user_name):
                 try:
@@ -538,7 +535,8 @@ class IamUser(object):
         except Exception as e:
             errors.append("Failed to list inline policies: %s" % str(e))
 
-        # Remove from all groups
+    def _cleanup_groups_and_boundary(self, user_name, errors):
+        """Remove from groups and delete boundary during force-delete cleanup."""
         try:
             for group in self.list_groups_for_user(user_name):
                 try:
@@ -552,7 +550,6 @@ class IamUser(object):
         except Exception as e:
             errors.append("Failed to list groups: %s" % str(e))
 
-        # Delete permissions boundary if set
         try:
             user = self.get_user(user_name)
             if user and user.get('PermissionsBoundary'):
@@ -566,6 +563,12 @@ class IamUser(object):
         except Exception as e:
             errors.append("Failed to get user for boundary check: %s" % str(e))
 
+    def force_delete_cleanup(self, user_name):
+        """Remove all dependencies before deleting a user."""
+        errors = []
+        self._cleanup_access_keys(user_name, errors)
+        self._cleanup_policies(user_name, errors)
+        self._cleanup_groups_and_boundary(user_name, errors)
         if errors:
             self.module.warn("force_delete cleanup encountered errors: %s" % "; ".join(errors))
 
@@ -807,177 +810,150 @@ class IamUser(object):
     # Main orchestrator
     # ------------------------------------------------------------------
 
+    def _handle_absent(self, user_name, result):
+        """Handle state=absent logic for a user."""
+        user = self.get_user(user_name)
+        if user:
+            if self.module.check_mode:
+                result['changed'] = True
+            else:
+                if self.module._diff:
+                    before_state = self.capture_current_state(user_name, user)
+                if self.module.params.get('force_delete'):
+                    self.force_delete_cleanup(user_name)
+                self.delete_user(user_name)
+                result['changed'] = True
+                if self.module._diff:
+                    result['diff'] = {'before': before_state, 'after': {}}
+        elif self.module._diff:
+            result['diff'] = {'before': {}, 'after': {}}
+
+    def _apply_present_subresources(self, user_name, user, result):
+        """Apply sub-resource management for state=present."""
+        params = self.module.params
+        check_mode = self.module.check_mode
+
+        if params.get('tags') is not None:
+            if not check_mode:
+                if self.manage_tags(user_name, params['tags'], params.get('purge_tags', True)):
+                    result['changed'] = True
+            else:
+                current_tags = self.list_user_tags(user_name)
+                current_dict = {t['Key']: t['Value'] for t in current_tags}
+                if current_dict != params['tags']:
+                    result['changed'] = True
+
+        if params.get('managed_policies') is not None:
+            if not check_mode:
+                if self.manage_managed_policies(
+                        user_name, params['managed_policies'],
+                        params.get('purge_managed_policies', True)):
+                    result['changed'] = True
+            else:
+                current = self.list_attached_policies(user_name)
+                if {p['PolicyArn'] for p in current} != set(params['managed_policies']):
+                    result['changed'] = True
+
+        if params.get('inline_policies') is not None:
+            if not check_mode:
+                if self.manage_inline_policies(
+                        user_name, params['inline_policies'],
+                        params.get('purge_inline_policies', True)):
+                    result['changed'] = True
+            else:
+                current_names = set(self.list_inline_policy_names(user_name))
+                if current_names != set(params['inline_policies'].keys()):
+                    result['changed'] = True
+
+        if params.get('groups') is not None:
+            if not check_mode:
+                if self.manage_groups(
+                        user_name, params['groups'],
+                        params.get('purge_groups', True)):
+                    result['changed'] = True
+            else:
+                current = self.list_groups_for_user(user_name)
+                if {g['GroupName'] for g in current} != set(params['groups']):
+                    result['changed'] = True
+
+        if params.get('permissions_boundary') is not None:
+            if not check_mode:
+                if self.manage_permissions_boundary(
+                        user_name, params['permissions_boundary'],
+                        user):
+                    result['changed'] = True
+            else:
+                desired_boundary = params['permissions_boundary']
+                current_boundary = None
+                if user and user.get('PermissionsBoundary'):
+                    current_boundary = user['PermissionsBoundary'].get('PermissionsBoundaryArn')
+                if desired_boundary == '':
+                    if current_boundary:
+                        result['changed'] = True
+                elif desired_boundary != current_boundary:
+                    result['changed'] = True
+
+    def _apply_access_key_ops(self, user_name, result):
+        """Handle access key create/delete/update operations."""
+        params = self.module.params
+        check_mode = self.module.check_mode
+        access_key_state = params.get('access_key_state')
+        access_key_id = params.get('access_key_id')
+        access_key_status = params.get('access_key_status')
+
+        if access_key_state == 'present':
+            if not check_mode:
+                result['access_key'] = self.create_access_key(user_name)
+            result['changed'] = True
+        elif access_key_state == 'absent' and access_key_id:
+            if not check_mode:
+                if self.delete_access_key(user_name, access_key_id):
+                    result['changed'] = True
+            else:
+                keys = self.list_access_keys(user_name)
+                if any(k['AccessKeyId'] == access_key_id for k in keys):
+                    result['changed'] = True
+        elif access_key_id and access_key_status:
+            if not check_mode:
+                if self.update_access_key_status(user_name, access_key_id, access_key_status):
+                    result['changed'] = True
+            else:
+                keys = self.list_access_keys(user_name)
+                current_key = next(
+                    (k for k in keys if k['AccessKeyId'] == access_key_id), None)
+                if current_key and current_key.get('Status') != access_key_status:
+                    result['changed'] = True
+
     def perform_module_operation(self):
         """Perform different actions based on parameters chosen in playbook."""
         result = dict(changed=False)
-
         user_name = self.module.params['user_name']
         state = self.module.params['state']
 
         if state == 'absent':
-            user = self.get_user(user_name)
-
-            if user:
-                if self.module.check_mode:
-                    result['changed'] = True
-                else:
-                    if self.module._diff:
-                        before_state = self.capture_current_state(user_name, user)
-
-                    if self.module.params.get('force_delete'):
-                        self.force_delete_cleanup(user_name)
-
-                    self.delete_user(user_name)
-                    result['changed'] = True
-
-                    if self.module._diff:
-                        result['diff'] = {
-                            'before': before_state,
-                            'after': {},
-                        }
-            else:
-                if self.module._diff:
-                    result['diff'] = {'before': {}, 'after': {}}
+            self._handle_absent(user_name, result)
 
         elif state == 'present':
             user = self.get_user(user_name)
 
             if user is None:
-                # User doesn't exist — create it
                 if self.module.check_mode:
                     result['changed'] = True
                     self.module.exit_json(**result)
                     return
-
                 self.create_user(user_name)
                 result['changed'] = True
-                # Re-fetch user after creation
                 user = self.get_user(user_name)
 
             if user is not None:
                 if self.module._diff:
                     before_state = self.capture_current_state(user_name, user)
 
-                # Manage tags
-                if self.module.params.get('tags') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_tags(
-                            user_name,
-                            self.module.params['tags'],
-                            self.module.params.get('purge_tags', True),
-                        ):
-                            result['changed'] = True
-                    else:
-                        current_tags = self.list_user_tags(user_name)
-                        current_dict = {t['Key']: t['Value'] for t in current_tags}
-                        desired = self.module.params['tags']
-                        if current_dict != desired:
-                            result['changed'] = True
-
-                # Manage managed policies
-                if self.module.params.get('managed_policies') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_managed_policies(
-                            user_name,
-                            self.module.params['managed_policies'],
-                            self.module.params.get('purge_managed_policies', True),
-                        ):
-                            result['changed'] = True
-                    else:
-                        current = self.list_attached_policies(user_name)
-                        current_arns = {p['PolicyArn'] for p in current}
-                        desired_set = set(self.module.params['managed_policies'])
-                        if current_arns != desired_set:
-                            result['changed'] = True
-
-                # Manage inline policies
-                if self.module.params.get('inline_policies') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_inline_policies(
-                            user_name,
-                            self.module.params['inline_policies'],
-                            self.module.params.get('purge_inline_policies', True),
-                        ):
-                            result['changed'] = True
-                    else:
-                        current_names = set(self.list_inline_policy_names(user_name))
-                        desired_names = set(self.module.params['inline_policies'].keys())
-                        if current_names != desired_names:
-                            result['changed'] = True
-
-                # Manage groups
-                if self.module.params.get('groups') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_groups(
-                            user_name,
-                            self.module.params['groups'],
-                            self.module.params.get('purge_groups', True),
-                        ):
-                            result['changed'] = True
-                    else:
-                        current = self.list_groups_for_user(user_name)
-                        current_names = {g['GroupName'] for g in current}
-                        desired_set = set(self.module.params['groups'])
-                        if current_names != desired_set:
-                            result['changed'] = True
-
-                # Manage permissions boundary
-                if self.module.params.get('permissions_boundary') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_permissions_boundary(
-                            user_name,
-                            self.module.params['permissions_boundary'],
-                            user,
-                        ):
-                            result['changed'] = True
-                    else:
-                        desired_boundary = self.module.params['permissions_boundary']
-                        current_boundary = None
-                        if user and user.get('PermissionsBoundary'):
-                            current_boundary = user['PermissionsBoundary'].get(
-                                'PermissionsBoundaryArn')
-                        if desired_boundary == '':
-                            if current_boundary:
-                                result['changed'] = True
-                        elif desired_boundary != current_boundary:
-                            result['changed'] = True
-
-                # Access key operations
-                access_key_state = self.module.params.get('access_key_state')
-                access_key_id = self.module.params.get('access_key_id')
-                access_key_status = self.module.params.get('access_key_status')
-
-                if access_key_state == 'present':
-                    if not self.module.check_mode:
-                        key = self.create_access_key(user_name)
-                        result['access_key'] = key
-                    result['changed'] = True
-                elif access_key_state == 'absent' and access_key_id:
-                    if not self.module.check_mode:
-                        if self.delete_access_key(user_name, access_key_id):
-                            result['changed'] = True
-                    else:
-                        keys = self.list_access_keys(user_name)
-                        if any(k['AccessKeyId'] == access_key_id for k in keys):
-                            result['changed'] = True
-                elif access_key_id and access_key_status:
-                    if not self.module.check_mode:
-                        if self.update_access_key_status(
-                            user_name, access_key_id, access_key_status
-                        ):
-                            result['changed'] = True
-                    else:
-                        keys = self.list_access_keys(user_name)
-                        current_key = next(
-                            (k for k in keys if k['AccessKeyId'] == access_key_id),
-                            None
-                        )
-                        if current_key and current_key.get('Status') != access_key_status:
-                            result['changed'] = True
+                self._apply_present_subresources(user_name, user, result)
+                self._apply_access_key_ops(user_name, result)
 
                 if self.module._diff:
                     after_state = self.capture_current_state(user_name, user)
-                    # Mask SecretAccessKey in diff output
                     if 'access_key' in result and result['access_key']:
                         ak = result['access_key'].copy()
                         if 'SecretAccessKey' in ak:

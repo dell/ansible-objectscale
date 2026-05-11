@@ -810,10 +810,8 @@ class Namespace(object):
             msg = "Updating quota for namespace %s failed with error: %s" % (namespace_name, error_msg)
             self.module.exit_json(failed=True, msg=msg)
 
-    def is_namespace_modified(self, namespace_details: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
-        """Determine if the namespace needs to be modified."""
-        modify_params = {}
-
+    def _check_simple_fields_modified(self, namespace_details, params, modify_params):
+        """Check simple scalar fields for modifications."""
         field_map = {
             'default_data_services_vpool': 'default_data_services_vpool',
             'is_encryption_enabled': 'is_encryption_enabled',
@@ -827,6 +825,8 @@ class Namespace(object):
                 if detail_key in namespace_details and params[param_key] != namespace_details.get(detail_key):
                     modify_params[param_key] = params[param_key]
 
+    def _check_password_modified(self, params, modify_params):
+        """Check if root user password change is requested."""
         if params.get('current_root_user_password') or params.get('new_root_user_password'):
             if not (params.get('current_root_user_password') and params.get('new_root_user_password')):
                 self.module.exit_json(
@@ -836,8 +836,9 @@ class Namespace(object):
             modify_params['current_root_user_password'] = params.get('current_root_user_password')
             modify_params['new_root_user_password'] = params.get('new_root_user_password')
 
+    def _check_list_fields_modified(self, namespace_details, params, modify_params):
+        """Check admin, group, and vpool list fields for modifications."""
         if params.get('namespace_admins') is not None:
-            # API returns namespace_admins as a comma-separated string
             admins_obj = namespace_details.get('namespace_admins', '')
             if isinstance(admins_obj, str):
                 current_admins = [a.strip() for a in admins_obj.split(',') if a.strip()]
@@ -849,32 +850,31 @@ class Namespace(object):
                 modify_params['namespace_admins'] = params.get('namespace_admins')
 
         if params.get('external_group_admins') is not None:
-            groups_obj = namespace_details.get('external_group_admins', '')
-            current_groups = self._normalize_string_list(groups_obj)
+            current_groups = self._normalize_string_list(namespace_details.get('external_group_admins', ''))
             desired_groups = self._normalize_string_list(params.get('external_group_admins'))
             if set(desired_groups) != set(current_groups):
                 modify_params['external_group_admins'] = params.get('external_group_admins')
 
-        if params.get('allowed_vpools_list') is not None:
-            desired_allowed = set(self._normalize_string_list(params.get('allowed_vpools_list')))
-            current_allowed = set(self._normalize_string_list(namespace_details.get('allowed_vpools_list')))
-            added = sorted(desired_allowed - current_allowed)
-            removed = sorted(current_allowed - desired_allowed)
-            if added:
-                modify_params['vpools_added_to_allowed_vpools_list'] = added
-            if removed:
-                modify_params['vpools_removed_from_allowed_vpools_list'] = removed
+        self._check_vpools_modified(namespace_details, params, modify_params, 'allowed_vpools_list',
+                                    'vpools_added_to_allowed_vpools_list', 'vpools_removed_from_allowed_vpools_list')
+        self._check_vpools_modified(namespace_details, params, modify_params, 'disallowed_vpools_list',
+                                    'vpools_added_to_disallowed_vpools_list', 'vpools_removed_from_disallowed_vpools_list')
 
-        if params.get('disallowed_vpools_list') is not None:
-            desired_disallowed = set(self._normalize_string_list(params.get('disallowed_vpools_list')))
-            current_disallowed = set(self._normalize_string_list(namespace_details.get('disallowed_vpools_list')))
-            added = sorted(desired_disallowed - current_disallowed)
-            removed = sorted(current_disallowed - desired_disallowed)
+    def _check_vpools_modified(self, namespace_details, params, modify_params,
+                               param_key, added_key, removed_key):
+        """Check if a vpool list field has modifications."""
+        if params.get(param_key) is not None:
+            desired = set(self._normalize_string_list(params.get(param_key)))
+            current = set(self._normalize_string_list(namespace_details.get(param_key)))
+            added = sorted(desired - current)
+            removed = sorted(current - desired)
             if added:
-                modify_params['vpools_added_to_disallowed_vpools_list'] = added
+                modify_params[added_key] = added
             if removed:
-                modify_params['vpools_removed_from_disallowed_vpools_list'] = removed
+                modify_params[removed_key] = removed
 
+    def _check_complex_fields_modified(self, namespace_details, params, modify_params):
+        """Check user_mapping and allowed_protocols for modifications."""
         if params.get('user_mapping') is not None:
             desired_user_mapping = self._normalize_user_mapping(params.get('user_mapping'))
             current_user_mapping = self._normalize_user_mapping(namespace_details.get('user_mapping'))
@@ -889,10 +889,15 @@ class Namespace(object):
             elif isinstance(proto_obj, list):
                 current_protocols = proto_obj
             if set(params['allowed_protocols']) != set(current_protocols or []):
-                modify_params['allowed_protocols'] = {
-                    'protocol': params['allowed_protocols']
-                }
+                modify_params['allowed_protocols'] = {'protocol': params['allowed_protocols']}
 
+    def is_namespace_modified(self, namespace_details: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
+        """Determine if the namespace needs to be modified."""
+        modify_params = {}
+        self._check_simple_fields_modified(namespace_details, params, modify_params)
+        self._check_password_modified(params, modify_params)
+        self._check_list_fields_modified(namespace_details, params, modify_params)
+        self._check_complex_fields_modified(namespace_details, params, modify_params)
         return modify_params
 
     def is_quota_modified(self, quota_details: Optional[Dict[str, Any]], params: Dict[str, Any]) -> bool:
@@ -955,12 +960,11 @@ class Namespace(object):
 
             # Handle quota separately
             quota_details = self.get_quota_details(namespace_name)
-            if self.is_quota_modified(quota_details, params):
-                self.modify_quota(namespace_name, params)
-                result['changed'] = True
-            elif any(params.get(f) is not None for f in
-                     ['quota_enabled', 'blocked_quota_size', 'notification_quota_size',
-                      'soft_quota_size', 'hard_quota_size']) and quota_details is None:
+            quota_fields = ['quota_enabled', 'blocked_quota_size',
+                            'notification_quota_size', 'soft_quota_size', 'hard_quota_size']
+            needs_quota_update = self.is_quota_modified(quota_details, params) or (
+                quota_details is None and any(params.get(f) is not None for f in quota_fields))
+            if needs_quota_update:
                 self.modify_quota(namespace_name, params)
                 result['changed'] = True
 

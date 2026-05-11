@@ -230,10 +230,13 @@
           - key_with_expiry.created_secret_keys | length >= 1
         fail_msg: "Second secret key was not created"
 
-    - name: Save second secret key ID and value for later deletion
+    - name: Save second secret key ID and value
+        for later deletion
       ansible.builtin.set_fact:
-        saved_key_2_id: "{{ key_with_expiry.created_secret_keys[0].secret_key_id }}"
-        saved_key_2_value: "{{ key_with_expiry.created_secret_keys[0].secret_key }}"
+        saved_key_2_id: >-
+          {{ key_with_expiry.created_secret_keys[0].secret_key_id }}
+        saved_key_2_value: >-
+          {{ key_with_expiry.created_secret_keys[0].secret_key }}
 
     - name: Delete first secret key using saved ID and value
       dellemc.objectscale.object_user:

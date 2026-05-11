@@ -630,6 +630,38 @@ class IamGroup(object):
     # Main orchestration
     # ------------------------------------------------------------------
 
+    def _handle_create_group(self, group_name, namespace):
+        """Create group and apply initial sub-resources."""
+        self.create_group(group_name, namespace)
+        params = self.module.params
+
+        desired_users = params.get('users')
+        if desired_users and params.get('user_state') == 'present-in-group':
+            self.add_users(group_name, namespace, desired_users)
+
+        desired_policies = params.get('policies')
+        if desired_policies and params.get('policy_state') == 'present-in-group':
+            self.attach_policies(group_name, namespace, desired_policies)
+
+        desired_inline = params.get('inline_policies')
+        if desired_inline and params.get('inline_policy_state') == 'present-in-group':
+            self.put_inline_policies(group_name, namespace, desired_inline)
+
+    def _apply_modifications(self, group_name, namespace, modifications):
+        """Apply computed modifications to the group."""
+        if modifications['users_to_add']:
+            self.add_users(group_name, namespace, modifications['users_to_add'])
+        if modifications['users_to_remove']:
+            self.remove_users(group_name, namespace, modifications['users_to_remove'])
+        if modifications['policies_to_attach']:
+            self.attach_policies(group_name, namespace, modifications['policies_to_attach'])
+        if modifications['policies_to_detach']:
+            self.detach_policies(group_name, namespace, modifications['policies_to_detach'])
+        if modifications['inline_to_put']:
+            self.put_inline_policies(group_name, namespace, modifications['inline_to_put'])
+        if modifications['inline_to_delete']:
+            self.delete_inline_policies(group_name, namespace, modifications['inline_to_delete'])
+
     def perform_module_operation(self) -> None:
         """Perform different actions based on parameters chosen in playbook."""
         result = dict(changed=False, iam_group_details=None)  # type: Dict[str, Any]
@@ -645,67 +677,27 @@ class IamGroup(object):
             if group_details:
                 self.delete_group(group_name, namespace, group_details)
                 result['changed'] = True
-                if self.module._diff:
-                    result['diff'] = dict(before=before_state, after={})
-            else:
-                if self.module._diff:
-                    result['diff'] = dict(before={}, after={})
+            if self.module._diff:
+                after = {} if group_details else before_state
+                result['diff'] = dict(before=before_state, after={} if group_details else {})
 
         elif state == 'present':
             if not group_details:
-                # Create the group
-                self.create_group(group_name, namespace)
+                self._handle_create_group(group_name, namespace)
                 result['changed'] = True
-
-                # Add users if specified
-                desired_users = self.module.params.get('users')
-                if desired_users and self.module.params.get('user_state') == 'present-in-group':
-                    self.add_users(group_name, namespace, desired_users)
-
-                # Attach managed policies if specified
-                desired_policies = self.module.params.get('policies')
-                if desired_policies and self.module.params.get('policy_state') == 'present-in-group':
-                    self.attach_policies(group_name, namespace, desired_policies)
-
-                # Put inline policies if specified
-                desired_inline = self.module.params.get('inline_policies')
-                if desired_inline and self.module.params.get('inline_policy_state') == 'present-in-group':
-                    self.put_inline_policies(group_name, namespace, desired_inline)
-
-                # Refresh state
                 if not self.module.check_mode:
                     group_details = self.get_group_details(group_name, namespace)
-
-                if self.module._diff:
-                    after_state = self._build_state_snapshot(group_details)
-                    result['diff'] = dict(before=before_state, after=after_state)
-
             else:
-                # Group exists — check for modifications
                 modifications = self.is_group_modified(group_details)
-
                 if modifications['is_modified']:
-                    if modifications['users_to_add']:
-                        self.add_users(group_name, namespace, modifications['users_to_add'])
-                    if modifications['users_to_remove']:
-                        self.remove_users(group_name, namespace, modifications['users_to_remove'])
-                    if modifications['policies_to_attach']:
-                        self.attach_policies(group_name, namespace, modifications['policies_to_attach'])
-                    if modifications['policies_to_detach']:
-                        self.detach_policies(group_name, namespace, modifications['policies_to_detach'])
-                    if modifications['inline_to_put']:
-                        self.put_inline_policies(group_name, namespace, modifications['inline_to_put'])
-                    if modifications['inline_to_delete']:
-                        self.delete_inline_policies(group_name, namespace, modifications['inline_to_delete'])
-
+                    self._apply_modifications(group_name, namespace, modifications)
                     result['changed'] = True
-
                     if not self.module.check_mode:
                         group_details = self.get_group_details(group_name, namespace)
 
-                if self.module._diff:
-                    after_state = self._build_state_snapshot(group_details)
-                    result['diff'] = dict(before=before_state, after=after_state)
+            if self.module._diff:
+                after_state = self._build_state_snapshot(group_details)
+                result['diff'] = dict(before=before_state, after=after_state)
 
             result['iam_group_details'] = group_details
 

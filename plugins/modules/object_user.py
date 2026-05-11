@@ -621,6 +621,61 @@ class ObjectUser(object):
         return diff_dict
 
     # ------------------------------------------------------------------
+    # Main operation helpers
+    # ------------------------------------------------------------------
+
+    def _refresh_details_and_diff(self, user, namespace):
+        """Re-fetch user details and build enriched diff_after dict."""
+        details = self.get_user_details(user, namespace)
+        diff_after = dict(details) if details else {}
+        if self.module._diff:
+            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+        return details, diff_after
+
+    def _handle_present_new_user(self, user, namespace, params, result):
+        """Handle creating a new user and initial lock state."""
+        if not self.module.check_mode:
+            self.create_user(user, namespace, params.get('tags'))
+        result['changed'] = True
+        details, diff_after = self._refresh_details_and_diff(user, namespace)
+
+        if params.get('locked') is not None and self.sync_lock(
+            user, namespace, False, params['locked'],
+            check_mode=self.module.check_mode,
+        ):
+            result['changed'] = True
+            if not self.module.check_mode:
+                details, diff_after = self._refresh_details_and_diff(user, namespace)
+        return details, diff_after
+
+    def _handle_present_existing_user(self, user, namespace, params, details, result):
+        """Handle syncing tags and lock for an existing user."""
+        diff_after = dict(details) if details else {}
+        if self.module._diff:
+            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+
+        if params.get('tags') is not None and self.sync_tags(
+            user, namespace,
+            details.get('tag'), params['tags'], params.get('purge_tags', True),
+            check_mode=self.module.check_mode,
+        ):
+            result['changed'] = True
+            if not self.module.check_mode:
+                details, diff_after = self._refresh_details_and_diff(user, namespace)
+
+        if params.get('locked') is not None and self.sync_lock(
+            user, namespace,
+            bool(details.get('locked')) if details else False,
+            params['locked'],
+            check_mode=self.module.check_mode,
+        ):
+            result['changed'] = True
+            if not self.module.check_mode:
+                details, diff_after = self._refresh_details_and_diff(user, namespace)
+
+        return details, diff_after
+
+    # ------------------------------------------------------------------
     # Main operation
     # ------------------------------------------------------------------
     def perform_module_operation(self) -> None:
@@ -634,12 +689,9 @@ class ObjectUser(object):
 
         details = self.get_user_details(user, namespace)
         diff_before = dict(details) if details else {}
-        diff_after = dict(diff_before)
-
-        # Enrich diff with secret keys if diff mode is enabled
         if self.module._diff:
             diff_before = self._enrich_diff_with_secret_keys(diff_before, user, namespace)
-            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+        diff_after = dict(diff_before)
 
         if state == 'absent':
             if details:
@@ -650,64 +702,22 @@ class ObjectUser(object):
                 diff_after = {}
         else:
             if not details:
-                if not self.module.check_mode:
-                    self.create_user(user, namespace, params.get('tags'))
-                    details = self.get_user_details(user, namespace)
-                result['changed'] = True
-                diff_after = dict(details) if details else {}
-                if self.module._diff:
-                    diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
-
-                # Set lock state after creation if specified
-                if params.get('locked') is not None and self.sync_lock(
-                    user, namespace,
-                    False,  # New users are unlocked by default
-                    params['locked'],
-                    check_mode=self.module.check_mode,
-                ):
-                    result['changed'] = True
-                    if not self.module.check_mode:
-                        details = self.get_user_details(user, namespace)
-                        diff_after = dict(details) if details else {}
-                        if self.module._diff:
-                            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+                details, diff_after = self._handle_present_new_user(
+                    user, namespace, params, result)
             else:
-                if params.get('tags') is not None and self.sync_tags(
-                    user, namespace,
-                    details.get('tag'), params['tags'], params.get('purge_tags', True),
-                    check_mode=self.module.check_mode,
-                ):
-                    result['changed'] = True
-                    if not self.module.check_mode:
-                        details = self.get_user_details(user, namespace)
-                        diff_after = dict(details) if details else {}
-                        if self.module._diff:
-                            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
-
-                if params.get('locked') is not None and self.sync_lock(
-                    user, namespace,
-                    bool(details.get('locked')) if details else False,
-                    params['locked'],
-                    check_mode=self.module.check_mode,
-                ):
-                    result['changed'] = True
-                    if not self.module.check_mode:
-                        details = self.get_user_details(user, namespace)
-                        diff_after = dict(details) if details else {}
-                        if self.module._diff:
-                            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+                details, diff_after = self._handle_present_existing_user(
+                    user, namespace, params, details, result)
 
             if params.get('secret_keys'):
                 key_changed, created_keys = self.sync_secret_keys(
-                    user, namespace, params['secret_keys'], check_mode=self.module.check_mode,
+                    user, namespace, params['secret_keys'],
+                    check_mode=self.module.check_mode,
                 )
                 if key_changed:
                     result['changed'] = True
                     if not self.module.check_mode:
-                        details = self.get_user_details(user, namespace)
-                        diff_after = dict(details) if details else {}
-                        if self.module._diff:
-                            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+                        details, diff_after = self._refresh_details_and_diff(
+                            user, namespace)
 
         result['object_user_details'] = details
         if created_keys:

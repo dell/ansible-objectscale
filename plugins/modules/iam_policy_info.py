@@ -345,7 +345,7 @@ class IamPolicyInfo(object):
 
         try:
             return json.loads(encoded_doc)
-        except (json.JSONDecodeError, ValueError):
+        except ValueError:
             return encoded_doc
 
     def list_policy_versions(self, policy_arn):

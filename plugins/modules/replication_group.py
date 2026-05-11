@@ -624,6 +624,31 @@ class ReplicationGroup(object):
         self.remove_mappings(rg_id, modifications['mappings_to_remove'])
         return self.get_replication_group_by_id(rg_id) or current
 
+    def _handle_absent_state(self, current, before_state, result):
+        """Handle state=absent for replication group."""
+        if current:
+            if not self.module.check_mode:
+                self.delete_replication_group(current)
+            result['changed'] = True
+            result['replication_group'] = None
+        if self.module._diff:
+            result['diff'] = {'before': before_state, 'after': {}}
+
+    def _handle_check_mode_create(self, before_state, result):
+        """Handle check_mode when replication group doesn't exist."""
+        result['changed'] = True
+        predicted = {
+            'id': self.module.params.get('id') or self.module.params.get('name'),
+            'name': self.module.params.get('name'),
+            'description': self.module.params.get('description'),
+            'mappings': sorted(
+                self._normalize_mapping_input(self.module.params.get('mappings')),
+                key=self._mapping_key),
+        }
+        if self.module._diff:
+            result['diff'] = {'before': {}, 'after': predicted}
+        result['replication_group'] = predicted
+
     def perform_module_operation(self) -> None:
         result: Dict[str, Any] = dict(changed=False, replication_group=None)
         state = self.module.params['state']
@@ -631,31 +656,15 @@ class ReplicationGroup(object):
         before_state = self._normalize_state(current)
 
         if state == 'absent':
-            if current:
-                if not self.module.check_mode:
-                    self.delete_replication_group(current)
-                result['changed'] = True
-                result['replication_group'] = None
-            if self.module._diff:
-                result['diff'] = {'before': before_state, 'after': {}}
+            self._handle_absent_state(current, before_state, result)
             self.module.exit_json(**result)
             return
 
         if not current:
             if self.module.check_mode:
-                result['changed'] = True
-                predicted = {
-                    'id': self.module.params.get('id') or self.module.params.get('name'),
-                    'name': self.module.params.get('name'),
-                    'description': self.module.params.get('description'),
-                    'mappings': sorted(self._normalize_mapping_input(self.module.params.get('mappings')), key=self._mapping_key),
-                }
-                if self.module._diff:
-                    result['diff'] = {'before': {}, 'after': predicted}
-                result['replication_group'] = predicted
+                self._handle_check_mode_create(before_state, result)
                 self.module.exit_json(**result)
                 return
-
             self.create_replication_group()
             result['changed'] = True
             current = self._resolve_current()

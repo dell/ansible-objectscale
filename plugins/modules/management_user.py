@@ -473,6 +473,39 @@ class ManagementUser(object):
             out[alias_map.get(key, key)] = value
         return out
 
+    def _handle_present_create(self, user_id, params, result):
+        """Handle creating a new management user."""
+        if not self.module.check_mode:
+            self.create_user(user_id, params)
+            details = self.get_user_details(user_id)
+        else:
+            details = None
+        result['changed'] = True
+        diff_after = {
+            'user_id': user_id,
+            'is_system_admin': bool(params.get('is_system_admin')),
+            'is_system_monitor': bool(params.get('is_system_monitor')),
+            'is_security_admin': bool(params.get('is_security_admin')),
+            'password': REDACTED_VALUE if params.get('password') else None,
+        }
+        return details, diff_after
+
+    def _handle_present_modify(self, user_id, details, params, result):
+        """Handle modifying an existing management user."""
+        diff_after = dict(self._public_details(details) or {})
+        modify_params = self.is_user_modified(details, params)
+        if modify_params:
+            if not self.module.check_mode:
+                if self.modify_user(user_id, modify_params):
+                    details = self.get_user_details(user_id)
+            result['changed'] = True
+            diff_after = dict(self._public_details(details) or {})
+            diff_after.update({
+                k: (REDACTED_VALUE if k == 'password' else v)
+                for k, v in modify_params.items()
+            })
+        return details, diff_after
+
     def perform_module_operation(self) -> None:
         result: Dict[str, Any] = dict(changed=False, management_user_details=None)
         params = self.module.params
@@ -498,29 +531,9 @@ class ManagementUser(object):
                 details = None
         else:  # present
             if not details:
-                if not self.module.check_mode:
-                    self.create_user(user_id, params)
-                    details = self.get_user_details(user_id)
-                result['changed'] = True
-                diff_after = {
-                    'user_id': user_id,
-                    'is_system_admin': bool(params.get('is_system_admin')),
-                    'is_system_monitor': bool(params.get('is_system_monitor')),
-                    'is_security_admin': bool(params.get('is_security_admin')),
-                    'password': REDACTED_VALUE if params.get('password') else None,
-                }
+                details, diff_after = self._handle_present_create(user_id, params, result)
             else:
-                modify_params = self.is_user_modified(details, params)
-                if modify_params:
-                    if not self.module.check_mode:
-                        if self.modify_user(user_id, modify_params):
-                            details = self.get_user_details(user_id)
-                    result['changed'] = True
-                    diff_after = dict(self._public_details(details) or {})
-                    diff_after.update({
-                        k: (REDACTED_VALUE if k == 'password' else v)
-                        for k, v in modify_params.items()
-                    })
+                details, diff_after = self._handle_present_modify(user_id, details, params, result)
 
         result['management_user_details'] = self._public_details(details)
 

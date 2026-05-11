@@ -4,9 +4,15 @@
   connection: local
   gather_facts: false
   vars:
-    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('objectscale.example.com', true) }}"
-    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('admin', true) }}"
-    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('password', true) }}"
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('objectscale.example.com', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    objectscale_password: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('password', true) }}
     objectscale_namespace: "test-namespace"
 
   tasks:
@@ -58,7 +64,10 @@
         namespace: "{{ objectscale_namespace }}"
         inline_policies:
           - name: AllowListBuckets
-            document: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:ListAllMyBuckets","Resource":"*"}]}'
+            document: >-
+              {"Version":"2012-10-17","Statement":
+              [{"Effect":"Allow","Action":
+              "s3:ListAllMyBuckets","Resource":"*"}]}
         inline_policy_state: present-in-group
         state: present
 

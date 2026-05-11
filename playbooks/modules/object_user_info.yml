@@ -142,7 +142,9 @@
           - user_with_keys.object_user is defined
           - user_with_keys.object_user.name == object_user_name
           - user_with_keys.object_user.secret_key_metadata is defined
-        fail_msg: "User with secret key metadata was not retrieved or name does not match"
+        fail_msg: >-
+          User with secret key metadata was not
+          retrieved or name does not match
         success_msg: >-
           User with secret key metadata
           retrieved successfully

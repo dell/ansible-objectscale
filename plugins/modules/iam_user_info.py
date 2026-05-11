@@ -309,6 +309,37 @@ class IamUserInfo(object):
                 msg="Listing IAM users failed with error: %s" % error_msg
             )
 
+    def _enrich_field(self, user, user_name, field, fetch_func, desc):
+        """Enrich a single field on the user dict, handling errors gracefully."""
+        try:
+            user[field] = fetch_func(user_name)
+        except Exception as e:
+            user[field] = {'error': str(e)}
+            self.module.warn(
+                "Failed to %s for user %s: %s" % (desc, user_name, str(e))
+            )
+
+    def _enrich_access_keys(self, user, user_name):
+        """Enrich user with access key data and optional last-used info."""
+        try:
+            keys = self.list_access_keys(user_name)
+            if self.module.params.get('include_access_key_last_used'):
+                for key in keys:
+                    try:
+                        key['last_used'] = self.get_access_key_last_used(key.get('AccessKeyId'))
+                    except Exception as lu_err:
+                        key['last_used'] = {'error': str(lu_err)}
+                        self.module.warn(
+                            "Failed to get last used info for access key %s: %s"
+                            % (key.get('AccessKeyId'), str(lu_err))
+                        )
+            user['access_keys'] = keys
+        except Exception as e:
+            user['access_keys'] = {'error': str(e)}
+            self.module.warn(
+                "Failed to list access keys for user %s: %s" % (user_name, str(e))
+            )
+
     def enrich_user(self, user):
         """Enrich a user dict with optional detail based on include_* flags.
 
@@ -318,80 +349,39 @@ class IamUserInfo(object):
         params = self.module.params
         user_name = user.get('UserName')
 
-        # Access keys
         if params.get('include_access_keys'):
-            try:
-                keys = self.list_access_keys(user_name)
-                # If include_access_key_last_used, enrich each key
-                if params.get('include_access_key_last_used'):
-                    for key in keys:
-                        try:
-                            last_used = self.get_access_key_last_used(key.get('AccessKeyId'))
-                            key['last_used'] = last_used
-                        except Exception as lu_err:
-                            key['last_used'] = {'error': str(lu_err)}
-                            self.module.warn(
-                                "Failed to get last used info for access key %s: %s"
-                                % (key.get('AccessKeyId'), str(lu_err))
-                            )
-                user['access_keys'] = keys
-            except Exception as e:
-                user['access_keys'] = {'error': str(e)}
-                self.module.warn(
-                    "Failed to list access keys for user %s: %s" % (user_name, str(e))
-                )
+            self._enrich_access_keys(user, user_name)
 
-        # Inline policies
         if params.get('include_inline_policies'):
-            try:
-                user['inline_policies'] = self.list_inline_policy_names(user_name)
-            except Exception as e:
-                user['inline_policies'] = {'error': str(e)}
-                self.module.warn(
-                    "Failed to list inline policies for user %s: %s" % (user_name, str(e))
-                )
+            self._enrich_field(
+                user, user_name, 'inline_policies',
+                self.list_inline_policy_names, "list inline policies")
 
-        # Inline policy document
         if params.get('inline_policy_name'):
+            policy_name = params['inline_policy_name']
             try:
                 user['inline_policy_document'] = self.get_user_policy_document(
-                    user_name, params['inline_policy_name']
-                )
+                    user_name, policy_name)
             except Exception as e:
                 user['inline_policy_document'] = {'error': str(e)}
                 self.module.warn(
-                    "Failed to get inline policy document for user %s: %s" % (user_name, str(e))
-                )
+                    "Failed to get inline policy document for user %s: %s"
+                    % (user_name, str(e)))
 
-        # Attached policies
         if params.get('include_attached_policies'):
-            try:
-                user['attached_policies'] = self.list_attached_policies(user_name)
-            except Exception as e:
-                user['attached_policies'] = {'error': str(e)}
-                self.module.warn(
-                    "Failed to list attached policies for user %s: %s" % (user_name, str(e))
-                )
+            self._enrich_field(
+                user, user_name, 'attached_policies',
+                self.list_attached_policies, "list attached policies")
 
-        # Groups
         if params.get('include_groups'):
-            try:
-                user['groups'] = self.list_groups_for_user(user_name)
-            except Exception as e:
-                user['groups'] = {'error': str(e)}
-                self.module.warn(
-                    "Failed to list groups for user %s: %s" % (user_name, str(e))
-                )
+            self._enrich_field(
+                user, user_name, 'groups',
+                self.list_groups_for_user, "list groups")
 
-        # Tags
         if params.get('include_tags'):
-            try:
-                user['user_tags'] = self.list_user_tags(user_name)
-            except Exception as e:
-                user['user_tags'] = {'error': str(e)}
-                self.module.warn(
-                    "Failed to list tags for user %s: %s" % (user_name, str(e))
-                )
+            self._enrich_field(
+                user, user_name, 'user_tags',
+                self.list_user_tags, "list tags")
 
         return user
 
@@ -470,7 +460,7 @@ class IamUserInfo(object):
         decoded_doc = url_decode(encoded_doc)
         try:
             return json.loads(decoded_doc)
-        except (json.JSONDecodeError, ValueError):
+        except ValueError:
             # Return raw decoded string if it's not valid JSON
             return decoded_doc
 
