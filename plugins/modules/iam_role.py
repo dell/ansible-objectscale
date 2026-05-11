@@ -372,6 +372,28 @@ class IamRole(object):
 
         return _sort_dict_keys(doc)
 
+    def _build_iam_raw_url(self, action, params):
+        """Build the URL for a raw IAM POST request."""
+        from urllib.parse import urlencode
+        base = self.iam_api.api_client.configuration.host
+        query_parts = [('Action', action)]
+        if params:
+            for k, v in params.items():
+                query_parts.append((k, str(v)))
+        return f"{base}/iam?{urlencode(query_parts)}"
+
+    def _build_iam_raw_headers(self):
+        """Build auth/namespace headers for a raw IAM POST request."""
+        headers = {}
+        token = self.iam_api.api_client.configuration.api_key.get('AuthToken')
+        if token:
+            prefix = self.iam_api.api_client.configuration.api_key_prefix.get('AuthToken', '')
+            headers['X-SDS-AUTH-TOKEN'] = f"{prefix}{token}" if prefix else token
+        if self.namespace:
+            headers['x-emc-namespace'] = self.namespace
+        headers['Accept'] = 'application/json'
+        return headers
+
     def _iam_raw_post(self, action, params=None):
         """Make a raw IAM POST call with properly expanded member.N params.
 
@@ -394,27 +416,10 @@ class IamRole(object):
         Raises:
             Exception: With status attribute set on HTTP errors
         """
-        from urllib.parse import urlencode
-        base = self.iam_api.api_client.configuration.host
-        query_parts = [('Action', action)]
-        if params:
-            for k, v in params.items():
-                query_parts.append((k, str(v)))
-        qs = urlencode(query_parts)
-        url = f"{base}/iam?{qs}"
-        headers = {}
-        for key in ['AuthToken']:
-            token = self.iam_api.api_client.configuration.api_key.get(key)
-            if token:
-                prefix = self.iam_api.api_client.configuration.api_key_prefix.get(key, '')
-                headers['X-SDS-AUTH-TOKEN'] = f"{prefix}{token}" if prefix else token
-        if self.namespace:
-            headers['x-emc-namespace'] = self.namespace
-        headers['Accept'] = 'application/json'
+        url = self._build_iam_raw_url(action, params)
+        headers = self._build_iam_raw_headers()
         try:
-            resp = self.iam_api.api_client.rest_client.request(
-                'POST', url, headers=headers,
-            )
+            resp = self.iam_api.api_client.rest_client.request('POST', url, headers=headers)
             resp.read()  # Ensure response data is available
             if resp.status >= 400:
                 body = json.loads(resp.data.decode('utf-8')) if resp.data else {}
@@ -423,10 +428,8 @@ class IamRole(object):
                 raise err
             return resp
         except Exception as e:
-            # Re-raise with context if it's not already an HTTP error
             if not hasattr(e, 'status'):
-                error_msg = f"Raw IAM POST failed for action {action}: {str(e)}"
-                raise RuntimeError(error_msg) from e
+                raise RuntimeError(f"Raw IAM POST failed for action {action}: {str(e)}") from e
             raise
 
     def _tag_role_raw(self, role_name, tags_dict):
@@ -923,8 +926,8 @@ class IamRole(object):
             return bool(current_boundary)
         return desired_boundary != current_boundary
 
-    def _apply_role_attributes(self, role_name, role, result):
-        """Apply attribute/trust-policy/tags changes, updating result['changed']."""
+    def _apply_role_core_attrs(self, role_name, role, result):
+        """Apply description/max_session_duration and trust policy changes."""
         params = self.module.params
         check_mode = self.module.check_mode
         if params.get('description') is not None or params.get('max_session_duration') is not None:
@@ -939,43 +942,68 @@ class IamRole(object):
                     result['changed'] = True
             elif self._check_trust_policy_changed(role):
                 result['changed'] = True
-        if params.get('tags') is not None:
-            if not check_mode:
-                if self.manage_tags(role_name, params['tags'], params.get('purge_tags', True)):
-                    result['changed'] = True
-            else:
-                current_dict = {t['Key']: t['Value'] for t in self.list_role_tags(role_name)}
-                if current_dict != params['tags']:
-                    result['changed'] = True
+
+    def _apply_role_tags(self, role_name, result):
+        """Apply tag changes for a role."""
+        params = self.module.params
+        if params.get('tags') is None:
+            return
+        if not self.module.check_mode:
+            if self.manage_tags(role_name, params['tags'], params.get('purge_tags', True)):
+                result['changed'] = True
+        else:
+            current_dict = {t['Key']: t['Value'] for t in self.list_role_tags(role_name)}
+            if current_dict != params['tags']:
+                result['changed'] = True
+
+    def _apply_role_attributes(self, role_name, role, result):
+        """Apply attribute/trust-policy/tags changes, updating result['changed']."""
+        self._apply_role_core_attrs(role_name, role, result)
+        self._apply_role_tags(role_name, result)
+
+    def _apply_role_managed_policies(self, role_name, result):
+        """Apply managed policy changes for a role."""
+        params = self.module.params
+        desired = params.get('managed_policies')
+        if desired is None:
+            return
+        if not self.module.check_mode:
+            if self.manage_managed_policies(role_name, desired, params.get('purge_managed_policies', True)):
+                result['changed'] = True
+        else:
+            current_arns = {p['PolicyArn'] for p in self.list_attached_policies(role_name)}
+            if current_arns != set(desired):
+                result['changed'] = True
+
+    def _apply_role_inline_policies(self, role_name, result):
+        """Apply inline policy changes for a role."""
+        params = self.module.params
+        desired = params.get('inline_policies')
+        if desired is None:
+            return
+        if not self.module.check_mode:
+            if self.manage_inline_policies(role_name, desired, params.get('purge_inline_policies', True)):
+                result['changed'] = True
+        else:
+            if set(self.list_inline_policy_names(role_name)) != set(desired.keys()):
+                result['changed'] = True
+
+    def _apply_role_boundary(self, role_name, role, result):
+        """Apply permissions boundary changes for a role."""
+        params = self.module.params
+        if params.get('permissions_boundary') is None:
+            return
+        if not self.module.check_mode:
+            if self.manage_permissions_boundary(role_name, params['permissions_boundary'], role):
+                result['changed'] = True
+        elif self._check_boundary_changed(role):
+            result['changed'] = True
 
     def _apply_role_policies(self, role_name, role, result):
         """Apply managed/inline-policy and boundary changes, updating result['changed']."""
-        params = self.module.params
-        check_mode = self.module.check_mode
-        if params.get('managed_policies') is not None:
-            if not check_mode:
-                if self.manage_managed_policies(
-                        role_name, params['managed_policies'], params.get('purge_managed_policies', True)):
-                    result['changed'] = True
-            else:
-                current_arns = {p['PolicyArn'] for p in self.list_attached_policies(role_name)}
-                if current_arns != set(params['managed_policies']):
-                    result['changed'] = True
-        if params.get('inline_policies') is not None:
-            if not check_mode:
-                if self.manage_inline_policies(
-                        role_name, params['inline_policies'], params.get('purge_inline_policies', True)):
-                    result['changed'] = True
-            else:
-                current_names = set(self.list_inline_policy_names(role_name))
-                if current_names != set(params['inline_policies'].keys()):
-                    result['changed'] = True
-        if params.get('permissions_boundary') is not None:
-            if not check_mode:
-                if self.manage_permissions_boundary(role_name, params['permissions_boundary'], role):
-                    result['changed'] = True
-            elif self._check_boundary_changed(role):
-                result['changed'] = True
+        self._apply_role_managed_policies(role_name, result)
+        self._apply_role_inline_policies(role_name, result)
+        self._apply_role_boundary(role_name, role, result)
 
     def _apply_present_changes(self, role_name, role, result):
         """Apply all present-state sub-resource changes to an existing role."""

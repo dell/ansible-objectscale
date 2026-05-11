@@ -683,7 +683,28 @@ class IamGroup(object):
             self.delete_group(group_name, namespace, group_details)
             result['changed'] = True
         if self.module._diff:
-            result['diff'] = dict(before=before_state, after={} if group_details else {})
+            result['diff'] = dict(before=before_state, after={})
+
+    def _handle_group_present(self, group_name, namespace, group_details, before_state, result):
+        """Handle state=present for an IAM group."""
+        if not group_details:
+            self._handle_create_group(group_name, namespace)
+            result['changed'] = True
+            if not self.module.check_mode:
+                group_details = self.get_group_details(group_name, namespace)
+        else:
+            modifications = self.is_group_modified(group_details)
+            if modifications['is_modified']:
+                self._apply_modifications(group_name, namespace, modifications)
+                result['changed'] = True
+                if not self.module.check_mode:
+                    group_details = self.get_group_details(group_name, namespace)
+
+        if self.module._diff:
+            after_state = self._build_state_snapshot(group_details)
+            result['diff'] = dict(before=before_state, after=after_state)
+
+        result['iam_group_details'] = group_details
 
     def perform_module_operation(self) -> None:
         """Perform different actions based on parameters chosen in playbook."""
@@ -698,26 +719,8 @@ class IamGroup(object):
 
         if state == 'absent':
             self._handle_group_absent(group_name, namespace, group_details, before_state, result)
-
-        elif state == 'present':
-            if not group_details:
-                self._handle_create_group(group_name, namespace)
-                result['changed'] = True
-                if not self.module.check_mode:
-                    group_details = self.get_group_details(group_name, namespace)
-            else:
-                modifications = self.is_group_modified(group_details)
-                if modifications['is_modified']:
-                    self._apply_modifications(group_name, namespace, modifications)
-                    result['changed'] = True
-                    if not self.module.check_mode:
-                        group_details = self.get_group_details(group_name, namespace)
-
-            if self.module._diff:
-                after_state = self._build_state_snapshot(group_details)
-                result['diff'] = dict(before=before_state, after=after_state)
-
-            result['iam_group_details'] = group_details
+        else:
+            self._handle_group_present(group_name, namespace, group_details, before_state, result)
 
         self.module.exit_json(**result)
 

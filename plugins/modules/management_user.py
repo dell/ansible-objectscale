@@ -507,6 +507,34 @@ class ManagementUser(object):
             })
         return details, diff_after
 
+    def _mgmt_handle_absent(self, user_id, details, diff_before, result):
+        """Handle state=absent for a management user. Returns (details, diff_after)."""
+        if details:
+            if not self.module.check_mode:
+                self.delete_user(user_id)
+            result['changed'] = True
+            return None, {}
+        return details, dict(diff_before)
+
+    def _mgmt_handle_present(self, user_id, details, params, result):
+        """Handle state=present for a management user. Returns (details, diff_after)."""
+        user_exists = details is not None
+        is_external_group = details.get('is_external_group') if user_exists else params.get('is_external_group')
+        user_type = self._determine_user_type(user_id, is_external_group)
+        self._validate_params(user_type, user_id, params, user_exists)
+        if not details:
+            return self._handle_present_create(user_id, params, result)
+        return self._handle_present_modify(user_id, details, params, result)
+
+    def _apply_diff(self, diff_before, diff_after, result):
+        """Attach diff to result dict if diff mode is active and changed."""
+        if not (self.module._diff and result['changed']):
+            return
+        before = dict(diff_before)
+        if 'password' in before:
+            before['password'] = REDACTED_VALUE
+        result['diff'] = {'before': before, 'after': diff_after}
+
     def perform_module_operation(self) -> None:
         result: Dict[str, Any] = dict(changed=False, management_user_details=None)
         params = self.module.params
@@ -515,35 +543,14 @@ class ManagementUser(object):
 
         details = self.get_user_details(user_id)
         diff_before = self._public_details(details) or {}
-        diff_after = dict(diff_before)
-
-        if state == 'present':
-            user_exists = details is not None
-            is_external_group = details.get('is_external_group') if user_exists else params.get('is_external_group')
-            user_type = self._determine_user_type(user_id, is_external_group)
-            self._validate_params(user_type, user_id, params, user_exists)
 
         if state == 'absent':
-            if details:
-                if not self.module.check_mode:
-                    self.delete_user(user_id)
-                result['changed'] = True
-                diff_after = {}
-                details = None
-        else:  # present
-            if not details:
-                details, diff_after = self._handle_present_create(user_id, params, result)
-            else:
-                details, diff_after = self._handle_present_modify(user_id, details, params, result)
+            details, diff_after = self._mgmt_handle_absent(user_id, details, diff_before, result)
+        else:
+            details, diff_after = self._mgmt_handle_present(user_id, details, params, result)
 
         result['management_user_details'] = self._public_details(details)
-
-        if self.module._diff and result['changed']:
-            before = dict(diff_before)
-            if 'password' in before:
-                before['password'] = REDACTED_VALUE
-            result['diff'] = {'before': before, 'after': diff_after}
-
+        self._apply_diff(diff_before, diff_after, result)
         self.module.exit_json(**result)
 
 
