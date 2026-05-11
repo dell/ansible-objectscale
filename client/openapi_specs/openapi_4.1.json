@@ -4378,14 +4378,14 @@
                   },
                   "example_1": {
                     "value": {
-                      "secret_key": "b2qffCUYCyyKrwoaEKkb1XoYB4m82eonbgwUjjxs",
+                      "secret_key": "REDACTED_EXAMPLE_SECRET_KEY_1",
                       "key_timestamp": "2013-09-30 20:57:59.149",
                       "key_expiry_timestamp": "2013-09-30 20:57:59.149",
                       "link": {
                         "rel": "self",
                         "href": "/object/user-secret-keys/root"
                       },
-                      "secret_key_id": "4d2bf91648076cddfa050339d65c1b3323b69a836978f83e80efac57bbcc6a14"
+                      "secret_key_id": "REDACTED_EXAMPLE_SECRET_KEY_ID_1"
                     }
                   }
                 }
@@ -22019,20 +22019,20 @@
                           "-null": "true"
                         },
                         "namespace": "s3",
-                        "secretkey": "R6JUtI6hK2rDxY2fKuaQ51OL2tfyoHjPp8xL2y3T"
+                        "secretkey": "REDACTED_EXAMPLE_SECRETKEY_2"
                       }
                     }
                   },
                   "example_1": {
                     "value": {
-                      "secret_key": "R6JUtI6hK2rDxY2fKuaQ51OL2tfyoHjPp8xL2y3T",
+                      "secret_key": "REDACTED_EXAMPLE_SECRET_KEY_2",
                       "key_timestamp": "2013-09-30 20:27:25.946",
                       "key_expiry_timestamp": "2013-10-30 20:27:25.946",
                       "link": {
                         "rel": "self",
                         "href": "/object/user-secret-keys/testlogin"
                       },
-                      "secret_key_id": "0686e69fef958291d7099cf28cce4c91faa3790861f0f75a44840fecdcc6c5b3"
+                      "secret_key_id": "REDACTED_EXAMPLE_SECRET_KEY_ID_2"
                     }
                   }
                 }

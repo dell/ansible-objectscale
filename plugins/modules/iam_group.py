@@ -419,9 +419,8 @@ class IamGroup(object):
             self.module.exit_json(failed=True, msg=msg)
             return None
 
-    def delete_group(self, group_name: str, namespace: str, current_state: Dict[str, Any]) -> Optional[bool]:
-        """Delete group after cleaning up all dependencies."""
-        # Remove all users
+    def _cleanup_group_users(self, group_name: str, namespace: str, current_state: Dict[str, Any]) -> None:
+        """Remove all users from group before deletion."""
         for user_name in current_state.get('users', []):
             try:
                 if not self.module.check_mode:
@@ -431,7 +430,8 @@ class IamGroup(object):
                 msg = "Removing user %s from group %s failed with error: %s" % (user_name, group_name, error_msg)
                 self.module.exit_json(failed=True, msg=msg)
 
-        # Detach all managed policies
+    def _cleanup_group_policies(self, group_name: str, namespace: str, current_state: Dict[str, Any]) -> None:
+        """Detach all managed policies from group before deletion."""
         for policy in current_state.get('attached_policies', []):
             policy_arn = policy.get('PolicyArn', '') if isinstance(policy, dict) else str(policy)
             try:
@@ -442,7 +442,8 @@ class IamGroup(object):
                 msg = "Detaching policy %s from group %s failed with error: %s" % (policy_arn, group_name, error_msg)
                 self.module.exit_json(failed=True, msg=msg)
 
-        # Delete all inline policies
+    def _cleanup_group_inline_policies(self, group_name: str, namespace: str, current_state: Dict[str, Any]) -> None:
+        """Delete all inline policies from group before deletion."""
         for policy_name in current_state.get('inline_policies', []):
             try:
                 if not self.module.check_mode:
@@ -452,7 +453,11 @@ class IamGroup(object):
                 msg = "Deleting inline policy %s from group %s failed with error: %s" % (policy_name, group_name, error_msg)
                 self.module.exit_json(failed=True, msg=msg)
 
-        # Delete the group
+    def delete_group(self, group_name: str, namespace: str, current_state: Dict[str, Any]) -> Optional[bool]:
+        """Delete group after cleaning up all dependencies."""
+        self._cleanup_group_users(group_name, namespace, current_state)
+        self._cleanup_group_policies(group_name, namespace, current_state)
+        self._cleanup_group_inline_policies(group_name, namespace, current_state)
         try:
             if not self.module.check_mode:
                 self.iam_api.delete_group(group_name, namespace)
@@ -537,6 +542,56 @@ class IamGroup(object):
     # Idempotency
     # ------------------------------------------------------------------
 
+    def _compute_user_modifications(self, params, current_users, modifications):
+        """Compute user add/remove modifications."""
+        desired_users = params.get('users')
+        user_state = params.get('user_state', 'present-in-group')
+        if desired_users is None:
+            return
+        desired_set = set(desired_users)
+        if user_state == 'present-in-group':
+            to_add = list(desired_set - current_users)
+            if to_add:
+                modifications['users_to_add'] = to_add
+        elif user_state == 'absent-in-group':
+            to_remove = list(desired_set & current_users)
+            if to_remove:
+                modifications['users_to_remove'] = to_remove
+
+    def _compute_policy_modifications(self, params, current_policy_arns, modifications):
+        """Compute managed policy attach/detach modifications."""
+        desired_policies = params.get('policies')
+        policy_state = params.get('policy_state', 'present-in-group')
+        if desired_policies is None:
+            return
+        desired_policy_set = set(desired_policies)
+        if policy_state == 'present-in-group':
+            to_attach = list(desired_policy_set - current_policy_arns)
+            if to_attach:
+                modifications['policies_to_attach'] = to_attach
+        elif policy_state == 'absent-in-group':
+            to_detach = list(desired_policy_set & current_policy_arns)
+            if to_detach:
+                modifications['policies_to_detach'] = to_detach
+
+    def _compute_inline_modifications(self, params, current_inline_names, modifications):
+        """Compute inline policy put/delete modifications."""
+        desired_inline = params.get('inline_policies')
+        inline_state = params.get('inline_policy_state', 'present-in-group')
+        if desired_inline is None:
+            return
+        if inline_state == 'present-in-group':
+            to_put = [p for p in desired_inline if isinstance(p, dict) and p.get('name')]
+            if to_put:
+                modifications['inline_to_put'] = to_put
+        elif inline_state == 'absent-in-group':
+            desired_names = set(
+                p.get('name', '') for p in desired_inline if isinstance(p, dict) and p.get('name')
+            )
+            to_delete = list(desired_names & current_inline_names)
+            if to_delete:
+                modifications['inline_to_delete'] = to_delete
+
     def is_group_modified(self, current_state: Dict[str, Any]) -> Dict[str, Any]:
         """Determine what modifications are needed by comparing desired vs current state."""
         params = self.module.params
@@ -557,49 +612,9 @@ class IamGroup(object):
         )
         current_inline_names = set(current_state.get('inline_policies', []))
 
-        # User changes
-        desired_users = params.get('users')
-        user_state = params.get('user_state', 'present-in-group')
-        if desired_users is not None:
-            desired_set = set(desired_users)
-            if user_state == 'present-in-group':
-                to_add = list(desired_set - current_users)
-                if to_add:
-                    modifications['users_to_add'] = to_add
-            elif user_state == 'absent-in-group':
-                to_remove = list(desired_set & current_users)
-                if to_remove:
-                    modifications['users_to_remove'] = to_remove
-
-        # Managed policy changes
-        desired_policies = params.get('policies')
-        policy_state = params.get('policy_state', 'present-in-group')
-        if desired_policies is not None:
-            desired_policy_set = set(desired_policies)
-            if policy_state == 'present-in-group':
-                to_attach = list(desired_policy_set - current_policy_arns)
-                if to_attach:
-                    modifications['policies_to_attach'] = to_attach
-            elif policy_state == 'absent-in-group':
-                to_detach = list(desired_policy_set & current_policy_arns)
-                if to_detach:
-                    modifications['policies_to_detach'] = to_detach
-
-        # Inline policy changes
-        desired_inline = params.get('inline_policies')
-        inline_state = params.get('inline_policy_state', 'present-in-group')
-        if desired_inline is not None:
-            if inline_state == 'present-in-group':
-                to_put = [p for p in desired_inline if isinstance(p, dict) and p.get('name')]
-                if to_put:
-                    modifications['inline_to_put'] = to_put
-            elif inline_state == 'absent-in-group':
-                desired_names = set(
-                    p.get('name', '') for p in desired_inline if isinstance(p, dict) and p.get('name')
-                )
-                to_delete = list(desired_names & current_inline_names)
-                if to_delete:
-                    modifications['inline_to_delete'] = to_delete
+        self._compute_user_modifications(params, current_users, modifications)
+        self._compute_policy_modifications(params, current_policy_arns, modifications)
+        self._compute_inline_modifications(params, current_inline_names, modifications)
 
         modifications['is_modified'] = bool(
             modifications['users_to_add'] or modifications['users_to_remove']
@@ -662,6 +677,14 @@ class IamGroup(object):
         if modifications['inline_to_delete']:
             self.delete_inline_policies(group_name, namespace, modifications['inline_to_delete'])
 
+    def _handle_group_absent(self, group_name, namespace, group_details, before_state, result):
+        """Handle state=absent for an IAM group."""
+        if group_details:
+            self.delete_group(group_name, namespace, group_details)
+            result['changed'] = True
+        if self.module._diff:
+            result['diff'] = dict(before=before_state, after={} if group_details else {})
+
     def perform_module_operation(self) -> None:
         """Perform different actions based on parameters chosen in playbook."""
         result = dict(changed=False, iam_group_details=None)  # type: Dict[str, Any]
@@ -674,12 +697,7 @@ class IamGroup(object):
         before_state = self._build_state_snapshot(group_details)
 
         if state == 'absent':
-            if group_details:
-                self.delete_group(group_name, namespace, group_details)
-                result['changed'] = True
-            if self.module._diff:
-                after = {} if group_details else before_state
-                result['diff'] = dict(before=before_state, after={} if group_details else {})
+            self._handle_group_absent(group_name, namespace, group_details, before_state, result)
 
         elif state == 'present':
             if not group_details:

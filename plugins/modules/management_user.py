@@ -298,42 +298,43 @@ class ManagementUser(object):
             return USER_TYPE_AD_LDAP_GROUP
         return USER_TYPE_AD_LDAP_USER
 
+    def _validate_local_user_create(self, user_id, params):
+        """Validate create params for a Local Management User."""
+        if not params.get('password'):
+            self.module.exit_json(
+                failed=True,
+                msg="password is required when creating a Local Management User ('%s')." % user_id,
+            )
+        if params.get('is_external_group'):
+            self.module.exit_json(
+                failed=True,
+                msg="is_external_group must not be true for a Local User ('%s')." % user_id,
+            )
+
+    def _validate_ad_ldap_user_create(self, user_type, user_id, params):
+        """Validate create params for an AD/LDAP User or Group."""
+        if params.get('password'):
+            self.module.exit_json(
+                failed=True,
+                msg="password should not be provided when creating an AD/LDAP User ('%s')." % user_id,
+            )
+        if user_type == USER_TYPE_AD_LDAP_USER and params.get('is_external_group'):
+            self.module.exit_json(
+                failed=True,
+                msg="is_external_group must not be true for an AD/LDAP User ('%s')." % user_id,
+            )
+        if user_type == USER_TYPE_AD_LDAP_GROUP and not params.get('is_external_group'):
+            self.module.exit_json(
+                failed=True,
+                msg="is_external_group must be true when creating an AD/LDAP Group ('%s')." % user_id,
+            )
+
     def _validate_create_params(self, user_type, user_id, params):
         """Validate parameter combinations for user creation."""
-        password = params.get('password')
         if user_type == USER_TYPE_LOCAL:
-            if not password:
-                self.module.exit_json(
-                    failed=True,
-                    msg="password is required when creating a Local Management User ('%s')." % user_id,
-                )
-            if params.get('is_external_group'):
-                self.module.exit_json(
-                    failed=True,
-                    msg="is_external_group must not be true for a Local User ('%s')." % user_id,
-                )
-        elif user_type == USER_TYPE_AD_LDAP_USER:
-            if password:
-                self.module.exit_json(
-                    failed=True,
-                    msg="password should not be provided when creating an AD/LDAP User ('%s')." % user_id,
-                )
-            if params.get('is_external_group'):
-                self.module.exit_json(
-                    failed=True,
-                    msg="is_external_group must not be true for an AD/LDAP User ('%s')." % user_id,
-                )
-        else:  # AD/LDAP Group
-            if password:
-                self.module.exit_json(
-                    failed=True,
-                    msg="password should not be provided when creating an AD/LDAP Group ('%s')." % user_id,
-                )
-            if not params.get('is_external_group'):
-                self.module.exit_json(
-                    failed=True,
-                    msg="is_external_group must be true when creating an AD/LDAP Group ('%s')." % user_id,
-                )
+            self._validate_local_user_create(user_id, params)
+        else:
+            self._validate_ad_ldap_user_create(user_type, user_id, params)
 
     def _validate_modify_params(self, user_type, user_id, params):
         """Validate parameter combinations for user modification."""

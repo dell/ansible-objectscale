@@ -634,7 +634,7 @@ class ReplicationGroup(object):
         if self.module._diff:
             result['diff'] = {'before': before_state, 'after': {}}
 
-    def _handle_check_mode_create(self, before_state, result):
+    def _handle_check_mode_create(self, result):
         """Handle check_mode when replication group doesn't exist."""
         result['changed'] = True
         predicted = {
@@ -662,7 +662,7 @@ class ReplicationGroup(object):
 
         if not current:
             if self.module.check_mode:
-                self._handle_check_mode_create(before_state, result)
+                self._handle_check_mode_create(result)
                 self.module.exit_json(**result)
                 return
             self.create_replication_group()

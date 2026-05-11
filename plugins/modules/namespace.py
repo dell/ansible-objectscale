@@ -930,6 +930,35 @@ class Namespace(object):
                 return True
         return False
 
+    def _handle_namespace_present(self, namespace_name, params, namespace_details, result):
+        """Handle state=present for a namespace."""
+        if not namespace_details:
+            self.create_namespace(namespace_name, params)
+            result['changed'] = True
+            namespace_details = self.get_namespace_details(namespace_name)
+        else:
+            modify_params = self.is_namespace_modified(namespace_details, params)
+            if modify_params:
+                self.modify_namespace(namespace_name, modify_params)
+                result['changed'] = True
+
+        quota_details = self.get_quota_details(namespace_name)
+        quota_fields = ['quota_enabled', 'blocked_quota_size',
+                        'notification_quota_size', 'soft_quota_size', 'hard_quota_size']
+        needs_quota_update = self.is_quota_modified(quota_details, params) or (
+            quota_details is None and any(params.get(f) is not None for f in quota_fields))
+        if needs_quota_update:
+            self.modify_quota(namespace_name, params)
+            result['changed'] = True
+
+        if params.get('retention_classes') is not None:
+            if self.sync_retention_classes(namespace_name, params.get('retention_classes')):
+                result['changed'] = True
+
+        if result['changed']:
+            namespace_details = self.get_namespace_details(namespace_name)
+        return namespace_details
+
     def perform_module_operation(self) -> None:
         """Perform different actions based on parameters chosen in playbook."""
         result: Dict[str, Any] = dict(
@@ -948,32 +977,8 @@ class Namespace(object):
                 self.delete_namespace(namespace_name)
                 result['changed'] = True
         elif state == 'present':
-            if not namespace_details:
-                self.create_namespace(namespace_name, params)
-                result['changed'] = True
-                namespace_details = self.get_namespace_details(namespace_name)
-            else:
-                modify_params = self.is_namespace_modified(namespace_details, params)
-                if modify_params:
-                    self.modify_namespace(namespace_name, modify_params)
-                    result['changed'] = True
-
-            # Handle quota separately
-            quota_details = self.get_quota_details(namespace_name)
-            quota_fields = ['quota_enabled', 'blocked_quota_size',
-                            'notification_quota_size', 'soft_quota_size', 'hard_quota_size']
-            needs_quota_update = self.is_quota_modified(quota_details, params) or (
-                quota_details is None and any(params.get(f) is not None for f in quota_fields))
-            if needs_quota_update:
-                self.modify_quota(namespace_name, params)
-                result['changed'] = True
-
-            if params.get('retention_classes') is not None:
-                if self.sync_retention_classes(namespace_name, params.get('retention_classes')):
-                    result['changed'] = True
-
-            if result['changed']:
-                namespace_details = self.get_namespace_details(namespace_name)
+            namespace_details = self._handle_namespace_present(
+                namespace_name, params, namespace_details, result)
 
         result['namespace_details'] = namespace_details
         self.module.exit_json(**result)
