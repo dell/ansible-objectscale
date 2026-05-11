@@ -215,7 +215,7 @@ try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_secret_key_service_delete_key_for_user_request import (  # noqa: E501
         UserSecretKeyServiceDeleteKeyForUserRequest,
     )
-except (ImportError, Exception):
+except Exception:
     UserManagementApi = None  # type: ignore[assignment,misc]
     UserSecretKeyApi = None  # type: ignore[assignment,misc]
     UserManagementServiceAddUserRequest = None  # type: ignore[assignment,misc]
@@ -500,6 +500,58 @@ class ObjectUser(object):
                 })
         return keys
 
+    def _create_secret_key(self, user, namespace, entry):
+        """Create a single secret key and return the response data dict."""
+        payload = dict(
+            namespace=namespace,
+            secretkey=entry.get('secret_key'),
+            existing_key_expiry_time_mins=entry.get('existing_key_expiry_time_mins'),
+        )
+        try:
+            req = self._build_api_payload(
+                UserSecretKeyServiceCreateNewKeyForUserRequest, payload,
+            )
+            resp = self.secret_key_api.user_secret_key_service_create_new_key_for_user(
+                uid=user,
+                user_secret_key_service_create_new_key_for_user_request=req,
+            )
+            resp_data = resp.to_dict() if hasattr(resp, 'to_dict') else (resp or {})
+            return {
+                'secret_key': resp_data.get('secret_key'),
+                'secret_key_id': resp_data.get('secret_key_id'),
+                'key_timestamp': resp_data.get('key_timestamp'),
+                'key_expiry_timestamp': resp_data.get('key_expiry_timestamp'),
+            }
+        except Exception as e:
+            error_msg = utils.determine_error(e)
+            self.module.exit_json(
+                failed=True,
+                msg="Creating secret key for Object User %s failed with error: %s" % (user, error_msg),
+            )
+            return None
+
+    def _delete_secret_key(self, user, namespace, entry):
+        """Delete a single secret key."""
+        payload = dict(
+            secret_key=entry.get('secret_key'),
+            secret_key_id=entry.get('secret_key_id'),
+            namespace=namespace,
+        )
+        try:
+            req = self._build_api_payload(
+                UserSecretKeyServiceDeleteKeyForUserRequest, payload,
+            )
+            self.secret_key_api.user_secret_key_service_delete_key_for_user(
+                uid=user,
+                user_secret_key_service_delete_key_for_user_request=req,
+            )
+        except Exception as e:
+            error_msg = utils.determine_error(e)
+            self.module.exit_json(
+                failed=True,
+                msg="Deleting secret key for Object User %s failed with error: %s" % (user, error_msg),
+            )
+
     def sync_secret_keys(
         self,
         user: str,
@@ -526,51 +578,23 @@ class ObjectUser(object):
             entry_secret = entry.get('secret_key')
 
             if entry_state == 'present':
-                # If caller declares a specific id that already exists -> noop
                 if entry_id and entry_id in existing_ids:
                     continue
-                # If no id specified but keys already exist -> noop (cap 2 keys)
                 if not entry_id and len(existing) >= 2:
                     continue
-                # Otherwise create a new key
                 if check_mode:
                     changed = True
                     continue
-                payload = dict(
-                    namespace=namespace,
-                    secretkey=entry_secret,
-                    existing_key_expiry_time_mins=entry.get('existing_key_expiry_time_mins'),
-                )
-                try:
-                    req = self._build_api_payload(
-                        UserSecretKeyServiceCreateNewKeyForUserRequest, payload,
-                    )
-                    resp = self.secret_key_api.user_secret_key_service_create_new_key_for_user(
-                        uid=user,
-                        user_secret_key_service_create_new_key_for_user_request=req,
-                    )
-                    resp_data = resp.to_dict() if hasattr(resp, 'to_dict') else (resp or {})
-                    created.append({
-                        'secret_key': resp_data.get('secret_key'),
-                        'secret_key_id': resp_data.get('secret_key_id'),
-                        'key_timestamp': resp_data.get('key_timestamp'),
-                        'key_expiry_timestamp': resp_data.get('key_expiry_timestamp'),
-                    })
+                key_data = self._create_secret_key(user, namespace, entry)
+                if key_data:
+                    created.append(key_data)
                     changed = True
-                except Exception as e:
-                    error_msg = utils.determine_error(e)
-                    self.module.exit_json(
-                        failed=True,
-                        msg="Creating secret key for Object User %s failed with error: %s" % (user, error_msg),
-                    )
 
             elif entry_state == 'absent':
                 if not (entry_id or entry_secret):
                     continue
-                # Skip if target is already gone
                 if entry_id and entry_id not in existing_ids:
                     continue
-                # Validate that both secret_key_id and secret_key are provided for deletion
                 if entry_id and not entry_secret:
                     self.module.exit_json(
                         failed=True,
@@ -582,26 +606,8 @@ class ObjectUser(object):
                 if check_mode:
                     changed = True
                     continue
-                payload = dict(
-                    secret_key=entry_secret,
-                    secret_key_id=entry_id,
-                    namespace=namespace,
-                )
-                try:
-                    req = self._build_api_payload(
-                        UserSecretKeyServiceDeleteKeyForUserRequest, payload,
-                    )
-                    self.secret_key_api.user_secret_key_service_delete_key_for_user(
-                        uid=user,
-                        user_secret_key_service_delete_key_for_user_request=req,
-                    )
-                    changed = True
-                except Exception as e:
-                    error_msg = utils.determine_error(e)
-                    self.module.exit_json(
-                        failed=True,
-                        msg="Deleting secret key for Object User %s failed with error: %s" % (user, error_msg),
-                    )
+                self._delete_secret_key(user, namespace, entry)
+                changed = True
         return changed, created
 
     def _enrich_diff_with_secret_keys(
@@ -653,46 +659,43 @@ class ObjectUser(object):
                     diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
 
                 # Set lock state after creation if specified
-                if params.get('locked') is not None:
-                    if self.sync_lock(
-                        user, namespace,
-                        False,  # New users are unlocked by default
-                        params['locked'],
-                        check_mode=self.module.check_mode,
-                    ):
-                        result['changed'] = True
-                        if not self.module.check_mode:
-                            details = self.get_user_details(user, namespace)
-                            diff_after = dict(details) if details else {}
-                            if self.module._diff:
-                                diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+                if params.get('locked') is not None and self.sync_lock(
+                    user, namespace,
+                    False,  # New users are unlocked by default
+                    params['locked'],
+                    check_mode=self.module.check_mode,
+                ):
+                    result['changed'] = True
+                    if not self.module.check_mode:
+                        details = self.get_user_details(user, namespace)
+                        diff_after = dict(details) if details else {}
+                        if self.module._diff:
+                            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
             else:
-                if params.get('tags') is not None:
-                    if self.sync_tags(
-                        user, namespace,
-                        details.get('tag'), params['tags'], params.get('purge_tags', True),
-                        check_mode=self.module.check_mode,
-                    ):
-                        result['changed'] = True
-                        if not self.module.check_mode:
-                            details = self.get_user_details(user, namespace)
-                            diff_after = dict(details) if details else {}
-                            if self.module._diff:
-                                diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+                if params.get('tags') is not None and self.sync_tags(
+                    user, namespace,
+                    details.get('tag'), params['tags'], params.get('purge_tags', True),
+                    check_mode=self.module.check_mode,
+                ):
+                    result['changed'] = True
+                    if not self.module.check_mode:
+                        details = self.get_user_details(user, namespace)
+                        diff_after = dict(details) if details else {}
+                        if self.module._diff:
+                            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
 
-                if params.get('locked') is not None:
-                    if self.sync_lock(
-                        user, namespace,
-                        bool(details.get('locked')) if details else False,
-                        params['locked'],
-                        check_mode=self.module.check_mode,
-                    ):
-                        result['changed'] = True
-                        if not self.module.check_mode:
-                            details = self.get_user_details(user, namespace)
-                            diff_after = dict(details) if details else {}
-                            if self.module._diff:
-                                diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+                if params.get('locked') is not None and self.sync_lock(
+                    user, namespace,
+                    bool(details.get('locked')) if details else False,
+                    params['locked'],
+                    check_mode=self.module.check_mode,
+                ):
+                    result['changed'] = True
+                    if not self.module.check_mode:
+                        details = self.get_user_details(user, namespace)
+                        diff_after = dict(details) if details else {}
+                        if self.module._diff:
+                            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
 
             if params.get('secret_keys'):
                 key_changed, created_keys = self.sync_secret_keys(

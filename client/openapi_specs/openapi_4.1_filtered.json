@@ -8819,7 +8819,7 @@
 												"AccessKey": {
 													"AccessKeyId": "AKIA681EB7D2520E6455",
 													"CreateDate": "2020-04-15T14:49:22Z",
-													"SecretAccessKey": "6q6IH9cntQV6vcF1y6MP7dQmmSItrnq6aS5pOafu",
+													"SecretAccessKey": "AWS_SECRET_ACCESS_KEY",
 													"Status": "Active",
 													"UserName": "tt1"
 												}

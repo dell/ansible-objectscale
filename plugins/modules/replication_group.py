@@ -194,28 +194,28 @@ try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.data_vpool_api import (
         DataVpoolApi,
     )
-except (ImportError, Exception):
+except Exception:
     DataVpoolApi = None  # type: ignore[assignment,misc]
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.data_service_vpool_service_create_data_service_vpool_request import (  # noqa: E501
         DataServiceVpoolServiceCreateDataServiceVpoolRequest,
     )
-except (ImportError, Exception):
+except Exception:
     DataServiceVpoolServiceCreateDataServiceVpoolRequest = None  # type: ignore[assignment,misc]
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.data_service_vpool_service_put_data_service_vpool_request import (  # noqa: E501
         DataServiceVpoolServicePutDataServiceVpoolRequest,
     )
-except (ImportError, Exception):
+except Exception:
     DataServiceVpoolServicePutDataServiceVpoolRequest = None  # type: ignore[assignment,misc]
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.data_service_vpool_service_add_to_vpool_request import (  # noqa: E501
         DataServiceVpoolServiceAddToVpoolRequest,
     )
-except (ImportError, Exception):
+except Exception:
     DataServiceVpoolServiceAddToVpoolRequest = None  # type: ignore[assignment,misc]
 
 
@@ -583,7 +583,6 @@ class ReplicationGroup(object):
                 "because direct delete API is unavailable"
             ) % rg_id,
         )
-        return
 
     def _predict_after_state(self, before: Dict[str, Any], modifications: Dict[str, Any], state: str) -> Dict[str, Any]:
         if state == 'absent':
@@ -608,6 +607,23 @@ class ReplicationGroup(object):
         after['mappings'] = sorted(list(current_keys.values()), key=self._mapping_key)
         return after
 
+    def _apply_modifications(self, current, modifications):
+        """Apply non-check-mode modifications to the replication group.
+
+        Returns None if an error exit was triggered (missing id).
+        """
+        rg_id = current.get('id')
+        if not rg_id:
+            self.module.exit_json(failed=True, msg="Replication group id is missing")
+            return None
+        metadata_changes = modifications.get('metadata_changes') or {}
+        if metadata_changes.get('name') and metadata_changes.get('name') != current.get('name'):
+            return self._rename_by_recreate(current, modifications) or current
+        self.update_replication_group_metadata(rg_id, metadata_changes)
+        self.add_mappings(rg_id, modifications['mappings_to_add'])
+        self.remove_mappings(rg_id, modifications['mappings_to_remove'])
+        return self.get_replication_group_by_id(rg_id) or current
+
     def perform_module_operation(self) -> None:
         result: Dict[str, Any] = dict(changed=False, replication_group=None)
         state = self.module.params['state']
@@ -616,11 +632,9 @@ class ReplicationGroup(object):
 
         if state == 'absent':
             if current:
-                if self.module.check_mode:
-                    result['changed'] = True
-                else:
+                if not self.module.check_mode:
                     self.delete_replication_group(current)
-                    result['changed'] = True
+                result['changed'] = True
                 result['replication_group'] = None
             if self.module._diff:
                 result['diff'] = {'before': before_state, 'after': {}}
@@ -654,18 +668,9 @@ class ReplicationGroup(object):
         if modifications['is_modified']:
             result['changed'] = True
             if not self.module.check_mode:
-                rg_id = current.get('id')
-                if not rg_id:
-                    self.module.exit_json(failed=True, msg="Replication group id is missing")
+                current = self._apply_modifications(current, modifications)
+                if current is None:
                     return
-                metadata_changes = modifications.get('metadata_changes') or {}
-                if metadata_changes.get('name') and metadata_changes.get('name') != current.get('name'):
-                    current = self._rename_by_recreate(current, modifications) or current
-                else:
-                    self.update_replication_group_metadata(rg_id, metadata_changes)
-                    self.add_mappings(rg_id, modifications['mappings_to_add'])
-                    self.remove_mappings(rg_id, modifications['mappings_to_remove'])
-                    current = self.get_replication_group_by_id(rg_id) or current
 
         after_state = self._normalize_state(current)
         if self.module.check_mode and modifications['is_modified']:

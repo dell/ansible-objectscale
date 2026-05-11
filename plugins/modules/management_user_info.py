@@ -102,7 +102,7 @@ try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.mgmt_user_info_api import (
         MgmtUserInfoApi,
     )
-except (ImportError, Exception):
+except Exception:
     MgmtUserInfoApi = None  # type: ignore[assignment,misc]
 
 

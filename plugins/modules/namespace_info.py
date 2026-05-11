@@ -117,17 +117,17 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import (
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import api_client as objectscale_api_client
-except (ImportError, Exception):
+except Exception:
     objectscale_api_client = None
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import _stubs as objectscale_client_stubs
-except (ImportError, Exception):
+except Exception:
     objectscale_client_stubs = None
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.namespace_api import NamespaceApi
-except (ImportError, Exception):
+except Exception:
     NamespaceApi = None  # type: ignore[assignment,misc]
 
 

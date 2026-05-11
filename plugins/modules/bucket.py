@@ -172,15 +172,14 @@ def main():
                     bucket_api.create_bucket(
                         {'name': name, 'namespace': namespace}
                     )
-            else:
-                if versioning is not None and \
-                        current_bucket.get('versioning_status', '').lower() \
-                        != ('enabled' if versioning else 'suspended'):
-                    result['changed'] = True
-                    if not module.check_mode:
-                        bucket_api.update_bucket_versioning(
-                            name, namespace, versioning
-                        )
+            elif versioning is not None and \
+                    current_bucket.get('versioning_status', '').lower() \
+                    != ('enabled' if versioning else 'suspended'):
+                result['changed'] = True
+                if not module.check_mode:
+                    bucket_api.update_bucket_versioning(
+                        name, namespace, versioning
+                    )
 
             if not module.check_mode:
                 bucket_details = bucket_api.get_bucket(name, namespace)

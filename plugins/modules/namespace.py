@@ -335,12 +335,12 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import H
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import api_client as objectscale_api_client
-except (ImportError, Exception):
+except Exception:
     objectscale_api_client = None
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import _stubs as objectscale_client_stubs
-except (ImportError, Exception):
+except Exception:
     objectscale_client_stubs = None
 
 if TYPE_CHECKING:
@@ -396,7 +396,7 @@ try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.namespace_service_update_retention_class_request import (
         NamespaceServiceUpdateRetentionClassRequest,
     )
-except (ImportError, Exception):
+except Exception:
     NamespaceApi = None  # type: ignore[assignment,misc]
     NamespaceServiceCreateNamespaceRequest = None  # type: ignore[assignment,misc]
     NamespaceServiceCreateRetentionClassRequest = None  # type: ignore[assignment,misc]

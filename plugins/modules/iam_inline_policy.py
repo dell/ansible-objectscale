@@ -277,8 +277,11 @@ if TYPE_CHECKING:
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.iam_api import IamApi
-except (ImportError, Exception):
+except Exception:
     IamApi = None  # type: ignore[assignment,misc]
+
+
+UNKNOWN_ENTITY_MSG = "Unknown entity type: %s"
 
 
 class IamInlinePolicy(object):
@@ -363,21 +366,34 @@ class IamInlinePolicy(object):
     # Read operations
     # ------------------------------------------------------------------
 
+    def _dispatch_list_policies(self, entity_type, entity_name, namespace):
+        """Dispatch list-policies call based on entity type."""
+        if entity_type == 'user':
+            return self.iam_api.list_user_policies(entity_name, namespace)
+        if entity_type == 'group':
+            return self.iam_api.list_group_policies(entity_name, namespace)
+        if entity_type == 'role':
+            return self.iam_api.list_role_policies(entity_name, namespace)
+        self.module.exit_json(failed=True, msg=UNKNOWN_ENTITY_MSG % entity_type)
+        return []
+
+    def _dispatch_get_policy(self, entity_type, entity_name, pname, namespace):
+        """Dispatch get-policy call based on entity type."""
+        if entity_type == 'user':
+            return self.iam_api.get_user_policy(entity_name, pname, namespace)
+        if entity_type == 'group':
+            return self.iam_api.get_group_policy(entity_name, pname, namespace)
+        if entity_type == 'role':
+            return self.iam_api.get_role_policy(entity_name, pname, namespace)
+        return None
+
     def get_current_policies(self, entity_type: str, entity_name: str,
                              namespace: str) -> List[Dict[str, str]]:
         """Read all inline policies for the entity (list names + get each doc)."""
         self.module.log('Reading inline policies for %s %s in namespace %s' % (
             entity_type, entity_name, namespace))
         try:
-            if entity_type == 'user':
-                policy_names = self.iam_api.list_user_policies(entity_name, namespace)
-            elif entity_type == 'group':
-                policy_names = self.iam_api.list_group_policies(entity_name, namespace)
-            elif entity_type == 'role':
-                policy_names = self.iam_api.list_role_policies(entity_name, namespace)
-            else:
-                self.module.exit_json(failed=True, msg="Unknown entity type: %s" % entity_type)
-                return []
+            policy_names = self._dispatch_list_policies(entity_type, entity_name, namespace)
         except Exception as e:
             error_msg = utils.determine_error(e)
             msg = "Listing inline policies for %s '%s' in namespace '%s' failed with error: %s" % (
@@ -388,15 +404,7 @@ class IamInlinePolicy(object):
         policies = []  # type: List[Dict[str, str]]
         for pname in policy_names:
             try:
-                if entity_type == 'user':
-                    result = self.iam_api.get_user_policy(entity_name, pname, namespace)
-                elif entity_type == 'group':
-                    result = self.iam_api.get_group_policy(entity_name, pname, namespace)
-                elif entity_type == 'role':
-                    result = self.iam_api.get_role_policy(entity_name, pname, namespace)
-                else:
-                    result = None
-
+                result = self._dispatch_get_policy(entity_type, entity_name, pname, namespace)
                 if result is not None:
                     doc = result.get('PolicyDocument', '') or ''
                     # URL-decode if needed (ObjectScale may return URL-encoded JSON)
@@ -458,6 +466,28 @@ class IamInlinePolicy(object):
     # Write operations
     # ------------------------------------------------------------------
 
+    def _dispatch_delete_policy(self, entity_type, entity_name, pname, namespace):
+        """Dispatch delete-policy call based on entity type."""
+        if entity_type == 'user':
+            self.iam_api.delete_user_policy(entity_name, pname, namespace)
+        elif entity_type == 'group':
+            self.iam_api.delete_group_policy(entity_name, pname, namespace)
+        elif entity_type == 'role':
+            self.iam_api.delete_role_policy(entity_name, pname, namespace)
+        else:
+            self.module.exit_json(failed=True, msg=UNKNOWN_ENTITY_MSG % entity_type)
+
+    def _dispatch_put_policy(self, entity_type, entity_name, pname, pdoc, namespace):
+        """Dispatch put-policy call based on entity type."""
+        if entity_type == 'user':
+            self.iam_api.put_user_policy(entity_name, pname, pdoc, namespace)
+        elif entity_type == 'group':
+            self.iam_api.put_group_policy(entity_name, pname, pdoc, namespace)
+        elif entity_type == 'role':
+            self.iam_api.put_role_policy(entity_name, pname, pdoc, namespace)
+        else:
+            self.module.exit_json(failed=True, msg=UNKNOWN_ENTITY_MSG % entity_type)
+
     def apply_changes(self, entity_type: str, entity_name: str, namespace: str,
                       to_put: List[Dict[str, str]], to_delete: List[str]) -> None:
         """Apply policy changes (put new/updated, delete removed)."""
@@ -465,14 +495,7 @@ class IamInlinePolicy(object):
             self.module.log('Deleting inline policy %s from %s %s' % (pname, entity_type, entity_name))
             try:
                 if not self.module.check_mode:
-                    if entity_type == 'user':
-                        self.iam_api.delete_user_policy(entity_name, pname, namespace)
-                    elif entity_type == 'group':
-                        self.iam_api.delete_group_policy(entity_name, pname, namespace)
-                    elif entity_type == 'role':
-                        self.iam_api.delete_role_policy(entity_name, pname, namespace)
-                    else:
-                        self.module.exit_json(failed=True, msg="Unknown entity type: %s" % entity_type)
+                    self._dispatch_delete_policy(entity_type, entity_name, pname, namespace)
             except Exception as e:
                 error_msg = utils.determine_error(e)
                 msg = "Deleting inline policy '%s' from %s '%s' failed with error: %s" % (
@@ -489,14 +512,7 @@ class IamInlinePolicy(object):
             self.module.log('Putting inline policy %s on %s %s' % (pname, entity_type, entity_name))
             try:
                 if not self.module.check_mode:
-                    if entity_type == 'user':
-                        self.iam_api.put_user_policy(entity_name, pname, pdoc, namespace)
-                    elif entity_type == 'group':
-                        self.iam_api.put_group_policy(entity_name, pname, pdoc, namespace)
-                    elif entity_type == 'role':
-                        self.iam_api.put_role_policy(entity_name, pname, pdoc, namespace)
-                    else:
-                        self.module.exit_json(failed=True, msg="Unknown entity type: %s" % entity_type)
+                    self._dispatch_put_policy(entity_type, entity_name, pname, pdoc, namespace)
             except Exception as e:
                 error_msg = utils.determine_error(e)
                 msg = "Putting inline policy '%s' on %s '%s' failed with error: %s" % (

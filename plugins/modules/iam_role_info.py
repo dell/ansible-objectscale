@@ -190,7 +190,7 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import H
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.iam_api import IamApi
-except (ImportError, Exception):
+except Exception:
     IamApi = None  # type: ignore[assignment,misc]
 
 
@@ -266,7 +266,7 @@ class IamRoleInfo(object):
                 # Return None on 404 (role not found) - info modules should not fail
                 if resp.status == 404 or 'NoSuchEntity' in str(raw_err):
                     return None
-                raise Exception(str(raw_err))
+                raise RuntimeError(str(raw_err))
             raw = json.loads(resp.data.decode('utf-8'))
             return raw.get('GetRoleResult', {}).get('Role')
         except Exception as e:

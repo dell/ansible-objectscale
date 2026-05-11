@@ -106,7 +106,7 @@ try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.data_vpool_api import (
         DataVpoolApi,
     )
-except (ImportError, Exception):
+except Exception:
     DataVpoolApi = None  # type: ignore[assignment,misc]
 
 
@@ -182,6 +182,18 @@ class ReplicationGroupInfo(object):
             self.module.exit_json(failed=True, msg="Listing replication groups failed with error: %s" % error_msg)
             return []
 
+    def _enrich_with_full_details(self, listed):
+        """Replace summary items with full details where possible."""
+        result = []
+        for item in listed:
+            item_id = item.get('id')
+            if item_id:
+                detailed = self.get_by_id(item_id)
+                result.append(detailed if detailed else item)
+            else:
+                result.append(item)
+        return result
+
     def perform_module_operation(self) -> None:
         rg_id = self.module.params.get('id')
         rg_name = self.module.params.get('name')
@@ -191,12 +203,9 @@ class ReplicationGroupInfo(object):
             self.module.exit_json(failed=True, msg="Parameters 'id' and 'name' are mutually exclusive")
             return
 
-        result_items: List[Dict[str, Any]] = []
-
         if rg_id:
             details = self.get_by_id(rg_id)
-            if details:
-                result_items = [details]
+            result_items = [details] if details else []
         else:
             listed = self.list_all()
             if rg_name:
@@ -204,18 +213,7 @@ class ReplicationGroupInfo(object):
                 if len(listed) > 1:
                     self.module.exit_json(failed=True, msg="Multiple replication groups found for name '%s'. Use id." % rg_name)
                     return
-
-            if fetch_full:
-                for item in listed:
-                    item_id = item.get('id')
-                    if item_id:
-                        detailed = self.get_by_id(item_id)
-                        if detailed:
-                            result_items.append(detailed)
-                    else:
-                        result_items.append(item)
-            else:
-                result_items = listed
+            result_items = self._enrich_with_full_details(listed) if fetch_full else listed
 
         self.module.exit_json(changed=False, replication_groups=result_items)
 
