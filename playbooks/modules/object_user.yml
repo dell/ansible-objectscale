@@ -22,10 +22,8 @@
         user: "{{ object_user_name }}"
         namespace: "{{ namespace_name }}"
         tags:
-          - name: env
-            value: prod
-          - name: team
-            value: platform
+          - {name: env, value: prod}
+          - {name: team, value: platform}
         state: present
       register: create_result
 
@@ -44,10 +42,8 @@
         user: "{{ object_user_name }}"
         namespace: "{{ namespace_name }}"
         tags:
-          - name: env
-            value: prod
-          - name: team
-            value: platform
+          - {name: env, value: prod}
+          - {name: team, value: platform}
         state: present
       register: idem
 
@@ -67,12 +63,9 @@
         user: "{{ object_user_name }}"
         namespace: "{{ namespace_name }}"
         tags:
-          - name: env
-            value: staging
-          - name: team
-            value: platform
-          - name: location
-            value: us-east
+          - {name: env, value: staging}
+          - {name: team, value: platform}
+          - {name: location, value: us-east}
         state: present
       register: update_tags
 
@@ -91,8 +84,7 @@
         user: "{{ object_user_name }}"
         namespace: "{{ namespace_name }}"
         tags:
-          - name: owner
-            value: devops
+          - {name: owner, value: devops}
         purge_tags: false
         state: present
       register: add_tag_no_purge
