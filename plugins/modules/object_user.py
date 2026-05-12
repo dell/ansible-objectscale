@@ -215,7 +215,7 @@ try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.user_secret_key_service_delete_key_for_user_request import (  # noqa: E501
         UserSecretKeyServiceDeleteKeyForUserRequest,
     )
-except (ImportError, Exception):
+except Exception:
     UserManagementApi = None  # type: ignore[assignment,misc]
     UserSecretKeyApi = None  # type: ignore[assignment,misc]
     UserManagementServiceAddUserRequest = None  # type: ignore[assignment,misc]
@@ -356,6 +356,59 @@ class ObjectUser(object):
                 out[str(t['name'])] = t.get('value')
         return out
 
+    def _compute_tag_changes(
+        self,
+        current_map: Dict[str, Any],
+        desired_map: Dict[str, Any],
+        purge_tags: bool,
+    ):
+        """Return (to_add, to_update, to_remove) lists for tag reconciliation."""
+        to_add: List[Dict[str, Any]] = []
+        to_update: List[Dict[str, Any]] = []
+        for name, value in desired_map.items():
+            if name not in current_map:
+                to_add.append({'name': name, 'value': value})
+            elif current_map.get(name) != value:
+                to_update.append({'name': name, 'value': value})
+        to_remove: List[Dict[str, Any]] = [
+            {'name': name} for name in current_map if purge_tags and name not in desired_map
+        ]
+        return to_add, to_update, to_remove
+
+    def _apply_tag_changes(
+        self,
+        user: str,
+        namespace: Optional[str],
+        to_add: List[Dict[str, Any]],
+        to_update: List[Dict[str, Any]],
+        to_remove: List[Dict[str, Any]],
+    ) -> bool:
+        """Apply computed tag changes to the API. Returns False on error."""
+        try:
+            if to_add:
+                req = self._build_api_payload(UserManagementServiceAddUserTagRequest, dict(tags=to_add))
+                self.user_mgmt_api.user_management_service_add_user_tag(
+                    uid=user, user_management_service_add_user_tag_request=req, namespace=namespace)
+            if to_update:
+                req = self._build_api_payload(UserManagementServiceUpdateUserTagRequest, dict(tags=to_update))
+                self.user_mgmt_api.user_management_service_update_user_tag(
+                    uid=user, user_management_service_update_user_tag_request=req, namespace=namespace)
+            if to_remove:
+                req = self._build_api_payload(
+                    UserManagementServiceRemoveUserTagsRequest,
+                    dict(tags=[{'name': t['name']} for t in to_remove]),
+                )
+                self.user_mgmt_api.user_management_service_remove_user_tags(
+                    uid=user, user_management_service_remove_user_tags_request=req, namespace=namespace)
+        except Exception as e:
+            error_msg = utils.determine_error(e)
+            self.module.exit_json(
+                failed=True,
+                msg="Updating tags for Object User %s failed with error: %s" % (user, error_msg),
+            )
+            return False
+        return True
+
     def sync_tags(
         self,
         user: str,
@@ -369,66 +422,12 @@ class ObjectUser(object):
             return False
         current_map = self._tags_to_map(current_tags)
         desired_map = self._tags_to_map(desired_tags)
-
-        to_add: List[Dict[str, Any]] = []
-        to_update: List[Dict[str, Any]] = []
-        for name, value in desired_map.items():
-            if name not in current_map:
-                to_add.append({'name': name, 'value': value})
-            elif current_map.get(name) != value:
-                to_update.append({'name': name, 'value': value})
-
-        to_remove: List[Dict[str, Any]] = []
-        if purge_tags:
-            for name in current_map:
-                if name not in desired_map:
-                    to_remove.append({'name': name})
-
+        to_add, to_update, to_remove = self._compute_tag_changes(current_map, desired_map, purge_tags)
         if not (to_add or to_update or to_remove):
             return False
-
         if check_mode:
             return True
-
-        try:
-            if to_add:
-                req = self._build_api_payload(
-                    UserManagementServiceAddUserTagRequest,
-                    dict(tags=to_add),
-                )
-                self.user_mgmt_api.user_management_service_add_user_tag(
-                    uid=user,
-                    user_management_service_add_user_tag_request=req,
-                    namespace=namespace,
-                )
-            if to_update:
-                req = self._build_api_payload(
-                    UserManagementServiceUpdateUserTagRequest,
-                    dict(tags=to_update),
-                )
-                self.user_mgmt_api.user_management_service_update_user_tag(
-                    uid=user,
-                    user_management_service_update_user_tag_request=req,
-                    namespace=namespace,
-                )
-            if to_remove:
-                req = self._build_api_payload(
-                    UserManagementServiceRemoveUserTagsRequest,
-                    dict(tags=[{'name': t['name']} for t in to_remove]),
-                )
-                self.user_mgmt_api.user_management_service_remove_user_tags(
-                    uid=user,
-                    user_management_service_remove_user_tags_request=req,
-                    namespace=namespace,
-                )
-        except Exception as e:
-            error_msg = utils.determine_error(e)
-            self.module.exit_json(
-                failed=True,
-                msg="Updating tags for Object User %s failed with error: %s" % (user, error_msg),
-            )
-            return False
-        return True
+        return self._apply_tag_changes(user, namespace, to_add, to_update, to_remove)
 
     # ------------------------------------------------------------------
     # Lock management
@@ -500,6 +499,101 @@ class ObjectUser(object):
                 })
         return keys
 
+    def _create_secret_key(self, user, namespace, entry):
+        """Create a single secret key and return the response data dict."""
+        payload = dict(
+            namespace=namespace,
+            secretkey=entry.get('secret_key'),
+            existing_key_expiry_time_mins=entry.get('existing_key_expiry_time_mins'),
+        )
+        try:
+            req = self._build_api_payload(
+                UserSecretKeyServiceCreateNewKeyForUserRequest, payload,
+            )
+            resp = self.secret_key_api.user_secret_key_service_create_new_key_for_user(
+                uid=user,
+                user_secret_key_service_create_new_key_for_user_request=req,
+            )
+            resp_data = resp.to_dict() if hasattr(resp, 'to_dict') else (resp or {})
+            return {
+                'secret_key': resp_data.get('secret_key'),
+                'secret_key_id': resp_data.get('secret_key_id'),
+                'key_timestamp': resp_data.get('key_timestamp'),
+                'key_expiry_timestamp': resp_data.get('key_expiry_timestamp'),
+            }
+        except Exception as e:
+            error_msg = utils.determine_error(e)
+            self.module.exit_json(
+                failed=True,
+                msg="Creating secret key for Object User %s failed with error: %s" % (user, error_msg),
+            )
+            return None
+
+    def _delete_secret_key(self, user, namespace, entry):
+        """Delete a single secret key."""
+        payload = dict(
+            secret_key=entry.get('secret_key'),
+            secret_key_id=entry.get('secret_key_id'),
+            namespace=namespace,
+        )
+        try:
+            req = self._build_api_payload(
+                UserSecretKeyServiceDeleteKeyForUserRequest, payload,
+            )
+            self.secret_key_api.user_secret_key_service_delete_key_for_user(
+                uid=user,
+                user_secret_key_service_delete_key_for_user_request=req,
+            )
+        except Exception as e:
+            error_msg = utils.determine_error(e)
+            self.module.exit_json(
+                failed=True,
+                msg="Deleting secret key for Object User %s failed with error: %s" % (user, error_msg),
+            )
+
+    def _sync_secret_key_present(
+        self, user: str, namespace: Optional[str], entry: Dict[str, Any],
+        existing: List[Dict[str, Any]], existing_ids: set, check_mode: bool,
+        created: List[Dict[str, Any]],
+    ) -> bool:
+        """Handle a single 'present' secret key entry. Returns True if changed."""
+        entry_id = entry.get('secret_key_id')
+        if entry_id and entry_id in existing_ids:
+            return False
+        if not entry_id and len(existing) >= 2:
+            return False
+        if check_mode:
+            return True
+        key_data = self._create_secret_key(user, namespace, entry)
+        if key_data:
+            created.append(key_data)
+            return True
+        return False
+
+    def _sync_secret_key_absent(
+        self, user: str, namespace: Optional[str], entry: Dict[str, Any],
+        existing_ids: set, check_mode: bool,
+    ) -> bool:
+        """Handle a single 'absent' secret key entry. Returns True if changed."""
+        entry_id = entry.get('secret_key_id')
+        entry_secret = entry.get('secret_key')
+        if not (entry_id or entry_secret):
+            return False
+        if entry_id and entry_id not in existing_ids:
+            return False
+        if entry_id and not entry_secret:
+            self.module.exit_json(
+                failed=True,
+                msg="Deleting secret keys requires both 'secret_key_id' and 'secret_key'. "
+                    "The API requires the actual secret key value for security verification. "
+                    "Since secret keys are only returned once at creation time, you must save "
+                    "the key value if you plan to delete it later."
+            )
+        if check_mode:
+            return True
+        self._delete_secret_key(user, namespace, entry)
+        return True
+
     def sync_secret_keys(
         self,
         user: str,
@@ -522,86 +616,12 @@ class ObjectUser(object):
 
         for entry in desired:
             entry_state = entry.get('state', 'present')
-            entry_id = entry.get('secret_key_id')
-            entry_secret = entry.get('secret_key')
-
             if entry_state == 'present':
-                # If caller declares a specific id that already exists -> noop
-                if entry_id and entry_id in existing_ids:
-                    continue
-                # If no id specified but keys already exist -> noop (cap 2 keys)
-                if not entry_id and len(existing) >= 2:
-                    continue
-                # Otherwise create a new key
-                if check_mode:
+                if self._sync_secret_key_present(user, namespace, entry, existing, existing_ids, check_mode, created):
                     changed = True
-                    continue
-                payload = dict(
-                    namespace=namespace,
-                    secretkey=entry_secret,
-                    existing_key_expiry_time_mins=entry.get('existing_key_expiry_time_mins'),
-                )
-                try:
-                    req = self._build_api_payload(
-                        UserSecretKeyServiceCreateNewKeyForUserRequest, payload,
-                    )
-                    resp = self.secret_key_api.user_secret_key_service_create_new_key_for_user(
-                        uid=user,
-                        user_secret_key_service_create_new_key_for_user_request=req,
-                    )
-                    resp_data = resp.to_dict() if hasattr(resp, 'to_dict') else (resp or {})
-                    created.append({
-                        'secret_key': resp_data.get('secret_key'),
-                        'secret_key_id': resp_data.get('secret_key_id'),
-                        'key_timestamp': resp_data.get('key_timestamp'),
-                        'key_expiry_timestamp': resp_data.get('key_expiry_timestamp'),
-                    })
-                    changed = True
-                except Exception as e:
-                    error_msg = utils.determine_error(e)
-                    self.module.exit_json(
-                        failed=True,
-                        msg="Creating secret key for Object User %s failed with error: %s" % (user, error_msg),
-                    )
-
             elif entry_state == 'absent':
-                if not (entry_id or entry_secret):
-                    continue
-                # Skip if target is already gone
-                if entry_id and entry_id not in existing_ids:
-                    continue
-                # Validate that both secret_key_id and secret_key are provided for deletion
-                if entry_id and not entry_secret:
-                    self.module.exit_json(
-                        failed=True,
-                        msg="Deleting secret keys requires both 'secret_key_id' and 'secret_key'. "
-                            "The API requires the actual secret key value for security verification. "
-                            "Since secret keys are only returned once at creation time, you must save "
-                            "the key value if you plan to delete it later."
-                    )
-                if check_mode:
+                if self._sync_secret_key_absent(user, namespace, entry, existing_ids, check_mode):
                     changed = True
-                    continue
-                payload = dict(
-                    secret_key=entry_secret,
-                    secret_key_id=entry_id,
-                    namespace=namespace,
-                )
-                try:
-                    req = self._build_api_payload(
-                        UserSecretKeyServiceDeleteKeyForUserRequest, payload,
-                    )
-                    self.secret_key_api.user_secret_key_service_delete_key_for_user(
-                        uid=user,
-                        user_secret_key_service_delete_key_for_user_request=req,
-                    )
-                    changed = True
-                except Exception as e:
-                    error_msg = utils.determine_error(e)
-                    self.module.exit_json(
-                        failed=True,
-                        msg="Deleting secret key for Object User %s failed with error: %s" % (user, error_msg),
-                    )
         return changed, created
 
     def _enrich_diff_with_secret_keys(
@@ -615,8 +635,84 @@ class ObjectUser(object):
         return diff_dict
 
     # ------------------------------------------------------------------
+    # Main operation helpers
+    # ------------------------------------------------------------------
+
+    def _refresh_details_and_diff(self, user, namespace):
+        """Re-fetch user details and build enriched diff_after dict."""
+        details = self.get_user_details(user, namespace)
+        diff_after = dict(details) if details else {}
+        if self.module._diff:
+            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+        return details, diff_after
+
+    def _handle_present_new_user(self, user, namespace, params, result):
+        """Handle creating a new user and initial lock state."""
+        if not self.module.check_mode:
+            self.create_user(user, namespace, params.get('tags'))
+        result['changed'] = True
+        details, diff_after = self._refresh_details_and_diff(user, namespace)
+
+        if params.get('locked') is not None and self.sync_lock(
+            user, namespace, False, params['locked'],
+            check_mode=self.module.check_mode,
+        ):
+            result['changed'] = True
+            if not self.module.check_mode:
+                details, diff_after = self._refresh_details_and_diff(user, namespace)
+        return details, diff_after
+
+    def _handle_present_existing_user(self, user, namespace, params, details, result):
+        """Handle syncing tags and lock for an existing user."""
+        diff_after = dict(details) if details else {}
+        if self.module._diff:
+            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+
+        if params.get('tags') is not None and self.sync_tags(
+            user, namespace,
+            details.get('tag'), params['tags'], params.get('purge_tags', True),
+            check_mode=self.module.check_mode,
+        ):
+            result['changed'] = True
+            if not self.module.check_mode:
+                details, diff_after = self._refresh_details_and_diff(user, namespace)
+
+        if params.get('locked') is not None and self.sync_lock(
+            user, namespace,
+            bool(details.get('locked')) if details else False,
+            params['locked'],
+            check_mode=self.module.check_mode,
+        ):
+            result['changed'] = True
+            if not self.module.check_mode:
+                details, diff_after = self._refresh_details_and_diff(user, namespace)
+
+        return details, diff_after
+
+    # ------------------------------------------------------------------
     # Main operation
     # ------------------------------------------------------------------
+    def _handle_object_user_present(
+        self, user: str, namespace: Optional[str], params: Dict[str, Any],
+        details: Optional[Dict[str, Any]], result: Dict[str, Any],
+    ):
+        """Handle state=present for an object user. Returns (details, diff_after, created_keys)."""
+        created_keys: List[Dict[str, Any]] = []
+        if not details:
+            details, diff_after = self._handle_present_new_user(user, namespace, params, result)
+        else:
+            details, diff_after = self._handle_present_existing_user(
+                user, namespace, params, details, result)
+
+        if params.get('secret_keys'):
+            key_changed, created_keys = self.sync_secret_keys(
+                user, namespace, params['secret_keys'], check_mode=self.module.check_mode)
+            if key_changed:
+                result['changed'] = True
+                if not self.module.check_mode:
+                    details, diff_after = self._refresh_details_and_diff(user, namespace)
+        return details, diff_after, created_keys
+
     def perform_module_operation(self) -> None:
         params = self.module.params
         user = params['user']
@@ -628,12 +724,9 @@ class ObjectUser(object):
 
         details = self.get_user_details(user, namespace)
         diff_before = dict(details) if details else {}
-        diff_after = dict(diff_before)
-
-        # Enrich diff with secret keys if diff mode is enabled
         if self.module._diff:
             diff_before = self._enrich_diff_with_secret_keys(diff_before, user, namespace)
-            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+        diff_after = dict(diff_before)
 
         if state == 'absent':
             if details:
@@ -643,68 +736,8 @@ class ObjectUser(object):
                 details = None
                 diff_after = {}
         else:
-            if not details:
-                if not self.module.check_mode:
-                    self.create_user(user, namespace, params.get('tags'))
-                    details = self.get_user_details(user, namespace)
-                result['changed'] = True
-                diff_after = dict(details) if details else {}
-                if self.module._diff:
-                    diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
-
-                # Set lock state after creation if specified
-                if params.get('locked') is not None:
-                    if self.sync_lock(
-                        user, namespace,
-                        False,  # New users are unlocked by default
-                        params['locked'],
-                        check_mode=self.module.check_mode,
-                    ):
-                        result['changed'] = True
-                        if not self.module.check_mode:
-                            details = self.get_user_details(user, namespace)
-                            diff_after = dict(details) if details else {}
-                            if self.module._diff:
-                                diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
-            else:
-                if params.get('tags') is not None:
-                    if self.sync_tags(
-                        user, namespace,
-                        details.get('tag'), params['tags'], params.get('purge_tags', True),
-                        check_mode=self.module.check_mode,
-                    ):
-                        result['changed'] = True
-                        if not self.module.check_mode:
-                            details = self.get_user_details(user, namespace)
-                            diff_after = dict(details) if details else {}
-                            if self.module._diff:
-                                diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
-
-                if params.get('locked') is not None:
-                    if self.sync_lock(
-                        user, namespace,
-                        bool(details.get('locked')) if details else False,
-                        params['locked'],
-                        check_mode=self.module.check_mode,
-                    ):
-                        result['changed'] = True
-                        if not self.module.check_mode:
-                            details = self.get_user_details(user, namespace)
-                            diff_after = dict(details) if details else {}
-                            if self.module._diff:
-                                diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
-
-            if params.get('secret_keys'):
-                key_changed, created_keys = self.sync_secret_keys(
-                    user, namespace, params['secret_keys'], check_mode=self.module.check_mode,
-                )
-                if key_changed:
-                    result['changed'] = True
-                    if not self.module.check_mode:
-                        details = self.get_user_details(user, namespace)
-                        diff_after = dict(details) if details else {}
-                        if self.module._diff:
-                            diff_after = self._enrich_diff_with_secret_keys(diff_after, user, namespace)
+            details, diff_after, created_keys = self._handle_object_user_present(
+                user, namespace, params, details, result)
 
         result['object_user_details'] = details
         if created_keys:

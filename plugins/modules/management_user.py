@@ -208,7 +208,7 @@ try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.mgmt_user_info_service_modify_local_user_info_request import (  # noqa: E501
         MgmtUserInfoServiceModifyLocalUserInfoRequest,
     )
-except (ImportError, Exception):
+except Exception:
     MgmtUserInfoApi = None  # type: ignore[assignment,misc]
     MgmtUserInfoServiceCreateLocalUserInfoRequest = None  # type: ignore[assignment,misc]
     MgmtUserInfoServiceModifyLocalUserInfoRequest = None  # type: ignore[assignment,misc]
@@ -223,6 +223,7 @@ ROLE_FIELDS = (
 USER_TYPE_LOCAL = 'local'
 USER_TYPE_AD_LDAP_USER = 'ad_ldap_user'
 USER_TYPE_AD_LDAP_GROUP = 'ad_ldap_group'
+REDACTED_VALUE = '<REDACTED>'
 
 
 class ManagementUser(object):
@@ -297,6 +298,57 @@ class ManagementUser(object):
             return USER_TYPE_AD_LDAP_GROUP
         return USER_TYPE_AD_LDAP_USER
 
+    def _validate_local_user_create(self, user_id, params):
+        """Validate create params for a Local Management User."""
+        if not params.get('password'):
+            self.module.exit_json(
+                failed=True,
+                msg="password is required when creating a Local Management User ('%s')." % user_id,
+            )
+        if params.get('is_external_group'):
+            self.module.exit_json(
+                failed=True,
+                msg="is_external_group must not be true for a Local User ('%s')." % user_id,
+            )
+
+    def _validate_ad_ldap_user_create(self, user_type, user_id, params):
+        """Validate create params for an AD/LDAP User or Group."""
+        if params.get('password'):
+            self.module.exit_json(
+                failed=True,
+                msg="password should not be provided when creating an AD/LDAP User ('%s')." % user_id,
+            )
+        if user_type == USER_TYPE_AD_LDAP_USER and params.get('is_external_group'):
+            self.module.exit_json(
+                failed=True,
+                msg="is_external_group must not be true for an AD/LDAP User ('%s')." % user_id,
+            )
+        if user_type == USER_TYPE_AD_LDAP_GROUP and not params.get('is_external_group'):
+            self.module.exit_json(
+                failed=True,
+                msg="is_external_group must be true when creating an AD/LDAP Group ('%s')." % user_id,
+            )
+
+    def _validate_create_params(self, user_type, user_id, params):
+        """Validate parameter combinations for user creation."""
+        if user_type == USER_TYPE_LOCAL:
+            self._validate_local_user_create(user_id, params)
+        else:
+            self._validate_ad_ldap_user_create(user_type, user_id, params)
+
+    def _validate_modify_params(self, user_type, user_id, params):
+        """Validate parameter combinations for user modification."""
+        if user_type in (USER_TYPE_AD_LDAP_USER, USER_TYPE_AD_LDAP_GROUP) and params.get('password'):
+            self.module.exit_json(
+                failed=True,
+                msg="password should not be provided when updating an AD/LDAP User or Group ('%s')." % user_id,
+            )
+        if user_type in (USER_TYPE_LOCAL, USER_TYPE_AD_LDAP_USER) and params.get('is_external_group') is True:
+            self.module.exit_json(
+                failed=True,
+                msg="is_external_group cannot be modified for a Local User or AD/LDAP User ('%s')." % user_id,
+            )
+
     def _validate_params(self, user_type: str, user_id: str, params: Dict[str, Any], user_exists: bool) -> None:
         """Validate parameter combinations based on user type and operation."""
         if user_id != user_id.lower():
@@ -305,54 +357,10 @@ class ManagementUser(object):
                 msg="Upper case letters are not allowed in user_id. Got: '%s'." % user_id,
             )
 
-        password = params.get('password')
-        is_creating = not user_exists
-
-        if is_creating:
-            if user_type == USER_TYPE_LOCAL:
-                if not password:
-                    self.module.exit_json(
-                        failed=True,
-                        msg="password is required when creating a Local Management User ('%s')." % user_id,
-                    )
-                if params.get('is_external_group'):
-                    self.module.exit_json(
-                        failed=True,
-                        msg="is_external_group must not be true for a Local User ('%s')." % user_id,
-                    )
-            elif user_type == USER_TYPE_AD_LDAP_USER:
-                if password:
-                    self.module.exit_json(
-                        failed=True,
-                        msg="password should not be provided when creating an AD/LDAP User ('%s')." % user_id,
-                    )
-                if params.get('is_external_group'):
-                    self.module.exit_json(
-                        failed=True,
-                        msg="is_external_group must not be true for an AD/LDAP User ('%s')." % user_id,
-                    )
-            else:  # AD/LDAP Group
-                if password:
-                    self.module.exit_json(
-                        failed=True,
-                        msg="password should not be provided when creating an AD/LDAP Group ('%s')." % user_id,
-                    )
-                if not params.get('is_external_group'):
-                    self.module.exit_json(
-                        failed=True,
-                        msg="is_external_group must be true when creating an AD/LDAP Group ('%s')." % user_id,
-                    )
-        else:  # modifying
-            if user_type in (USER_TYPE_AD_LDAP_USER, USER_TYPE_AD_LDAP_GROUP) and password:
-                self.module.exit_json(
-                    failed=True,
-                    msg="password should not be provided when updating an AD/LDAP User or Group ('%s')." % user_id,
-                )
-            if user_type in (USER_TYPE_LOCAL, USER_TYPE_AD_LDAP_USER) and params.get('is_external_group') is True:
-                self.module.exit_json(
-                    failed=True,
-                    msg="is_external_group cannot be modified for a Local User or AD/LDAP User ('%s')." % user_id,
-                )
+        if not user_exists:
+            self._validate_create_params(user_type, user_id, params)
+        else:
+            self._validate_modify_params(user_type, user_id, params)
 
     def get_user_details(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Return user dict, or None when the user does not exist."""
@@ -466,6 +474,67 @@ class ManagementUser(object):
             out[alias_map.get(key, key)] = value
         return out
 
+    def _handle_present_create(self, user_id, params, result):
+        """Handle creating a new management user."""
+        if not self.module.check_mode:
+            self.create_user(user_id, params)
+            details = self.get_user_details(user_id)
+        else:
+            details = None
+        result['changed'] = True
+        diff_after = {
+            'user_id': user_id,
+            'is_system_admin': bool(params.get('is_system_admin')),
+            'is_system_monitor': bool(params.get('is_system_monitor')),
+            'is_security_admin': bool(params.get('is_security_admin')),
+            'password': REDACTED_VALUE if params.get('password') else None,
+        }
+        return details, diff_after
+
+    def _handle_present_modify(self, user_id, details, params, result):
+        """Handle modifying an existing management user."""
+        diff_after = dict(self._public_details(details) or {})
+        modify_params = self.is_user_modified(details, params)
+        if modify_params:
+            if not self.module.check_mode:
+                if self.modify_user(user_id, modify_params):
+                    details = self.get_user_details(user_id)
+            result['changed'] = True
+            diff_after = dict(self._public_details(details) or {})
+            diff_after.update({
+                k: (REDACTED_VALUE if k == 'password' else v)
+                for k, v in modify_params.items()
+            })
+        return details, diff_after
+
+    def _mgmt_handle_absent(self, user_id, details, diff_before, result):
+        """Handle state=absent for a management user. Returns (details, diff_after)."""
+        if details:
+            if not self.module.check_mode:
+                self.delete_user(user_id)
+            result['changed'] = True
+            return None, {}
+        return details, dict(diff_before)
+
+    def _mgmt_handle_present(self, user_id, details, params, result):
+        """Handle state=present for a management user. Returns (details, diff_after)."""
+        user_exists = details is not None
+        is_external_group = details.get('is_external_group') if user_exists else params.get('is_external_group')
+        user_type = self._determine_user_type(user_id, is_external_group)
+        self._validate_params(user_type, user_id, params, user_exists)
+        if not details:
+            return self._handle_present_create(user_id, params, result)
+        return self._handle_present_modify(user_id, details, params, result)
+
+    def _apply_diff(self, diff_before, diff_after, result):
+        """Attach diff to result dict if diff mode is active and changed."""
+        if not (self.module._diff and result['changed']):
+            return
+        before = dict(diff_before)
+        if 'password' in before:
+            before['password'] = REDACTED_VALUE
+        result['diff'] = {'before': before, 'after': diff_after}
+
     def perform_module_operation(self) -> None:
         result: Dict[str, Any] = dict(changed=False, management_user_details=None)
         params = self.module.params
@@ -474,55 +543,14 @@ class ManagementUser(object):
 
         details = self.get_user_details(user_id)
         diff_before = self._public_details(details) or {}
-        diff_after = dict(diff_before)
-
-        if state == 'present':
-            user_exists = details is not None
-            is_external_group = details.get('is_external_group') if user_exists else params.get('is_external_group')
-            user_type = self._determine_user_type(user_id, is_external_group)
-            self._validate_params(user_type, user_id, params, user_exists)
 
         if state == 'absent':
-            if details:
-                if not self.module.check_mode:
-                    self.delete_user(user_id)
-                result['changed'] = True
-                diff_after = {}
-                details = None
-        else:  # present
-            if not details:
-                if not self.module.check_mode:
-                    self.create_user(user_id, params)
-                    details = self.get_user_details(user_id)
-                result['changed'] = True
-                diff_after = {
-                    'user_id': user_id,
-                    'is_system_admin': bool(params.get('is_system_admin')),
-                    'is_system_monitor': bool(params.get('is_system_monitor')),
-                    'is_security_admin': bool(params.get('is_security_admin')),
-                    'password': '<REDACTED>' if params.get('password') else None,
-                }
-            else:
-                modify_params = self.is_user_modified(details, params)
-                if modify_params:
-                    if not self.module.check_mode:
-                        if self.modify_user(user_id, modify_params):
-                            details = self.get_user_details(user_id)
-                    result['changed'] = True
-                    diff_after = dict(self._public_details(details) or {})
-                    diff_after.update({
-                        k: ('<REDACTED>' if k == 'password' else v)
-                        for k, v in modify_params.items()
-                    })
+            details, diff_after = self._mgmt_handle_absent(user_id, details, diff_before, result)
+        else:
+            details, diff_after = self._mgmt_handle_present(user_id, details, params, result)
 
         result['management_user_details'] = self._public_details(details)
-
-        if self.module._diff and result['changed']:
-            before = dict(diff_before)
-            if 'password' in before:
-                before['password'] = '<REDACTED>'
-            result['diff'] = {'before': before, 'after': diff_after}
-
+        self._apply_diff(diff_before, diff_after, result)
         self.module.exit_json(**result)
 
 

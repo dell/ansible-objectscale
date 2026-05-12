@@ -44,12 +44,15 @@
       ansible.builtin.debug:
         var: all_users_with_keys.object_users
 
-    - name: Verify all Object Users with secret key metadata were retrieved
+    - name: Verify all Object Users with secret key metadata
+        were retrieved
       ansible.builtin.assert:
         that:
           - all_users_with_keys.object_users is defined
         fail_msg: "All Object Users with secret key metadata were not retrieved"
-        success_msg: "All Object Users with secret key metadata retrieved successfully"
+        success_msg: >-
+          All Object Users with secret key metadata
+          retrieved successfully
 
     - name: List Object Users in a specific namespace
       dellemc.objectscale.object_user_info:
@@ -85,12 +88,15 @@
       ansible.builtin.debug:
         var: users_with_keys.object_users
 
-    - name: Verify namespace users with secret key metadata were retrieved
+    - name: Verify namespace users with secret key metadata
+        were retrieved
       ansible.builtin.assert:
         that:
           - users_with_keys.object_users is defined
         fail_msg: "Namespace users with secret key metadata were not retrieved"
-        success_msg: "Namespace users with secret key metadata retrieved successfully"
+        success_msg: >-
+          Namespace users with secret key metadata
+          retrieved successfully
 
     - name: Get a single Object User
       dellemc.objectscale.object_user_info:
@@ -125,7 +131,8 @@
         include_secret_keys: true
       register: user_with_keys
 
-    - name: Display user with secret key metadata (plaintext values never returned)
+    - name: Display user with secret key metadata
+        (plaintext values never returned)
       ansible.builtin.debug:
         var: user_with_keys.object_user
 
@@ -135,5 +142,9 @@
           - user_with_keys.object_user is defined
           - user_with_keys.object_user.name == object_user_name
           - user_with_keys.object_user.secret_key_metadata is defined
-        fail_msg: "User with secret key metadata was not retrieved or name does not match"
-        success_msg: "User with secret key metadata retrieved successfully"
+        fail_msg: >-
+          User with secret key metadata was not
+          retrieved or name does not match
+        success_msg: >-
+          User with secret key metadata
+          retrieved successfully

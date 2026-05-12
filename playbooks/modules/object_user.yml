@@ -22,8 +22,8 @@
         user: "{{ object_user_name }}"
         namespace: "{{ namespace_name }}"
         tags:
-          - { name: env, value: prod }
-          - { name: team, value: platform }
+          - {name: env, value: prod}
+          - {name: team, value: platform}
         state: present
       register: create_result
 
@@ -42,8 +42,8 @@
         user: "{{ object_user_name }}"
         namespace: "{{ namespace_name }}"
         tags:
-          - { name: env, value: prod }
-          - { name: team, value: platform }
+          - {name: env, value: prod}
+          - {name: team, value: platform}
         state: present
       register: idem
 
@@ -54,7 +54,7 @@
         fail_msg: "Object User create was not idempotent"
 
     # ==================== Tag Management ====================
-    - name: Update tags - add new tag and update existing tag (purge_tags defaults to true)
+    - name: Update tags - add new, update existing
       dellemc.objectscale.object_user:
         objectscale_host: "{{ objectscale_host }}"
         objectscale_username: "{{ objectscale_username }}"
@@ -63,9 +63,9 @@
         user: "{{ object_user_name }}"
         namespace: "{{ namespace_name }}"
         tags:
-          - { name: env, value: staging }  # Updated value
-          - { name: team, value: platform }  # Kept
-          - { name: location, value: us-east }  # Added
+          - {name: env, value: staging}
+          - {name: team, value: platform}
+          - {name: location, value: us-east}
         state: present
       register: update_tags
 
@@ -84,7 +84,7 @@
         user: "{{ object_user_name }}"
         namespace: "{{ namespace_name }}"
         tags:
-          - { name: owner, value: devops }
+          - {name: owner, value: devops}
         purge_tags: false
         state: present
       register: add_tag_no_purge
@@ -217,7 +217,8 @@
         namespace: "{{ namespace_name }}"
         secret_keys:
           - state: present
-            existing_key_expiry_time_mins: "60"  # Expire any existing keys after 60 minutes
+            # Expire existing keys after 60 minutes
+            existing_key_expiry_time_mins: "60"
         state: present
       register: key_with_expiry
       no_log: true
@@ -229,10 +230,13 @@
           - key_with_expiry.created_secret_keys | length >= 1
         fail_msg: "Second secret key was not created"
 
-    - name: Save second secret key ID and value for later deletion
+    - name: Save second secret key ID and value
+        for later deletion
       ansible.builtin.set_fact:
-        saved_key_2_id: "{{ key_with_expiry.created_secret_keys[0].secret_key_id }}"
-        saved_key_2_value: "{{ key_with_expiry.created_secret_keys[0].secret_key }}"
+        saved_key_2_id: >-
+          {{ key_with_expiry.created_secret_keys[0].secret_key_id }}
+        saved_key_2_value: >-
+          {{ key_with_expiry.created_secret_keys[0].secret_key }}
 
     - name: Delete first secret key using saved ID and value
       dellemc.objectscale.object_user:

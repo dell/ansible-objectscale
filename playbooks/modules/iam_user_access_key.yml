@@ -100,7 +100,8 @@
       ansible.builtin.assert:
         that:
           - specific_key.access_keys | length == 1
-          - specific_key.access_keys[0].AccessKeyId == create_result.access_key.AccessKeyId
+          - specific_key.access_keys[0].AccessKeyId
+            == create_result.access_key.AccessKeyId
         fail_msg: "Specific key lookup did not return the expected entry"
 
     - name: Delete the access key

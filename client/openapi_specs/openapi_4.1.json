@@ -4378,14 +4378,14 @@
                   },
                   "example_1": {
                     "value": {
-                      "secret_key": "b2qffCUYCyyKrwoaEKkb1XoYB4m82eonbgwUjjxs",
+                      "secret_key": "REDACTED_EXAMPLE_SECRET_KEY_1",
                       "key_timestamp": "2013-09-30 20:57:59.149",
                       "key_expiry_timestamp": "2013-09-30 20:57:59.149",
                       "link": {
                         "rel": "self",
                         "href": "/object/user-secret-keys/root"
                       },
-                      "secret_key_id": "4d2bf91648076cddfa050339d65c1b3323b69a836978f83e80efac57bbcc6a14"
+                      "secret_key_id": "REDACTED_EXAMPLE_SECRET_KEY_ID_1"
                     }
                   }
                 }
@@ -22019,20 +22019,20 @@
                           "-null": "true"
                         },
                         "namespace": "s3",
-                        "secretkey": "R6JUtI6hK2rDxY2fKuaQ51OL2tfyoHjPp8xL2y3T"
+                        "secretkey": "REDACTED_EXAMPLE_SECRETKEY_2"
                       }
                     }
                   },
                   "example_1": {
                     "value": {
-                      "secret_key": "R6JUtI6hK2rDxY2fKuaQ51OL2tfyoHjPp8xL2y3T",
+                      "secret_key": "REDACTED_EXAMPLE_SECRET_KEY_2",
                       "key_timestamp": "2013-09-30 20:27:25.946",
                       "key_expiry_timestamp": "2013-10-30 20:27:25.946",
                       "link": {
                         "rel": "self",
                         "href": "/object/user-secret-keys/testlogin"
                       },
-                      "secret_key_id": "0686e69fef958291d7099cf28cce4c91faa3790861f0f75a44840fecdcc6c5b3"
+                      "secret_key_id": "REDACTED_EXAMPLE_SECRET_KEY_ID_2"
                     }
                   }
                 }
@@ -40997,7 +40997,7 @@
                         "AccessKey": {
                           "AccessKeyId": "AKIA681EB7D2520E6455",
                           "CreateDate": "2020-04-15T14:49:22Z",
-                          "SecretAccessKey": "6q6IH9cntQV6vcF1y6MP7dQmmSItrnq6aS5pOafu",
+                          "SecretAccessKey": "AWS_SECRET_ACCESS_KEY",
                           "Status": "Active",
                           "UserName": "tt1"
                         }
@@ -48362,7 +48362,7 @@
                         "Arn": "urn:ecs:sts::s3:assumed-role/s3assumeRole/user1-105-temp"
                       },
                       "Credentials": {
-                        "SecretAccessKey": "5KddtnuIyrfaCw7Yt1-s7_r24FU1VHl4Odyj7az_zzg",
+                        "SecretAccessKey": "AWS_SECRET_ACCESS_KEY",
                         "SessionToken": "CgJzMxIFdXNlcjEaFEFS . . . T0EyQTdCRES10ZW1waKPGh_UF",
                         "Expiration": "2020-04-24T02:49:07Z",
                         "AccessKeyId": "ASIA57751957F480BE8E"
@@ -48608,7 +48608,7 @@
                     "value": {
                       "Credentials": {
                         "AccessKeyId": "ASIA20B9DB02921B9D93",
-                        "SecretAccessKey": "PXqhhj5gMMFY0aSBNXoaP_xWgfJXFlkpdMySmqnY8Fk",
+                        "SecretAccessKey": "AWS_SECRET_ACCESS_KEY",
                         "SessionToken": "CgJzMxIUQUlEQUU5...MzpMaXN0KiIKICAgICAgICAgICAgXSwKICAgICAgICAgICAgIlJlc291cmNlIjogIioiCiAgICAgICAgfQogICAgXQp9CgpohMX_kAZyHXVybjplY3M6aWFtOjpzMzp1c2VyL2lhbXVzZXIxegdCb2JUZW1w",
                         "Expiration": "2022-03-03T09:32:52+00:00"
                       },

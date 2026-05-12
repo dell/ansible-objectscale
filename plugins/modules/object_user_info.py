@@ -126,7 +126,7 @@ try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.user_secret_key_api import (
         UserSecretKeyApi,
     )
-except (ImportError, Exception):
+except Exception:
     UserManagementApi = None  # type: ignore[assignment,misc]
     UserSecretKeyApi = None  # type: ignore[assignment,misc]
 

@@ -6,9 +6,15 @@
   hosts: localhost
   gather_facts: false
   vars:
-    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('10.0.0.1', true) }}"
-    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('admin', true) }}"
-    os_credential: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('changeme', true) }}"
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('10.0.0.1', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    os_credential: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('changeme', true) }}
     os_namespace: "my-namespace"
 
   tasks:

@@ -146,7 +146,7 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import H
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.iam_api import IamApi
-except (ImportError, Exception):
+except Exception:
     IamApi = None  # type: ignore[assignment,misc]
 
 
@@ -212,6 +212,27 @@ class IamInlinePolicyInfo(object):
         )
         return '', ''
 
+    def _dispatch_list_policies(self, entity_type, entity_name, namespace):
+        """Dispatch list-policies call based on entity type."""
+        if entity_type == 'user':
+            return self.iam_api.list_user_policies(entity_name, namespace)
+        if entity_type == 'group':
+            return self.iam_api.list_group_policies(entity_name, namespace)
+        if entity_type == 'role':
+            return self.iam_api.list_role_policies(entity_name, namespace)
+        self.module.fail_json(msg="Unknown entity type: %s" % entity_type)
+        return []
+
+    def _dispatch_get_policy(self, entity_type, entity_name, pname, namespace):
+        """Dispatch get-policy call based on entity type."""
+        if entity_type == 'user':
+            return self.iam_api.get_user_policy(entity_name, pname, namespace)
+        if entity_type == 'group':
+            return self.iam_api.get_group_policy(entity_name, pname, namespace)
+        if entity_type == 'role':
+            return self.iam_api.get_role_policy(entity_name, pname, namespace)
+        return None
+
     def get_inline_policies(self, entity_type, entity_name, namespace):
         """Get all inline policies for the given entity.
 
@@ -219,15 +240,7 @@ class IamInlinePolicyInfo(object):
         dicts with 'name' and 'document' keys.
         """
         try:
-            if entity_type == 'user':
-                policy_names = self.iam_api.list_user_policies(entity_name, namespace)
-            elif entity_type == 'group':
-                policy_names = self.iam_api.list_group_policies(entity_name, namespace)
-            elif entity_type == 'role':
-                policy_names = self.iam_api.list_role_policies(entity_name, namespace)
-            else:
-                self.module.fail_json(msg="Unknown entity type: %s" % entity_type)
-                return []
+            policy_names = self._dispatch_list_policies(entity_type, entity_name, namespace)
         except Exception as e:
             error_msg = utils.determine_error(e)
             self.module.fail_json(
@@ -239,15 +252,7 @@ class IamInlinePolicyInfo(object):
         policies = []
         for pname in (policy_names or []):
             try:
-                if entity_type == 'user':
-                    result = self.iam_api.get_user_policy(entity_name, pname, namespace)
-                elif entity_type == 'group':
-                    result = self.iam_api.get_group_policy(entity_name, pname, namespace)
-                elif entity_type == 'role':
-                    result = self.iam_api.get_role_policy(entity_name, pname, namespace)
-                else:
-                    result = None
-
+                result = self._dispatch_get_policy(entity_type, entity_name, pname, namespace)
                 if result is not None:
                     doc = result.get('PolicyDocument', '') or ''
                     if '%7B' in doc or '%22' in doc:

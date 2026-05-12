@@ -4,9 +4,15 @@
   connection: local
   gather_facts: false
   vars:
-    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('objectscale.example.com', true) }}"
-    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('admin', true) }}"
-    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('password', true) }}"
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('objectscale.example.com', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    objectscale_password: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('password', true) }}
     vdc_id: "urn:storageos:VirtualDataCenterData:111"
     storage_pool_id: "urn:storageos:VirtualArray:111"
 
@@ -31,8 +37,9 @@
       ansible.builtin.debug:
         var: create_result
 
-    # Note: Mapping removal is not supported on current ObjectScale builds
-    # Only adding mappings is supported. To change mappings, specify the complete desired list.
+    # Note: Mapping removal is not supported on current
+    # ObjectScale builds. Only adding mappings is supported.
+    # To change mappings, specify the complete desired list.
     - name: Update replication group mappings
       dellemc.objectscale.replication_group:
         objectscale_host: "{{ objectscale_host }}"
@@ -73,8 +80,9 @@
           - vdc_id: "{{ vdc_id }}"
             storage_pool_id: "{{ storage_pool_id }}"
 
-    # Note: Deletion requires direct delete endpoint support in objectscale_client
-    # If not available, the module will fail with an error message
+    # Note: Deletion requires direct delete endpoint
+    # support in objectscale_client. If not available,
+    # the module will fail with an error message
     - name: Delete replication group
       dellemc.objectscale.replication_group:
         objectscale_host: "{{ objectscale_host }}"

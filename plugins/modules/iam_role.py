@@ -241,8 +241,10 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import H
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.iam_api import IamApi
-except (ImportError, Exception):
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import ApiException
+except ImportError:
     IamApi = None  # type: ignore[assignment,misc]
+    ApiException = Exception  # type: ignore[assignment,misc]
 
 
 class IamRole(object):
@@ -280,6 +282,29 @@ class IamRole(object):
     # Helper methods
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _parse_role_from_dict(d):
+        """Try to extract role from a to_dict() result."""
+        for result_key in ['Result', 'GetRoleResult', 'CreateRoleResult']:
+            if result_key in d:
+                role = d[result_key].get('Role')
+                if role:
+                    return role
+        return None
+
+    @staticmethod
+    def _parse_role_from_raw(response):
+        """Fallback: parse raw response body if model deserialization lost data."""
+        try:
+            raw = json.loads(response.data.decode('utf-8')) if hasattr(response, 'data') and response.data else None
+        except Exception:
+            raw = None
+        if raw:
+            for key in ['GetRoleResult', 'CreateRoleResult', 'Result']:
+                if key in raw and 'Role' in raw[key]:
+                    return raw[key]['Role']
+        return None
+
     def _extract_role_dict(self, response):
         """Extract role dict from API response object.
 
@@ -289,22 +314,11 @@ class IamRole(object):
         to_dict() doesn't contain the expected keys.
         """
         d = response.to_dict()
-        for result_key in ['Result', 'GetRoleResult', 'CreateRoleResult']:
-            if result_key in d:
-                role = d[result_key].get('Role')
-                if role:
-                    return role
-
-        # Fallback: parse raw response body if model deserialization lost data
-        try:
-            raw = json.loads(response.data.decode('utf-8')) if hasattr(response, 'data') and response.data else None
-        except Exception:
-            raw = None
-        if raw:
-            for key in ['GetRoleResult', 'CreateRoleResult', 'Result']:
-                if key in raw and 'Role' in raw[key]:
-                    return raw[key]['Role']
-        return d
+        role = self._parse_role_from_dict(d)
+        if role:
+            return role
+        role = self._parse_role_from_raw(response)
+        return role if role is not None else d
 
     @staticmethod
     def _dict_to_tag_members(tags_dict):
@@ -332,10 +346,10 @@ class IamRole(object):
         if isinstance(doc, str):
             try:
                 doc = json.loads(doc)
-            except (json.JSONDecodeError, ValueError):
+            except ValueError:
                 return doc
 
-        def sort_dict_keys(obj):
+        def _sort_dict_keys(obj):
             """Recursively sort dictionary keys."""
             if isinstance(obj, dict):
                 # Sort Statement array elements by Effect and Sid if present
@@ -348,15 +362,37 @@ class IamRole(object):
                         )
                     )
                     # Sort each statement's keys and handle nested structures
-                    obj['Statement'] = [sort_dict_keys(stmt) for stmt in obj['Statement']]
+                    obj['Statement'] = [_sort_dict_keys(stmt) for stmt in obj['Statement']]
                 # Sort other keys
-                return {k: sort_dict_keys(v) for k, v in sorted(obj.items())}
+                return {k: _sort_dict_keys(v) for k, v in sorted(obj.items())}
             elif isinstance(obj, list):
-                return [sort_dict_keys(item) for item in obj]
+                return [_sort_dict_keys(item) for item in obj]
             else:
                 return obj
 
-        return sort_dict_keys(doc)
+        return _sort_dict_keys(doc)
+
+    def _build_iam_raw_url(self, action, params):
+        """Build the URL for a raw IAM POST request."""
+        from urllib.parse import urlencode
+        base = self.iam_api.api_client.configuration.host
+        query_parts = [('Action', action)]
+        if params:
+            for k, v in params.items():
+                query_parts.append((k, str(v)))
+        return f"{base}/iam?{urlencode(query_parts)}"
+
+    def _build_iam_raw_headers(self):
+        """Build auth/namespace headers for a raw IAM POST request."""
+        headers = {}
+        token = self.iam_api.api_client.configuration.api_key.get('AuthToken')
+        if token:
+            prefix = self.iam_api.api_client.configuration.api_key_prefix.get('AuthToken', '')
+            headers['X-SDS-AUTH-TOKEN'] = f"{prefix}{token}" if prefix else token
+        if self.namespace:
+            headers['x-emc-namespace'] = self.namespace
+        headers['Accept'] = 'application/json'
+        return headers
 
     def _iam_raw_post(self, action, params=None):
         """Make a raw IAM POST call with properly expanded member.N params.
@@ -380,39 +416,20 @@ class IamRole(object):
         Raises:
             Exception: With status attribute set on HTTP errors
         """
-        from urllib.parse import urlencode
-        base = self.iam_api.api_client.configuration.host
-        query_parts = [('Action', action)]
-        if params:
-            for k, v in params.items():
-                query_parts.append((k, str(v)))
-        qs = urlencode(query_parts)
-        url = f"{base}/iam?{qs}"
-        headers = {}
-        for key in ['AuthToken']:
-            token = self.iam_api.api_client.configuration.api_key.get(key)
-            if token:
-                prefix = self.iam_api.api_client.configuration.api_key_prefix.get(key, '')
-                headers['X-SDS-AUTH-TOKEN'] = f"{prefix}{token}" if prefix else token
-        if self.namespace:
-            headers['x-emc-namespace'] = self.namespace
-        headers['Accept'] = 'application/json'
+        url = self._build_iam_raw_url(action, params)
+        headers = self._build_iam_raw_headers()
         try:
-            resp = self.iam_api.api_client.rest_client.request(
-                'POST', url, headers=headers,
-            )
+            resp = self.iam_api.api_client.rest_client.request('POST', url, headers=headers)
             resp.read()  # Ensure response data is available
             if resp.status >= 400:
                 body = json.loads(resp.data.decode('utf-8')) if resp.data else {}
-                err = Exception(str(body))
+                err = RuntimeError(str(body))
                 err.status = resp.status
                 raise err
             return resp
         except Exception as e:
-            # Re-raise with context if it's not already an HTTP error
             if not hasattr(e, 'status'):
-                error_msg = f"Raw IAM POST failed for action {action}: {str(e)}"
-                raise Exception(error_msg) from e
+                raise RuntimeError(f"Raw IAM POST failed for action {action}: {str(e)}") from e
             raise
 
     def _tag_role_raw(self, role_name, tags_dict):
@@ -506,10 +523,10 @@ class IamRole(object):
                 from urllib.parse import unquote
                 try:
                     doc = json.loads(unquote(doc))
-                except (json.JSONDecodeError, ValueError):
+                except ValueError:
                     pass
             return doc
-        except Exception:
+        except (ApiException, IOError, ValueError):
             return None
 
     # ------------------------------------------------------------------
@@ -778,7 +795,7 @@ class IamRole(object):
             from urllib.parse import unquote
             try:
                 current_doc = json.loads(unquote(current_doc))
-            except (json.JSONDecodeError, ValueError):
+            except ValueError:
                 pass
 
         # Use semantic comparison to avoid false positives from JSON ordering
@@ -846,6 +863,153 @@ class IamRole(object):
     # Main orchestrator
     # ------------------------------------------------------------------
 
+    def _handle_absent_delete(self, role_name, role, result):
+        """Perform actual deletion for state=absent."""
+        before_state = self.capture_current_state(role_name, role) if self.module._diff else None
+        if self.module.params.get('force_delete'):
+            self.force_delete_cleanup(role_name)
+        self.delete_role(role_name)
+        result['changed'] = True
+        if self.module._diff:
+            result['diff'] = {'before': before_state, 'after': {}}
+
+    def _handle_absent(self, role_name, result):
+        """Handle state=absent logic for a role."""
+        role = self.get_role(role_name)
+        if role:
+            if self.module.check_mode:
+                result['changed'] = True
+            else:
+                self._handle_absent_delete(role_name, role, result)
+        elif self.module._diff:
+            result['diff'] = {'before': {}, 'after': {}}
+
+    def _check_mode_present(self, _role_name, result):
+        """Handle check_mode for state=present when role doesn't exist."""
+        result['changed'] = True
+        self.module.exit_json(**result)
+
+    def _check_attributes_changed(self, role):
+        """Check if role attributes would change in check_mode."""
+        params = self.module.params
+        desc = params.get('description')
+        dur = params.get('max_session_duration')
+        changed = False
+        if desc is not None and desc != (role.get('Description', '') or ''):
+            changed = True
+        if dur is not None and dur != role.get('MaxSessionDuration'):
+            changed = True
+        return changed
+
+    def _check_trust_policy_changed(self, role):
+        """Check if trust policy would change in check_mode."""
+        params = self.module.params
+        desired_doc = params['assume_role_policy_document']
+        current_doc = role.get('AssumeRolePolicyDocument')
+        if isinstance(current_doc, str):
+            from urllib.parse import unquote
+            try:
+                current_doc = json.loads(unquote(current_doc))
+            except ValueError:
+                pass
+        return self._normalize_policy_document(current_doc) != self._normalize_policy_document(desired_doc)
+
+    def _check_boundary_changed(self, role):
+        """Check if permissions boundary would change in check_mode."""
+        params = self.module.params
+        desired_boundary = params['permissions_boundary']
+        current_boundary = None
+        if role and role.get('PermissionsBoundary'):
+            current_boundary = role['PermissionsBoundary'].get(
+                'PermissionsBoundaryArn')
+        if desired_boundary == '':
+            return bool(current_boundary)
+        return desired_boundary != current_boundary
+
+    def _apply_role_core_attrs(self, role_name, role, result):
+        """Apply description/max_session_duration and trust policy changes."""
+        params = self.module.params
+        check_mode = self.module.check_mode
+        if params.get('description') is not None or params.get('max_session_duration') is not None:
+            if not check_mode:
+                if self.manage_role_attributes(role_name, role):
+                    result['changed'] = True
+            elif self._check_attributes_changed(role):
+                result['changed'] = True
+        if params.get('assume_role_policy_document') is not None:
+            if not check_mode:
+                if self.manage_assume_role_policy(role_name, params['assume_role_policy_document'], role):
+                    result['changed'] = True
+            elif self._check_trust_policy_changed(role):
+                result['changed'] = True
+
+    def _apply_role_tags(self, role_name, result):
+        """Apply tag changes for a role."""
+        params = self.module.params
+        if params.get('tags') is None:
+            return
+        if not self.module.check_mode:
+            if self.manage_tags(role_name, params['tags'], params.get('purge_tags', True)):
+                result['changed'] = True
+        else:
+            current_dict = {t['Key']: t['Value'] for t in self.list_role_tags(role_name)}
+            if current_dict != params['tags']:
+                result['changed'] = True
+
+    def _apply_role_attributes(self, role_name, role, result):
+        """Apply attribute/trust-policy/tags changes, updating result['changed']."""
+        self._apply_role_core_attrs(role_name, role, result)
+        self._apply_role_tags(role_name, result)
+
+    def _apply_role_managed_policies(self, role_name, result):
+        """Apply managed policy changes for a role."""
+        params = self.module.params
+        desired = params.get('managed_policies')
+        if desired is None:
+            return
+        if not self.module.check_mode:
+            if self.manage_managed_policies(role_name, desired, params.get('purge_managed_policies', True)):
+                result['changed'] = True
+        else:
+            current_arns = {p['PolicyArn'] for p in self.list_attached_policies(role_name)}
+            if current_arns != set(desired):
+                result['changed'] = True
+
+    def _apply_role_inline_policies(self, role_name, result):
+        """Apply inline policy changes for a role."""
+        params = self.module.params
+        desired = params.get('inline_policies')
+        if desired is None:
+            return
+        if not self.module.check_mode:
+            if self.manage_inline_policies(role_name, desired, params.get('purge_inline_policies', True)):
+                result['changed'] = True
+        else:
+            if set(self.list_inline_policy_names(role_name)) != set(desired.keys()):
+                result['changed'] = True
+
+    def _apply_role_boundary(self, role_name, role, result):
+        """Apply permissions boundary changes for a role."""
+        params = self.module.params
+        if params.get('permissions_boundary') is None:
+            return
+        if not self.module.check_mode:
+            if self.manage_permissions_boundary(role_name, params['permissions_boundary'], role):
+                result['changed'] = True
+        elif self._check_boundary_changed(role):
+            result['changed'] = True
+
+    def _apply_role_policies(self, role_name, role, result):
+        """Apply managed/inline-policy and boundary changes, updating result['changed']."""
+        self._apply_role_managed_policies(role_name, result)
+        self._apply_role_inline_policies(role_name, result)
+        self._apply_role_boundary(role_name, role, result)
+
+    def _apply_present_changes(self, role_name, role, result):
+        """Apply all present-state sub-resource changes to an existing role."""
+        self._apply_role_attributes(role_name, role, result)
+        self._apply_role_policies(role_name, role, result)
+
     def perform_module_operation(self):
         """Perform different actions based on parameters chosen in playbook."""
         result = dict(changed=False)
@@ -854,155 +1018,25 @@ class IamRole(object):
         state = self.module.params['state']
 
         if state == 'absent':
-            role = self.get_role(role_name)
-
-            if role:
-                if self.module.check_mode:
-                    result['changed'] = True
-                else:
-                    if self.module._diff:
-                        before_state = self.capture_current_state(role_name, role)
-
-                    if self.module.params.get('force_delete'):
-                        self.force_delete_cleanup(role_name)
-
-                    self.delete_role(role_name)
-                    result['changed'] = True
-
-                    if self.module._diff:
-                        # For delete operations, 'after' is empty dict (role no longer exists)
-                        result['diff'] = {
-                            'before': before_state,
-                            'after': {},
-                        }
-            else:
-                if self.module._diff:
-                    # Role doesn't exist, no change to show
-                    result['diff'] = {'before': {}, 'after': {}}
+            self._handle_absent(role_name, result)
 
         elif state == 'present':
             role = self.get_role(role_name)
 
             if role is None:
-                # Role doesn't exist — create it
                 if self.module.check_mode:
-                    result['changed'] = True
-                    self.module.exit_json(**result)
+                    self._check_mode_present(role_name, result)
                     return
 
                 self.create_role(role_name)
                 result['changed'] = True
-                # Re-fetch role after creation
                 role = self.get_role(role_name)
 
             if role is not None:
                 if self.module._diff:
                     before_state = self.capture_current_state(role_name, role)
 
-                # Manage role attributes (description, max_session_duration)
-                if self.module.params.get('description') is not None or \
-                   self.module.params.get('max_session_duration') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_role_attributes(role_name, role):
-                            result['changed'] = True
-                    else:
-                        # Check mode: compare attributes
-                        desc = self.module.params.get('description')
-                        dur = self.module.params.get('max_session_duration')
-                        if desc is not None and desc != (role.get('Description', '') or ''):
-                            result['changed'] = True
-                        if dur is not None and dur != role.get('MaxSessionDuration'):
-                            result['changed'] = True
-
-                # Manage assume role policy document (trust policy)
-                if self.module.params.get('assume_role_policy_document') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_assume_role_policy(
-                            role_name,
-                            self.module.params['assume_role_policy_document'],
-                            role,
-                        ):
-                            result['changed'] = True
-                    else:
-                        desired_doc = self.module.params['assume_role_policy_document']
-                        current_doc = role.get('AssumeRolePolicyDocument')
-                        if isinstance(current_doc, str):
-                            from urllib.parse import unquote
-                            try:
-                                current_doc = json.loads(unquote(current_doc))
-                            except (json.JSONDecodeError, ValueError):
-                                pass
-                        # Use semantic comparison in check mode as well
-                        if self._normalize_policy_document(current_doc) != self._normalize_policy_document(desired_doc):
-                            result['changed'] = True
-
-                # Manage tags
-                if self.module.params.get('tags') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_tags(
-                            role_name,
-                            self.module.params['tags'],
-                            self.module.params.get('purge_tags', True),
-                        ):
-                            result['changed'] = True
-                    else:
-                        current_tags = self.list_role_tags(role_name)
-                        current_dict = {t['Key']: t['Value'] for t in current_tags}
-                        desired = self.module.params['tags']
-                        if current_dict != desired:
-                            result['changed'] = True
-
-                # Manage managed policies
-                if self.module.params.get('managed_policies') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_managed_policies(
-                            role_name,
-                            self.module.params['managed_policies'],
-                            self.module.params.get('purge_managed_policies', True),
-                        ):
-                            result['changed'] = True
-                    else:
-                        current = self.list_attached_policies(role_name)
-                        current_arns = {p['PolicyArn'] for p in current}
-                        desired_set = set(self.module.params['managed_policies'])
-                        if current_arns != desired_set:
-                            result['changed'] = True
-
-                # Manage inline policies
-                if self.module.params.get('inline_policies') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_inline_policies(
-                            role_name,
-                            self.module.params['inline_policies'],
-                            self.module.params.get('purge_inline_policies', True),
-                        ):
-                            result['changed'] = True
-                    else:
-                        current_names = set(self.list_inline_policy_names(role_name))
-                        desired_names = set(self.module.params['inline_policies'].keys())
-                        if current_names != desired_names:
-                            result['changed'] = True
-
-                # Manage permissions boundary
-                if self.module.params.get('permissions_boundary') is not None:
-                    if not self.module.check_mode:
-                        if self.manage_permissions_boundary(
-                            role_name,
-                            self.module.params['permissions_boundary'],
-                            role,
-                        ):
-                            result['changed'] = True
-                    else:
-                        desired_boundary = self.module.params['permissions_boundary']
-                        current_boundary = None
-                        if role and role.get('PermissionsBoundary'):
-                            current_boundary = role['PermissionsBoundary'].get(
-                                'PermissionsBoundaryArn')
-                        if desired_boundary == '':
-                            if current_boundary:
-                                result['changed'] = True
-                        elif desired_boundary != current_boundary:
-                            result['changed'] = True
+                self._apply_present_changes(role_name, role, result)
 
                 if self.module._diff:
                     after_state = self.capture_current_state(role_name, role)
