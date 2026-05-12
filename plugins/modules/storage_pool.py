@@ -181,11 +181,11 @@ diff:
             warningAlertAt: 80
 '''
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional  # noqa: E402
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.dellemc.objectscale.plugins.module_utils import utils
-from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import HAS_OBJECTSCALE_CLIENT
+from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+from ansible_collections.dellemc.objectscale.plugins.module_utils import utils  # noqa: E402
+from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import HAS_OBJECTSCALE_CLIENT  # noqa: E402
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import api_client as objectscale_api_client
@@ -401,7 +401,7 @@ class StoragePool(object):
                 api_payload['warningAlertAt'] = payload['warning_alert_at']
             if 'error_alert_at' in payload:
                 api_payload['errorAlertAt'] = payload['error_alert_at']
-            
+
             self.storage_pool_api.object_varray_service_create_virtual_array(
                 object_varray_service_create_virtual_array_request=api_payload,
             )
@@ -445,7 +445,7 @@ class StoragePool(object):
                 api_payload['warningAlertAt'] = payload['warning_alert_at']
             if 'error_alert_at' in payload:
                 api_payload['errorAlertAt'] = payload['error_alert_at']
-            
+
             self.storage_pool_api.object_varray_service_update_virtual_array(
                 id=pool_id,
                 object_varray_service_update_virtual_array_request=api_payload,
