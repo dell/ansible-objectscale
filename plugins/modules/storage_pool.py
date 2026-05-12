@@ -181,7 +181,7 @@ diff:
             warningAlertAt: 80
 '''
 
-from typing import Any, Dict, List, Optional  # noqa: E402
+from typing import Any, Dict, Optional  # noqa: E402
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 from ansible_collections.dellemc.objectscale.plugins.module_utils import utils  # noqa: E402
@@ -201,20 +201,6 @@ try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.object_varray_api import ObjectVarrayApi
 except Exception:
     ObjectVarrayApi = None  # type: ignore[assignment,misc]
-
-try:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.object_varray_service_create_virtual_array_request import (
-        ObjectVarrayServiceCreateVirtualArrayRequest
-    )
-except Exception:
-    ObjectVarrayServiceCreateVirtualArrayRequest = None  # type: ignore[assignment,misc]
-
-try:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.object_varray_service_update_virtual_array_request import (
-        ObjectVarrayServiceUpdateVirtualArrayRequest
-    )
-except Exception:
-    ObjectVarrayServiceUpdateVirtualArrayRequest = None  # type: ignore[assignment,misc]
 
 
 class StoragePool(object):

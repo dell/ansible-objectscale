@@ -5,11 +5,10 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from ansible_collections.dellemc.objectscale.tests.unit.plugins.module_utils.mock_storage_pool_api import (
     BASE_PARAMS,
-    LIST_POOLS_RESPONSE,
     SAMPLE_POOL,
     SAMPLE_POOL_UPDATED,
 )
