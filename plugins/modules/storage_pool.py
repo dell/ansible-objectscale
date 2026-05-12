@@ -203,6 +203,20 @@ try:
 except Exception:
     ObjectVarrayApi = None  # type: ignore[assignment,misc]
 
+try:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.object_varray_service_create_virtual_array_request import (
+        ObjectVarrayServiceCreateVirtualArrayRequest
+    )
+except Exception:
+    ObjectVarrayServiceCreateVirtualArrayRequest = None  # type: ignore[assignment,misc]
+
+try:
+    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.object_varray_service_update_virtual_array_request import (
+        ObjectVarrayServiceUpdateVirtualArrayRequest
+    )
+except Exception:
+    ObjectVarrayServiceUpdateVirtualArrayRequest = None  # type: ignore[assignment,misc]
+
 
 class StoragePool(object):
     """Class for managing ObjectScale storage pools."""
@@ -335,17 +349,17 @@ class StoragePool(object):
         payload = {
             'name': self.module.params.get('storage_pool_name'),
             'description': self.module.params.get('description'),
-            'isProtected': False,
-            'isColdStorageEnabled': self.module.params.get('is_cold_storage_enabled', False),
+            'is_protected': False,
+            'is_cold_storage_enabled': self.module.params.get('is_cold_storage_enabled', False),
         }  # type: Dict[str, Any]
 
         warning_alert = self.module.params.get('warning_alert_at')
         if warning_alert is not None:
-            payload['warningAlertAt'] = warning_alert
+            payload['warning_alert_at'] = warning_alert
 
         error_alert = self.module.params.get('error_alert_at')
         if error_alert is not None:
-            payload['errorAlertAt'] = error_alert
+            payload['error_alert_at'] = error_alert
 
         return payload
 
@@ -360,15 +374,15 @@ class StoragePool(object):
 
         cold_storage = self.module.params.get('is_cold_storage_enabled')
         if cold_storage is not None and cold_storage != current.get('isColdStorageEnabled'):
-            payload['isColdStorageEnabled'] = cold_storage
+            payload['is_cold_storage_enabled'] = cold_storage
 
         warning_alert = self.module.params.get('warning_alert_at')
         if warning_alert is not None and warning_alert != current.get('warningAlertAt'):
-            payload['warningAlertAt'] = warning_alert
+            payload['warning_alert_at'] = warning_alert
 
         error_alert = self.module.params.get('error_alert_at')
         if error_alert is not None and error_alert != current.get('errorAlertAt'):
-            payload['errorAlertAt'] = error_alert
+            payload['error_alert_at'] = error_alert
 
         return payload
 
@@ -377,8 +391,20 @@ class StoragePool(object):
         """Create a new storage pool via the ObjectScale API."""
         payload = self._build_create_payload()
         try:
+            # Convert snake_case to camelCase for API
+            api_payload = {
+                'name': payload.get('name'),
+                'isProtected': payload.get('is_protected'),
+                'isColdStorageEnabled': payload.get('is_cold_storage_enabled'),
+                'description': payload.get('description'),
+            }
+            if 'warning_alert_at' in payload:
+                api_payload['warningAlertAt'] = payload['warning_alert_at']
+            if 'error_alert_at' in payload:
+                api_payload['errorAlertAt'] = payload['error_alert_at']
+            
             self.storage_pool_api.object_varray_service_create_virtual_array(
-                body=payload,
+                object_varray_service_create_virtual_array_request=api_payload,
             )
         except Exception as e:
             error_msg = utils.determine_error(e)
@@ -408,9 +434,22 @@ class StoragePool(object):
         payload['name'] = current.get('name')
 
         try:
+            # Convert snake_case to camelCase for API
+            api_payload = {}
+            if 'name' in payload:
+                api_payload['name'] = payload['name']
+            if 'description' in payload:
+                api_payload['description'] = payload['description']
+            if 'is_cold_storage_enabled' in payload:
+                api_payload['isColdStorageEnabled'] = payload['is_cold_storage_enabled']
+            if 'warning_alert_at' in payload:
+                api_payload['warningAlertAt'] = payload['warning_alert_at']
+            if 'error_alert_at' in payload:
+                api_payload['errorAlertAt'] = payload['error_alert_at']
+            
             self.storage_pool_api.object_varray_service_update_virtual_array(
                 id=pool_id,
-                body=payload,
+                object_varray_service_update_virtual_array_request=api_payload,
             )
         except Exception as e:
             error_msg = utils.determine_error(e)
