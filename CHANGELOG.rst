@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `vdc_info` module for querying VDC (Virtual Data Center) details from ObjectScale.
+  Supports listing all VDCs in a single site or multi-site federation, querying
+  a specific VDC by name or by ID, and retrieving local VDC details.
+  The `secretKeys` field is always omitted from output to prevent credential exposure.
+
 ## [1.0.0] - 2024-03-26
 
 ### Added

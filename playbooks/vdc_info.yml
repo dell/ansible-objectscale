@@ -1,0 +1,75 @@
+---
+# Example playbook demonstrating the vdc_info module
+# Usage:
+#   ansible-playbook vdc_info.yml -e @vars.yml
+#
+# vars.yml example:
+#   objectscale_host: "10.0.0.1"
+#   objectscale_username: "admin"
+#   objectscale_password: !vault |
+#     $ANSIBLE_VAULT;1.1;AES256
+#     ...
+#   validate_certs: false
+
+- name: Gather VDC information from Dell ObjectScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: List all VDCs in the federation
+      dellemc.objectscale.vdc_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs | default(true) }}"
+      register: all_vdcs
+
+    - name: Show all VDC names
+      ansible.builtin.debug:
+        msg: "VDC: {{ item.name | default(item.vdcName) }}"
+      loop: "{{ all_vdcs.vdcs }}"
+
+    - name: Get local VDC details
+      dellemc.objectscale.vdc_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs | default(true) }}"
+        local_vdc: true
+      register: local_vdc
+
+    - name: Show local VDC details
+      ansible.builtin.debug:
+        var: local_vdc.vdcs
+
+    - name: Get VDC by name
+      dellemc.objectscale.vdc_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs | default(true) }}"
+        vdc_name: "{{ target_vdc_name | default('vdc-site-a') }}"
+      register: vdc_by_name
+
+    - name: Show VDC by name result
+      ansible.builtin.debug:
+        var: vdc_by_name.vdcs
+
+    - name: Get VDC by ID
+      dellemc.objectscale.vdc_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs | default(true) }}"
+        vdc_id: "{{ local_vdc.vdcs[0].vdcId }}"
+      register: vdc_by_id
+      when: local_vdc.vdcs | length > 0
+
+    - name: Show VDC by ID result
+      ansible.builtin.debug:
+        var: vdc_by_id.vdcs
+      when: vdc_by_id is not skipped
