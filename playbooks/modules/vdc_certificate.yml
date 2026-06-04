@@ -1,0 +1,80 @@
+---
+# Example: Rotate VDC keystore key + certificate on Dell ObjectScale.
+# Demonstrates: basic usage, check mode, diff mode, idempotency.
+- name: VDC Certificate Management Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('objectscale.example.com', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    objectscale_password: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('password', true) }}
+
+  tasks:
+    - name: Snapshot current VDC keystore (pre-rotation)
+      dellemc.objectscale.vdc_certificate_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+      register: pre_rotation
+
+    - name: Show pre-rotation details
+      ansible.builtin.debug:
+        msg: >-
+          Leaf: {{ pre_rotation.vdc_certificate_details.leaf_subject | default('unknown') }},
+          Expires: {{ pre_rotation.vdc_certificate_details.not_after | default('unknown') }},
+          Fingerprint: {{ pre_rotation.vdc_certificate_details.fingerprint }}
+
+    - name: Dry-run rotation (check mode + diff)
+      dellemc.objectscale.vdc_certificate:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        private_key_content: "{{ vault_obs_private_key | default('') }}"
+        certificate_chain_content: "{{ obs_chain_pem | default('') }}"
+        state: present
+      check_mode: true
+      diff: true
+      register: dry_run
+      when: vault_obs_private_key is defined
+
+    - name: Real rotation (when dry-run reports change)
+      dellemc.objectscale.vdc_certificate:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        private_key_content: "{{ vault_obs_private_key }}"
+        certificate_chain_content: "{{ obs_chain_pem }}"
+        state: present
+      when: vault_obs_private_key is defined and dry_run.changed | default(false)
+      register: rotation
+
+    - name: Verify post-rotation
+      dellemc.objectscale.vdc_certificate_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+      register: post_rotation
+      when: rotation.changed | default(false)
+
+    - name: Idempotency check (second run must report changed=false)
+      dellemc.objectscale.vdc_certificate:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        private_key_content: "{{ vault_obs_private_key }}"
+        certificate_chain_content: "{{ obs_chain_pem }}"
+        state: present
+      register: rerun
+      when: vault_obs_private_key is defined and rotation.changed | default(false)
