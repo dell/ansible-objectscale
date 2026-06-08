@@ -152,14 +152,14 @@ try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import (  # noqa: E402
         api_client as objectscale_api_client,
     )
-except Exception:
+except Exception:  # pragma: no cover
     objectscale_api_client = None
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import (  # noqa: E402
         _stubs as objectscale_client_stubs,
     )
-except Exception:
+except Exception:  # pragma: no cover
     objectscale_client_stubs = None
 
 
@@ -183,7 +183,7 @@ class VdcCertificateInfo(object):
                     data = getattr(self, '__dict__', None)
                     if isinstance(data, dict):
                         return dict(data)
-                    return {}
+                    return {}  # pragma: no cover
                 base_model_cls.model_dump = _model_dump
 
     def __init__(self):
@@ -255,5 +255,5 @@ def main():
     obj.perform_module_operation()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()
