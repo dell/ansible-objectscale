@@ -170,7 +170,7 @@ class VdcKeystoreApi:
         Raises:
             ApiException on HTTP errors after retries.
         """
-        status, data = self._request('GET', VDC_KEYSTORE_PATH + '.json')
+        status, data = self._request('GET', VDC_KEYSTORE_PATH)
         if status == 404:
             raise ApiException(status=404, reason="VDC keystore not found")
         if status < 200 or status >= 300:
@@ -289,7 +289,7 @@ class ObjectCertKeystoreApi:
         Raises:
             ApiException on HTTP errors after retries.
         """
-        status, data = self._request('GET', OBJECT_CERT_KEYSTORE_PATH + '.json')
+        status, data = self._request('GET', OBJECT_CERT_KEYSTORE_PATH)
         if status == 404:
             raise ApiException(status=404, reason="Object-cert keystore not found")
         if status < 200 or status >= 300:
