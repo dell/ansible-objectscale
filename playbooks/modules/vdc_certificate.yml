@@ -68,7 +68,6 @@
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
       register: post_rotation
-      when: rotation.changed | default(false)
 
     - name: Idempotency check (second run must report changed=false)
       dellemc.objectscale.vdc_certificate:
