@@ -8,7 +8,7 @@ __metaclass__ = type
 import os
 import tempfile
 from contextlib import contextmanager
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 MODULE = 'ansible_collections.dellemc.objectscale.plugins.modules.vdc_certificate_chain'
 

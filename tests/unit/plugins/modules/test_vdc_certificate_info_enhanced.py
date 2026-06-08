@@ -7,8 +7,7 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-from unittest.mock import MagicMock, patch, call
-import pytest
+from unittest.mock import MagicMock, patch
 
 MODULE = 'ansible_collections.dellemc.objectscale.plugins.modules.vdc_certificate_info'
 
@@ -387,14 +386,14 @@ class TestImportFailureHandling:
         # This tests lines 155-156 (exception handler)
         import sys
         import importlib
-        
+
         # Temporarily hide the module
         original_modules = sys.modules.copy()
         try:
             # Remove the module to force reimport
             if 'ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client' in sys.modules:
                 del sys.modules['ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client']
-            
+
             # The module should still load even if import fails
             from ansible_collections.dellemc.objectscale.plugins.modules import vdc_certificate_info
             # Verify module loaded

@@ -192,14 +192,14 @@ class TestVdcKeystoreApiGet:
 
     def test_get_returns_chain(self):
         data = json.dumps({'certificate_chain': {'chain': SAMPLE_CHAIN_PEM}})
-        api, _ = _make_api(200, data)
+        api, unused_client = _make_api(200, data)
 
         result = api.get_certificate_chain()
 
         assert result['chain'] == SAMPLE_CHAIN_PEM
 
     def test_get_404_raises(self):
-        api, _ = _make_api(404, '')
+        api, unused_client = _make_api(404, '')
 
         try:
             api.get_certificate_chain()
@@ -222,7 +222,7 @@ class TestVdcKeystoreApiGet:
             pass
 
     def test_get_invalid_json(self):
-        api, _ = _make_api(200, 'not-json')
+        api, unused_client = _make_api(200, 'not-json')
 
         try:
             api.get_certificate_chain()
@@ -246,7 +246,7 @@ class TestVdcKeystoreApiPut:
         assert 'key_and_certificate' in body
 
     def test_put_400_raises(self):
-        api, _ = _make_api(400, 'bad input')
+        api, unused_client = _make_api(400, 'bad input')
 
         try:
             api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
@@ -255,7 +255,7 @@ class TestVdcKeystoreApiPut:
             assert getattr(e, 'status', None) == 400
 
     def test_put_403_raises(self):
-        api, _ = _make_api(403, 'forbidden')
+        api, unused_client = _make_api(403, 'forbidden')
 
         try:
             api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
@@ -264,7 +264,7 @@ class TestVdcKeystoreApiPut:
             assert getattr(e, 'status', None) == 403
 
     def test_put_409_raises(self):
-        api, _ = _make_api(409, 'conflict')
+        api, unused_client = _make_api(409, 'conflict')
 
         try:
             api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
@@ -273,7 +273,7 @@ class TestVdcKeystoreApiPut:
             assert getattr(e, 'status', None) == 409
 
     def test_put_invalid_json_response(self):
-        api, _ = _make_api(200, 'not-json')
+        api, unused_client = _make_api(200, 'not-json')
 
         try:
             api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)

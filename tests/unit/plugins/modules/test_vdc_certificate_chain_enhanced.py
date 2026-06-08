@@ -11,7 +11,6 @@ import os
 import tempfile
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
-import pytest
 
 MODULE = 'ansible_collections.dellemc.objectscale.plugins.modules.vdc_certificate_chain'
 
