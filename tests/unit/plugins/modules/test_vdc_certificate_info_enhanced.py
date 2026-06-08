@@ -7,6 +7,7 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+import pytest
 from unittest.mock import MagicMock, patch
 
 MODULE = 'ansible_collections.dellemc.objectscale.plugins.modules.vdc_certificate_info'
