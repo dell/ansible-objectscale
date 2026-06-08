@@ -80,9 +80,14 @@ jobs:
 
   sanity:
     needs: [build]
-    uses: ansible/ansible-content-actions/.github/workflows/sanity.yaml@main
-    with:
-      python-version: '3.13'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Perform sanity testing with ansible-test
+        uses: ansible-community/ansible-test-gh-action@release/v1.16
+        with:
+          testing-type: sanity
+          ansible-core-version: stable-2.19
+          origin-python-version: '3.13'
 
   ansible-lint:
     needs: [build]
