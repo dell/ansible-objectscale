@@ -185,7 +185,7 @@ class VdcCertificateChainInfo(object):
         if objectscale_client_stubs is not None:
             base_model_cls = getattr(objectscale_client_stubs, 'BaseModel', None)
             if base_model_cls is not None and not hasattr(base_model_cls, 'model_dump'):
-                def _model_dump(self, *args, **kwargs):
+                def _model_dump(self, *args, **kwargs):  # noqa: W0613
                     data = getattr(self, '__dict__', None)
                     if isinstance(data, dict):
                         return dict(data)

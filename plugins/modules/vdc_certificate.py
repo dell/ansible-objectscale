@@ -231,7 +231,7 @@ def _ensure_client_stub_compatibility():
     if objectscale_client_stubs is not None:
         base_model_cls = getattr(objectscale_client_stubs, 'BaseModel', None)
         if base_model_cls is not None and not hasattr(base_model_cls, 'model_dump'):
-            def _model_dump(self, *args, **kwargs):
+            def _model_dump(self, *args, **kwargs):  # noqa: W0613
                 data = getattr(self, '__dict__', None)
                 if isinstance(data, dict):
                     return dict(data)
@@ -239,7 +239,7 @@ def _ensure_client_stub_compatibility():
             base_model_cls.model_dump = _model_dump
 
 
-def _read_pem_param(module, path_param, content_param, label):
+def _read_pem_param(module, path_param, content_param, label):  # noqa: W0613
     """Read PEM content from either a file path or inline content parameter.
 
     Returns the PEM string or calls module.fail_json on error.
