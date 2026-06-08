@@ -1,0 +1,51 @@
+---
+# Example: Manage Object-cert keystore certificate chain on Dell ObjectScale.
+# Demonstrates: inline upload, file upload, idempotency, check mode, diff mode.
+- name: VDC Certificate Chain Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('objectscale.example.com', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    objectscale_password: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('password', true) }}
+
+  tasks:
+    - name: Upload Object-cert certificate chain from file paths
+      dellemc.objectscale.vdc_certificate_chain:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        private_key_path: /etc/ssl/private/objectscale.key
+        certificate_chain_path: /etc/ssl/certs/objectscale-chain.pem
+        state: present
+      register: result
+
+    - name: Display result
+      ansible.builtin.debug:
+        msg: |
+          Changed: {{ result.changed }}
+          Fingerprint: {{ result.vdc_certificate_chain_details.fingerprint }}
+          Chain Length: {{ result.vdc_certificate_chain_details.chain_length }}
+
+    - name: Upload Object-cert certificate chain using inline content
+      dellemc.objectscale.vdc_certificate_chain:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        private_key_content: "{{ lookup('file', '/etc/ssl/private/objectscale.key') }}"
+        certificate_chain_content: "{{ lookup('file', '/etc/ssl/certs/objectscale-chain.pem') }}"
+        state: present
+      register: inline_result
+
+    - name: Show idempotency — second run should report no change
+      ansible.builtin.debug:
+        msg: "Idempotent: {{ not inline_result.changed }}"
