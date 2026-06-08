@@ -81,6 +81,8 @@ jobs:
   sanity:
     needs: [build]
     uses: ansible/ansible-content-actions/.github/workflows/sanity.yaml@main
+    with:
+      python-version: '3.13'
 
   ansible-lint:
     needs: [build]
