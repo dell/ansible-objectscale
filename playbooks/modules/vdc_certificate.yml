@@ -28,8 +28,10 @@
     - name: Show pre-rotation details
       ansible.builtin.debug:
         msg: >-
-          Leaf: {{ pre_rotation.vdc_certificate_details.leaf_subject | default('unknown') }},
-          Expires: {{ pre_rotation.vdc_certificate_details.not_after | default('unknown') }},
+          Leaf: {{ pre_rotation.vdc_certificate_details.leaf_subject
+          | default('unknown') }},
+          Expires: {{ pre_rotation.vdc_certificate_details.not_after
+          | default('unknown') }},
           Fingerprint: {{ pre_rotation.vdc_certificate_details.fingerprint }}
 
     - name: Dry-run rotation (check mode + diff)
@@ -55,7 +57,8 @@
         private_key_content: "{{ vault_obs_private_key }}"
         certificate_chain_content: "{{ obs_chain_pem }}"
         state: present
-      when: vault_obs_private_key is defined and dry_run.changed | default(false)
+      when: vault_obs_private_key is defined and
+            dry_run.changed | default(false)
       register: rotation
 
     - name: Verify post-rotation
@@ -77,4 +80,5 @@
         certificate_chain_content: "{{ obs_chain_pem }}"
         state: present
       register: rerun
-      when: vault_obs_private_key is defined and rotation.changed | default(false)
+      when: vault_obs_private_key is defined and
+            rotation.changed | default(false)

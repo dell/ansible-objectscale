@@ -30,10 +30,15 @@
         msg: |
           Fingerprint: {{ cert_info.vdc_certificate_details.fingerprint }}
           Chain Length: {{ cert_info.vdc_certificate_details.chain_length }}
-          Leaf Subject: {{ cert_info.vdc_certificate_details.leaf_subject | default('N/A - install cryptography') }}
-          Not After: {{ cert_info.vdc_certificate_details.not_after | default('N/A') }}
+          Leaf Subject: {{ cert_info.vdc_certificate_details.leaf_subject
+          | default('N/A - install cryptography') }}
+          Not After: {{ cert_info.vdc_certificate_details.not_after
+          | default('N/A') }}
 
     - name: Compliance audit — check if certificate metadata is available
       ansible.builtin.debug:
-        msg: "WARNING: Install the 'cryptography' Python package for full certificate metadata"
-      when: cert_info.vdc_certificate_details.leaf_subject is not defined
+        msg: >-
+          WARNING: Install the 'cryptography' Python package
+          for full certificate metadata
+      when: cert_info.vdc_certificate_details.leaf_subject
+            is not defined

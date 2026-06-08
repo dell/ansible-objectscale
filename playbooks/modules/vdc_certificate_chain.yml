@@ -41,8 +41,10 @@
         objectscale_username: "{{ objectscale_username }}"
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: false
-        private_key_content: "{{ lookup('file', '/etc/ssl/private/objectscale.key') }}"
-        certificate_chain_content: "{{ lookup('file', '/etc/ssl/certs/objectscale-chain.pem') }}"
+        private_key_content: >-
+          {{ lookup('file', '/etc/ssl/private/objectscale.key') }}
+        certificate_chain_content: >-
+          {{ lookup('file', '/etc/ssl/certs/objectscale-chain.pem') }}
         state: present
       register: inline_result
 
