@@ -407,7 +407,7 @@ class TestImportFailureHandling:
         """Test when objectscale_client_stubs import fails."""
         # This tests lines 162-163 (exception handler)
         import sys
-        
+
         original_modules = sys.modules.copy()
         try:
             # Module should still load even if stubs import fails

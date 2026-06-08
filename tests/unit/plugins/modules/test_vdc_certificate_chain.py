@@ -20,6 +20,7 @@ class _AnsibleExitJson(Exception):
 class _AnsibleFailJson(Exception):
     pass
 
+
 SAMPLE_KEY_PEM = (
     "-----BEGIN PRIVATE KEY-----\n"
     "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC7\n"

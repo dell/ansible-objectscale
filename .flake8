@@ -1,0 +1,7 @@
+[flake8]
+max-line-length = 120
+ignore = E501,W503,E203,E402,F401,F811
+exclude = .git,__pycache__,build,dist,.venv,venv
+per-file-ignores =
+    plugins/module_utils/iam_api.py:F401
+    tests/*:F841,F401

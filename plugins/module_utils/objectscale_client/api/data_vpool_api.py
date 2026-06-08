@@ -805,9 +805,9 @@ class DataVpoolApi:
         :type id: str
         :param data_service_vpool_service_remove_from_vpool_request: (required)
         :type data_service_vpool_service_remove_from_vpool_request: DataServiceVpoolServiceRemoveFromVpoolRequest
-        :param skip_bootstrap_check: 
+        :param skip_bootstrap_check:
         :type skip_bootstrap_check: str
-        :param force_ps_ozones: 
+        :param force_ps_ozones:
         :type force_ps_ozones: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request

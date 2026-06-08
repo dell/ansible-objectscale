@@ -427,7 +427,7 @@ class UserManagementApi:
         :type limit: str
         :param marker: Reference to last object returned.
         :type marker: str
-        :param userid: 
+        :param userid:
         :type userid: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request

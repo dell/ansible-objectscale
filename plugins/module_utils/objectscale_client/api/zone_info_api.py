@@ -480,7 +480,7 @@ class ZoneInfoApi:
         :type vdc_name: str
         :param zone_info_service_insert_vdc_info_request: (required)
         :type zone_info_service_insert_vdc_info_request: ZoneInfoServiceInsertVdcInfoRequest
-        :param skip_memory_profile_checks: 
+        :param skip_memory_profile_checks:
         :type skip_memory_profile_checks: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
