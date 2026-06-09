@@ -84,7 +84,6 @@ options:
     - Marked sensitive; use Ansible Vault.
     type: str
     required: false
-    no_log: true
 
   certificate_chain_path:
     description:
@@ -251,7 +250,6 @@ def _read_pem_param(module, path_param, content_param, label):  # noqa: W0613
         return content_val
 
     if path_val:
-        path_val = os.path.expanduser(path_val)
         if not os.path.isfile(path_val):
             module.fail_json(
                 msg="FC-221: file '%s' not readable: No such file" % path_val,
