@@ -359,7 +359,10 @@ class TestVdcKeystoreApiPut:
         api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
 
         call_args = mock_gen.vdc_keystore_service_set_key_certificate_pair.call_args
+        # Try both kwargs and positional args
         request_body = call_args.kwargs.get('vdc_keystore_service_set_key_certificate_pair_request')
+        if request_body is None and call_args.args:
+            request_body = call_args.args[0]
         assert request_body is not None
         assert request_body.key_and_certificate.private_key == SAMPLE_KEY_PEM
         assert request_body.key_and_certificate.certificate_chain == SAMPLE_CHAIN_PEM
@@ -496,7 +499,10 @@ class TestObjectCertKeystoreApiPut:
         api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
 
         call_args = mock_gen.object_certificate_service_set_key_certificate_pair.call_args
+        # Try both kwargs and positional args
         request_body = call_args.kwargs.get('object_certificate_service_set_key_certificate_pair_request')
+        if request_body is None and call_args.args:
+            request_body = call_args.args[0]
         assert request_body is not None
         assert request_body.key_and_certificate.private_key == SAMPLE_KEY_PEM
         assert request_body.key_and_certificate.certificate_chain == SAMPLE_CHAIN_PEM
