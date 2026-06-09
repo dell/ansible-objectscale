@@ -1913,7 +1913,7 @@ class BucketApi:
         :type bucket_name: str
         :param head_type: the head-type of the metadata to be queried (HDFS, S3, etc)
         :type head_type: str
-        :param namespace: 
+        :param namespace:
         :type namespace: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request

@@ -1,0 +1,44 @@
+---
+# Example: Query VDC keystore certificate chain on Dell ObjectScale.
+# Demonstrates: basic read, compliance audit, conditional logic.
+- name: VDC Certificate Info Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('objectscale.example.com', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    objectscale_password: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('password', true) }}
+
+  tasks:
+    - name: Get current VDC certificate chain
+      dellemc.objectscale.vdc_certificate_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+      register: cert_info
+
+    - name: Display certificate details
+      ansible.builtin.debug:
+        msg: |
+          Fingerprint: {{ cert_info.vdc_certificate_details.fingerprint }}
+          Chain Length: {{ cert_info.vdc_certificate_details.chain_length }}
+          Leaf Subject: {{ cert_info.vdc_certificate_details.leaf_subject
+          | default('N/A - install cryptography') }}
+          Not After: {{ cert_info.vdc_certificate_details.not_after
+          | default('N/A') }}
+
+    - name: Compliance audit — check if certificate metadata is available
+      ansible.builtin.debug:
+        msg: >-
+          WARNING: Install the 'cryptography' Python package
+          for full certificate metadata
+      when: cert_info.vdc_certificate_details.leaf_subject
+            is not defined
