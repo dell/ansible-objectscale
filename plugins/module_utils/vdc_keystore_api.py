@@ -6,26 +6,22 @@
 Covers two distinct endpoints:
   - VDC Keystore:         GET/PUT /vdc/keystore        (VDCKeystoreService)
   - Object-cert Keystore: GET/PUT /object-cert/keystore (ObjectCertificateService)
+
+This module provides thin wrapper classes that delegate to the generated
+OpenAPI client classes in ``objectscale_client.api``.
 """
 
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import hashlib
-import json
 import re
-import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict
 
-try:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
-        ApiException,
-    )
-except Exception:
-    ApiException = Exception  # type: ignore[assignment,misc]
-
-VDC_KEYSTORE_PATH = '/vdc/keystore'
-OBJECT_CERT_KEYSTORE_PATH = '/object-cert/keystore'
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
+    ApiException,
+    NotFoundException,
+)
 
 PEM_CERT_RE = re.compile(
     r'-----BEGIN\s+CERTIFICATE-----\s+\S[\s\S]*?-----END\s+CERTIFICATE-----',
@@ -37,10 +33,6 @@ PEM_KEY_RE = re.compile(
     r'-----END\s+(?:RSA\s+)?(?:EC\s+)?PRIVATE\s+KEY-----',
     re.MULTILINE,
 )
-
-MAX_RETRIES = 3
-RETRY_BASE_DELAY = 1
-RETRY_CAP = 8
 
 
 def _normalize_pem(pem_text: str) -> str:
@@ -104,62 +96,17 @@ def parse_certificate_metadata(chain_pem: str) -> Dict[str, Any]:
     return meta
 
 
-def _should_retry(status_code: int) -> bool:
-    """Return True if the HTTP status code is retryable (429 or 5xx)."""
-    return status_code == 429 or 500 <= status_code <= 599
-
-
 class VdcKeystoreApi:
-    """Wrapper around the ObjectScale VDC Keystore REST API."""
+    """A wrapper class for ObjectScale VDC Keystore API calls.
+
+    Delegates to the generated ``objectscale_client.api.vdc_keystore_api``
+    client, following the same pattern as :class:`BucketApi`.
+    """
 
     def __init__(self, api_client: Any, timeout: int = 30) -> None:
+        """Initialize the VdcKeystoreApi with an authenticated API client."""
         self.api_client = api_client
         self.timeout = timeout
-        self._base_url = api_client.configuration.host
-
-    def _request(
-        self,
-        method: str,
-        path: str,
-        body: Optional[str] = None,
-    ) -> Tuple[int, str]:
-        """Make an HTTP request with retry logic for 429 / 5xx."""
-        url = self._base_url + path
-        headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-        # Inject auth token
-        api_key = self.api_client.configuration.api_key
-        if api_key and 'AuthToken' in api_key:
-            headers['X-SDS-AUTH-TOKEN'] = api_key['AuthToken']
-
-        last_exception = None
-        for attempt in range(MAX_RETRIES + 1):
-            try:
-                resp = self.api_client.rest_client.request(
-                    method,
-                    url,
-                    headers=headers,
-                    body=body,
-                    _request_timeout=self.timeout,
-                )
-                if _should_retry(resp.status) and attempt < MAX_RETRIES:
-                    delay = min(RETRY_BASE_DELAY * (2 ** attempt), RETRY_CAP)
-                    time.sleep(delay)
-                    continue
-                return resp.status, resp.data if resp.data else ''
-            except ApiException as exc:
-                status = getattr(exc, 'status', 0) or 0
-                if _should_retry(status) and attempt < MAX_RETRIES:
-                    delay = min(RETRY_BASE_DELAY * (2 ** attempt), RETRY_CAP)
-                    time.sleep(delay)
-                    last_exception = exc
-                    continue
-                raise
-        if last_exception is not None:
-            raise last_exception
-        raise RuntimeError("Unexpected retry exhaustion")  # pragma: no cover
 
     def get_certificate_chain(self) -> Dict[str, Any]:
         """GET /vdc/keystore — returns the current VDC certificate chain.
@@ -170,18 +117,28 @@ class VdcKeystoreApi:
         Raises:
             ApiException on HTTP errors after retries.
         """
-        status, data = self._request('GET', VDC_KEYSTORE_PATH)
-        if status == 404:
-            raise ApiException(status=404, reason="VDC keystore not found")
-        if status < 200 or status >= 300:
-            raise ApiException(status=status, reason="GET /vdc/keystore failed: %s" % data)
         try:
-            parsed = json.loads(data)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            raise ApiException(status=status, reason="Invalid JSON response from GET /vdc/keystore")
-        cert_chain = parsed.get('certificate_chain', {})
-        chain = cert_chain.get('chain', '')
-        return {'chain': chain}
+            from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api import (
+                vdc_keystore_api as generated_vdc_keystore_api,
+            )
+            api = generated_vdc_keystore_api.VdcKeystoreApi(self.api_client)
+            response = api.vdc_keystore_service_get_certificate_chain(
+                _request_timeout=self.timeout,
+            )
+            if response is None:
+                return {'chain': ''}
+            result = response.to_dict()
+            cert_chain = result.get('certificate_chain', {})
+            if cert_chain is None:
+                cert_chain = {}
+            chain = cert_chain.get('chain', '')
+            return {'chain': chain if chain else ''}
+        except NotFoundException:
+            raise ApiException(status=404, reason="VDC keystore not found")
+        except ApiException as e:
+            if e.status == 404:
+                raise ApiException(status=404, reason="VDC keystore not found")
+            raise
 
     def set_key_certificate_pair(
         self,
@@ -200,85 +157,53 @@ class VdcKeystoreApi:
         Raises:
             ApiException on HTTP errors.
         """
-        payload = json.dumps({
-            'key_and_certificate': {
-                'private_key': private_key,
-                'certificate_chain': certificate_chain,
-            }
-        })
-        status, data = self._request('PUT', VDC_KEYSTORE_PATH, body=payload)
-        if status == 400:
-            raise ApiException(status=400, reason="Invalid PEM input: %s" % data)
-        if status == 403:
-            raise ApiException(status=403, reason="SECURITY_ADMIN role required")
-        if status == 409:
-            raise ApiException(status=409, reason="Concurrent keystore update conflict")
-        if status < 200 or status >= 300:
-            raise ApiException(status=status, reason="PUT /vdc/keystore failed: %s" % data)
-        try:
-            parsed = json.loads(data)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            raise ApiException(status=status, reason="Invalid JSON response from PUT /vdc/keystore")
-        cert_chain = parsed.get('certificate_chain', {})
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api import (
+            vdc_keystore_api as generated_vdc_keystore_api,
+        )
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.vdc_keystore_service_set_key_certificate_pair_request import (  # noqa: E501
+            VdcKeystoreServiceSetKeyCertificatePairRequest,
+        )
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.vdc_keystore_service_set_key_certificate_pair_request_key_and_certificate import (  # noqa: E501
+            VdcKeystoreServiceSetKeyCertificatePairRequestKeyAndCertificate,
+        )
+
+        api = generated_vdc_keystore_api.VdcKeystoreApi(self.api_client)
+        key_cert = VdcKeystoreServiceSetKeyCertificatePairRequestKeyAndCertificate(
+            private_key=private_key,
+            certificate_chain=certificate_chain,
+        )
+        request_body = VdcKeystoreServiceSetKeyCertificatePairRequest(
+            key_and_certificate=key_cert,
+        )
+        response = api.vdc_keystore_service_set_key_certificate_pair(
+            vdc_keystore_service_set_key_certificate_pair_request=request_body,
+            _request_timeout=self.timeout,
+        )
+        if response is None:
+            return {'chain': ''}
+        result = response.to_dict()
+        cert_chain = result.get('certificate_chain', {})
+        if cert_chain is None:
+            cert_chain = {}
         chain = cert_chain.get('chain', '')
-        return {'chain': chain}
+        return {'chain': chain if chain else ''}
 
 
 class ObjectCertKeystoreApi:
-    """Wrapper around the ObjectScale Object-cert Keystore REST API.
+    """A wrapper class for ObjectScale Object-cert Keystore API calls.
 
     Operates on the ``/object-cert/keystore`` endpoint which is distinct
     from the VDC keystore (``/vdc/keystore``).  Used by the
     ``vdc_certificate_chain`` and ``vdc_certificate_chain_info`` modules.
+
+    Delegates to the generated ``objectscale_client.api.object_certificate_api``
+    client, following the same pattern as :class:`BucketApi`.
     """
 
     def __init__(self, api_client: Any, timeout: int = 30) -> None:
+        """Initialize the ObjectCertKeystoreApi with an authenticated API client."""
         self.api_client = api_client
         self.timeout = timeout
-        self._base_url = api_client.configuration.host
-
-    def _request(
-        self,
-        method: str,
-        path: str,
-        body: Optional[str] = None,
-    ) -> Tuple[int, str]:
-        """Make an HTTP request with retry logic for 429 / 5xx."""
-        url = self._base_url + path
-        headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-        api_key = self.api_client.configuration.api_key
-        if api_key and 'AuthToken' in api_key:
-            headers['X-SDS-AUTH-TOKEN'] = api_key['AuthToken']
-
-        last_exception = None
-        for attempt in range(MAX_RETRIES + 1):
-            try:
-                resp = self.api_client.rest_client.request(
-                    method,
-                    url,
-                    headers=headers,
-                    body=body,
-                    _request_timeout=self.timeout,
-                )
-                if _should_retry(resp.status) and attempt < MAX_RETRIES:
-                    delay = min(RETRY_BASE_DELAY * (2 ** attempt), RETRY_CAP)
-                    time.sleep(delay)
-                    continue
-                return resp.status, resp.data if resp.data else ''
-            except ApiException as exc:
-                status_code = getattr(exc, 'status', 0) or 0
-                if _should_retry(status_code) and attempt < MAX_RETRIES:
-                    delay = min(RETRY_BASE_DELAY * (2 ** attempt), RETRY_CAP)
-                    time.sleep(delay)
-                    last_exception = exc
-                    continue
-                raise
-        if last_exception is not None:
-            raise last_exception
-        raise RuntimeError("Unexpected retry exhaustion")  # pragma: no cover
 
     def get_certificate_chain(self) -> Dict[str, Any]:
         """GET /object-cert/keystore — returns the current object-cert chain.
@@ -289,24 +214,28 @@ class ObjectCertKeystoreApi:
         Raises:
             ApiException on HTTP errors after retries.
         """
-        status, data = self._request('GET', OBJECT_CERT_KEYSTORE_PATH)
-        if status == 404:
-            raise ApiException(status=404, reason="Object-cert keystore not found")
-        if status < 200 or status >= 300:
-            raise ApiException(
-                status=status,
-                reason="GET /object-cert/keystore failed: %s" % data,
-            )
         try:
-            parsed = json.loads(data)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            raise ApiException(
-                status=status,
-                reason="Invalid JSON response from GET /object-cert/keystore",
+            from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api import (
+                object_certificate_api as generated_object_cert_api,
             )
-        cert_chain = parsed.get('certificate_chain', {})
-        chain = cert_chain.get('chain', '')
-        return {'chain': chain}
+            api = generated_object_cert_api.ObjectCertificateApi(self.api_client)
+            response = api.object_certificate_service_get_certificate_chain(
+                _request_timeout=self.timeout,
+            )
+            if response is None:
+                return {'chain': ''}
+            result = response.to_dict()
+            cert_chain = result.get('certificate_chain', {})
+            if cert_chain is None:
+                cert_chain = {}
+            chain = cert_chain.get('chain', '')
+            return {'chain': chain if chain else ''}
+        except NotFoundException:
+            raise ApiException(status=404, reason="Object-cert keystore not found")
+        except ApiException as e:
+            if e.status == 404:
+                raise ApiException(status=404, reason="Object-cert keystore not found")
+            raise
 
     def set_key_certificate_pair(
         self,
@@ -325,31 +254,33 @@ class ObjectCertKeystoreApi:
         Raises:
             ApiException on HTTP errors.
         """
-        payload = json.dumps({
-            'key_and_certificate': {
-                'private_key': private_key,
-                'certificate_chain': certificate_chain,
-            }
-        })
-        status, data = self._request('PUT', OBJECT_CERT_KEYSTORE_PATH, body=payload)
-        if status == 400:
-            raise ApiException(status=400, reason="Invalid PEM input: %s" % data)
-        if status == 403:
-            raise ApiException(status=403, reason="SECURITY_ADMIN role required")
-        if status == 409:
-            raise ApiException(status=409, reason="Concurrent keystore update conflict")
-        if status < 200 or status >= 300:
-            raise ApiException(
-                status=status,
-                reason="PUT /object-cert/keystore failed: %s" % data,
-            )
-        try:
-            parsed = json.loads(data)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            raise ApiException(
-                status=status,
-                reason="Invalid JSON response from PUT /object-cert/keystore",
-            )
-        cert_chain = parsed.get('certificate_chain', {})
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api import (
+            object_certificate_api as generated_object_cert_api,
+        )
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.object_certificate_service_set_key_certificate_pair_request import (  # noqa: E501
+            ObjectCertificateServiceSetKeyCertificatePairRequest,
+        )
+        from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models.object_certificate_service_set_key_certificate_pair_request_key_and_certificate import (  # noqa: E501
+            ObjectCertificateServiceSetKeyCertificatePairRequestKeyAndCertificate,
+        )
+
+        api = generated_object_cert_api.ObjectCertificateApi(self.api_client)
+        key_cert = ObjectCertificateServiceSetKeyCertificatePairRequestKeyAndCertificate(
+            private_key=private_key,
+            certificate_chain=certificate_chain,
+        )
+        request_body = ObjectCertificateServiceSetKeyCertificatePairRequest(
+            key_and_certificate=key_cert,
+        )
+        response = api.object_certificate_service_set_key_certificate_pair(
+            object_certificate_service_set_key_certificate_pair_request=request_body,
+            _request_timeout=self.timeout,
+        )
+        if response is None:
+            return {'chain': ''}
+        result = response.to_dict()
+        cert_chain = result.get('certificate_chain', {})
+        if cert_chain is None:
+            cert_chain = {}
         chain = cert_chain.get('chain', '')
-        return {'chain': chain}
+        return {'chain': chain if chain else ''}
