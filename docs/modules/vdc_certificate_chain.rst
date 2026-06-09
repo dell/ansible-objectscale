@@ -104,7 +104,6 @@ Return Values
 Notes
 =====
 
-- Requires the ``objectscale_client`` Python package.
 - The ``cryptography`` Python package is optional but enables richer certificate metadata.
 - Private key content is never logged or included in diff output.
 - Uses failure codes FC-220 through FC-239 for specific error conditions.

@@ -99,6 +99,5 @@ Return Values
 Notes
 =====
 
-- Requires the ``objectscale_client`` Python package.
 - The ``cryptography`` Python package is optional but enables richer certificate metadata (subject, issuer, serial, expiry).
 - Error codes follow the FC-220 through FC-239 range.
