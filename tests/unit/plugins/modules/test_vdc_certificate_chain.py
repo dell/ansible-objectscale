@@ -84,7 +84,7 @@ def _run_module(params=None, check_mode=False, diff=False):
         except (_AnsibleExitJson, _AnsibleFailJson):
             pass
 
-    with patch(f'{MODULE}.AnsibleModule', return_value=module_mock) as mock_am, \
+    with patch(f'{MODULE}.AnsibleModule', return_value=module_mock), \
          patch(f'{MODULE}.HAS_OBJECTSCALE_CLIENT', True), \
          patch(f'{MODULE}.utils.get_objectscale_connection', return_value=api_client_mock), \
          patch(f'{MODULE}.ObjectCertKeystoreApi', return_value=keystore_api_mock):

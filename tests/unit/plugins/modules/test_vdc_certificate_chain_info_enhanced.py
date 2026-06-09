@@ -134,7 +134,7 @@ class TestVdcCertificateChainInfoInitialization:
         mock_am.return_value = module_mock
 
         with patch(f'{MODULE}.ObjectCertKeystoreApi') as mock_api_cls:
-            obj = VdcCertificateChainInfo()
+            VdcCertificateChainInfo()
             mock_api_cls.assert_called_once()
 
 

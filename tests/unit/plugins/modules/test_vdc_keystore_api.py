@@ -2,21 +2,33 @@
 # Copyright (c) 2026 Dell Inc., or its subsidiaries. All rights reserved.
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+"""Unit tests for the vdc_keystore_api wrapper module.
+
+Tests cover:
+  - PEM utility helpers (normalize, fingerprint, validate, count, parse)
+  - VdcKeystoreApi wrapper (GET/PUT via generated client)
+  - ObjectCertKeystoreApi wrapper (GET/PUT via generated client)
+"""
+
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-import json
+import pytest
 from unittest.mock import MagicMock, patch
 
 from ansible_collections.dellemc.objectscale.plugins.module_utils.vdc_keystore_api import (
     VdcKeystoreApi,
+    ObjectCertKeystoreApi,
     fingerprint_chain,
     validate_pem_certificate,
     validate_pem_private_key,
     count_certificates,
     parse_certificate_metadata,
     _normalize_pem,
-    _should_retry,
+)
+from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.exceptions import (
+    ApiException,
+    NotFoundException,
 )
 
 SAMPLE_CHAIN_PEM = (
@@ -45,6 +57,9 @@ MULTI_CHAIN_PEM = (
 )
 
 
+# ---------------------------------------------------------------------------
+# PEM utility helpers
+# ---------------------------------------------------------------------------
 class TestNormalizePem:
 
     def test_strips_whitespace(self):
@@ -56,6 +71,10 @@ class TestNormalizePem:
         fp1 = fingerprint_chain(SAMPLE_CHAIN_PEM)
         fp2 = fingerprint_chain(SAMPLE_CHAIN_PEM + "  \n\n")
         assert fp1 == fp2
+
+    def test_ends_with_newline(self):
+        result = _normalize_pem(SAMPLE_CHAIN_PEM)
+        assert result.endswith('\n')
 
 
 class TestFingerprintChain:
@@ -136,9 +155,6 @@ class TestParseCertificateMetadata:
 
     def test_no_cryptography(self):
         """Without cryptography, only basic fields are returned."""
-        import importlib
-        import sys
-        # Temporarily block cryptography import to test fallback
         real_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__
 
         def mock_import(name, *args, **kwargs):
@@ -152,179 +168,341 @@ class TestParseCertificateMetadata:
         assert meta['chain_length'] == 1
 
 
-class TestShouldRetry:
-
-    def test_429_retryable(self):
-        assert _should_retry(429) is True
-
-    def test_500_retryable(self):
-        assert _should_retry(500) is True
-
-    def test_503_retryable(self):
-        assert _should_retry(503) is True
-
-    def test_400_not_retryable(self):
-        assert _should_retry(400) is False
-
-    def test_403_not_retryable(self):
-        assert _should_retry(403) is False
-
-    def test_200_not_retryable(self):
-        assert _should_retry(200) is False
+# ---------------------------------------------------------------------------
+# Helper to build a mock generated-client response
+# ---------------------------------------------------------------------------
+def _mock_get_response(chain_pem):
+    """Build a mock response matching VdcKeystoreServiceGetCertificateChainResponse.to_dict()."""
+    resp = MagicMock()
+    resp.to_dict.return_value = {
+        'certificate_chain': {'chain': chain_pem},
+    }
+    return resp
 
 
-def _make_api(status=200, data='{}'):
-    """Create a VdcKeystoreApi with mocked rest client."""
-    api_client_mock = MagicMock()
-    api_client_mock.configuration.host = 'https://10.0.0.1:4443'
-    api_client_mock.configuration.api_key = {'AuthToken': 'test-token'}
-
-    resp_mock = MagicMock()
-    resp_mock.status = status
-    resp_mock.data = data
-    api_client_mock.rest_client.request.return_value = resp_mock
-
-    api = VdcKeystoreApi(api_client_mock, timeout=30)
-    return api, api_client_mock
+def _mock_get_response_none():
+    """Simulate a None response from the generated client."""
+    return None
 
 
+# ---------------------------------------------------------------------------
+# VdcKeystoreApi wrapper tests
+# ---------------------------------------------------------------------------
 class TestVdcKeystoreApiGet:
 
-    def test_get_returns_chain(self):
-        data = json.dumps({'certificate_chain': {'chain': SAMPLE_CHAIN_PEM}})
-        api, unused_client = _make_api(200, data)
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_get_returns_chain(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_get_certificate_chain.return_value = _mock_get_response(SAMPLE_CHAIN_PEM)
 
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
         result = api.get_certificate_chain()
 
         assert result['chain'] == SAMPLE_CHAIN_PEM
+        mock_gen.vdc_keystore_service_get_certificate_chain.assert_called_once()
 
-    def test_get_404_raises(self):
-        api, unused_client = _make_api(404, '')
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_get_returns_empty_on_none_response(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_get_certificate_chain.return_value = None
 
-        try:
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
+        result = api.get_certificate_chain()
+
+        assert result == {'chain': ''}
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_get_returns_empty_on_none_chain(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        resp = MagicMock()
+        resp.to_dict.return_value = {'certificate_chain': None}
+        mock_gen.vdc_keystore_service_get_certificate_chain.return_value = resp
+
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
+        result = api.get_certificate_chain()
+
+        assert result == {'chain': ''}
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_get_404_raises(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_get_certificate_chain.side_effect = NotFoundException(status=404)
+
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
+
+        with pytest.raises(ApiException) as exc_info:
             api.get_certificate_chain()
-            assert False, "Should have raised"
-        except Exception as e:
-            assert getattr(e, 'status', None) == 404
+        assert exc_info.value.status == 404
 
-    def test_get_500_raises(self):
-        api, client = _make_api()
-        resp_500 = MagicMock(status=500, data='error')
-        resp_200 = MagicMock(status=200, data=json.dumps({'certificate_chain': {'chain': 'pem'}}))
-        # All attempts return 500
-        client.rest_client.request.return_value = resp_500
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_get_api_exception_404_raises(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_get_certificate_chain.side_effect = ApiException(status=404)
 
-        try:
-            with patch('ansible_collections.dellemc.objectscale.plugins.module_utils.vdc_keystore_api.time.sleep'):
-                api.get_certificate_chain()
-            assert False, "Should have raised"
-        except Exception:
-            pass
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
 
-    def test_get_invalid_json(self):
-        api, unused_client = _make_api(200, 'not-json')
-
-        try:
+        with pytest.raises(ApiException) as exc_info:
             api.get_certificate_chain()
-            assert False, "Should have raised"
-        except Exception as e:
-            assert 'Invalid JSON' in str(e)
+        assert exc_info.value.status == 404
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_get_api_exception_500_propagates(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_get_certificate_chain.side_effect = ApiException(status=500)
+
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
+
+        with pytest.raises(ApiException) as exc_info:
+            api.get_certificate_chain()
+        assert exc_info.value.status == 500
 
 
 class TestVdcKeystoreApiPut:
 
-    def test_put_calls_api(self):
-        data = json.dumps({'certificate_chain': {'chain': SAMPLE_CHAIN_PEM}})
-        api, client = _make_api(200, data)
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_put_calls_api(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_set_key_certificate_pair.return_value = _mock_get_response(SAMPLE_CHAIN_PEM)
 
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
         result = api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
 
         assert result['chain'] == SAMPLE_CHAIN_PEM
-        call_args = client.rest_client.request.call_args
-        assert call_args[0][0] == 'PUT'
-        body = json.loads(call_args[1].get('body', call_args[0][3] if len(call_args[0]) > 3 else '{}'))
-        assert 'key_and_certificate' in body
+        mock_gen.vdc_keystore_service_set_key_certificate_pair.assert_called_once()
 
-    def test_put_400_raises(self):
-        api, unused_client = _make_api(400, 'bad input')
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_put_returns_empty_on_none(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_set_key_certificate_pair.return_value = None
 
-        try:
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
+        result = api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
+
+        assert result == {'chain': ''}
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_put_400_raises(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_set_key_certificate_pair.side_effect = ApiException(status=400)
+
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
+
+        with pytest.raises(ApiException) as exc_info:
             api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
-            assert False, "Should have raised"
-        except Exception as e:
-            assert getattr(e, 'status', None) == 400
+        assert exc_info.value.status == 400
 
-    def test_put_403_raises(self):
-        api, unused_client = _make_api(403, 'forbidden')
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_put_403_raises(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_set_key_certificate_pair.side_effect = ApiException(status=403)
 
-        try:
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
+
+        with pytest.raises(ApiException) as exc_info:
             api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
-            assert False, "Should have raised"
-        except Exception as e:
-            assert getattr(e, 'status', None) == 403
+        assert exc_info.value.status == 403
 
-    def test_put_409_raises(self):
-        api, unused_client = _make_api(409, 'conflict')
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_put_409_raises(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_set_key_certificate_pair.side_effect = ApiException(status=409)
 
-        try:
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
+
+        with pytest.raises(ApiException) as exc_info:
             api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
-            assert False, "Should have raised"
-        except Exception as e:
-            assert getattr(e, 'status', None) == 409
+        assert exc_info.value.status == 409
 
-    def test_put_invalid_json_response(self):
-        api, unused_client = _make_api(200, 'not-json')
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.vdc_keystore_api.VdcKeystoreApi'
+    )
+    def test_put_request_body_contents(self, mock_gen_cls):
+        """Verify the request model is built with correct key and cert."""
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.vdc_keystore_service_set_key_certificate_pair.return_value = _mock_get_response(SAMPLE_CHAIN_PEM)
 
-        try:
+        api = VdcKeystoreApi(MagicMock(), timeout=30)
+        api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
+
+        call_kwargs = mock_gen.vdc_keystore_service_set_key_certificate_pair.call_args
+        request_body = call_kwargs.kwargs.get(
+            'vdc_keystore_service_set_key_certificate_pair_request',
+            call_kwargs[1].get('vdc_keystore_service_set_key_certificate_pair_request'),
+        )
+        assert request_body is not None
+        assert request_body.key_and_certificate.private_key == SAMPLE_KEY_PEM
+        assert request_body.key_and_certificate.certificate_chain == SAMPLE_CHAIN_PEM
+
+
+# ---------------------------------------------------------------------------
+# ObjectCertKeystoreApi wrapper tests
+# ---------------------------------------------------------------------------
+class TestObjectCertKeystoreApiGet:
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.object_certificate_api.ObjectCertificateApi'
+    )
+    def test_get_returns_chain(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.object_certificate_service_get_certificate_chain.return_value = _mock_get_response(SAMPLE_CHAIN_PEM)
+
+        api = ObjectCertKeystoreApi(MagicMock(), timeout=30)
+        result = api.get_certificate_chain()
+
+        assert result['chain'] == SAMPLE_CHAIN_PEM
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.object_certificate_api.ObjectCertificateApi'
+    )
+    def test_get_returns_empty_on_none_response(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.object_certificate_service_get_certificate_chain.return_value = None
+
+        api = ObjectCertKeystoreApi(MagicMock(), timeout=30)
+        result = api.get_certificate_chain()
+
+        assert result == {'chain': ''}
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.object_certificate_api.ObjectCertificateApi'
+    )
+    def test_get_returns_empty_on_none_chain(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        resp = MagicMock()
+        resp.to_dict.return_value = {'certificate_chain': None}
+        mock_gen.object_certificate_service_get_certificate_chain.return_value = resp
+
+        api = ObjectCertKeystoreApi(MagicMock(), timeout=30)
+        result = api.get_certificate_chain()
+
+        assert result == {'chain': ''}
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.object_certificate_api.ObjectCertificateApi'
+    )
+    def test_get_404_not_found_raises(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.object_certificate_service_get_certificate_chain.side_effect = NotFoundException(status=404)
+
+        api = ObjectCertKeystoreApi(MagicMock(), timeout=30)
+
+        with pytest.raises(ApiException) as exc_info:
+            api.get_certificate_chain()
+        assert exc_info.value.status == 404
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.object_certificate_api.ObjectCertificateApi'
+    )
+    def test_get_api_exception_500_propagates(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.object_certificate_service_get_certificate_chain.side_effect = ApiException(status=500)
+
+        api = ObjectCertKeystoreApi(MagicMock(), timeout=30)
+
+        with pytest.raises(ApiException) as exc_info:
+            api.get_certificate_chain()
+        assert exc_info.value.status == 500
+
+
+class TestObjectCertKeystoreApiPut:
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.object_certificate_api.ObjectCertificateApi'
+    )
+    def test_put_calls_api(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.object_certificate_service_set_key_certificate_pair.return_value = _mock_get_response(SAMPLE_CHAIN_PEM)
+
+        api = ObjectCertKeystoreApi(MagicMock(), timeout=30)
+        result = api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
+
+        assert result['chain'] == SAMPLE_CHAIN_PEM
+        mock_gen.object_certificate_service_set_key_certificate_pair.assert_called_once()
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.object_certificate_api.ObjectCertificateApi'
+    )
+    def test_put_returns_empty_on_none(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.object_certificate_service_set_key_certificate_pair.return_value = None
+
+        api = ObjectCertKeystoreApi(MagicMock(), timeout=30)
+        result = api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
+
+        assert result == {'chain': ''}
+
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.object_certificate_api.ObjectCertificateApi'
+    )
+    def test_put_400_raises(self, mock_gen_cls):
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.object_certificate_service_set_key_certificate_pair.side_effect = ApiException(status=400)
+
+        api = ObjectCertKeystoreApi(MagicMock(), timeout=30)
+
+        with pytest.raises(ApiException) as exc_info:
             api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
-            assert False, "Should have raised"
-        except Exception as e:
-            assert 'Invalid JSON' in str(e)
+        assert exc_info.value.status == 400
 
+    @patch(
+        'ansible_collections.dellemc.objectscale.plugins.module_utils'
+        '.objectscale_client.api.object_certificate_api.ObjectCertificateApi'
+    )
+    def test_put_request_body_contents(self, mock_gen_cls):
+        """Verify the request model is built with correct key and cert."""
+        mock_gen = mock_gen_cls.return_value
+        mock_gen.object_certificate_service_set_key_certificate_pair.return_value = _mock_get_response(SAMPLE_CHAIN_PEM)
 
-class TestVdcKeystoreApiRetry:
+        api = ObjectCertKeystoreApi(MagicMock(), timeout=30)
+        api.set_key_certificate_pair(SAMPLE_KEY_PEM, SAMPLE_CHAIN_PEM)
 
-    def test_retries_on_429(self):
-        api, client = _make_api()
-        resp_429 = MagicMock(status=429, data='rate limited')
-        resp_200 = MagicMock(status=200, data=json.dumps({'certificate_chain': {'chain': 'pem'}}))
-        client.rest_client.request.side_effect = [resp_429, resp_200]
-
-        with patch('ansible_collections.dellemc.objectscale.plugins.module_utils.vdc_keystore_api.time.sleep') as mock_sleep:
-            result = api.get_certificate_chain()
-
-        assert result['chain'] == 'pem'
-        mock_sleep.assert_called_once()
-
-    def test_retries_on_500_then_success(self):
-        api, client = _make_api()
-        resp_500 = MagicMock(status=500, data='error')
-        resp_200 = MagicMock(status=200, data=json.dumps({'certificate_chain': {'chain': 'ok'}}))
-        client.rest_client.request.side_effect = [resp_500, resp_500, resp_200]
-
-        with patch('ansible_collections.dellemc.objectscale.plugins.module_utils.vdc_keystore_api.time.sleep'):
-            result = api.get_certificate_chain()
-
-        assert result['chain'] == 'ok'
-
-    def test_retry_exhausted_raises(self):
-        api, client = _make_api()
-        resp_500 = MagicMock(status=500, data='error')
-        client.rest_client.request.return_value = resp_500
-
-        with patch('ansible_collections.dellemc.objectscale.plugins.module_utils.vdc_keystore_api.time.sleep'):
-            try:
-                api.get_certificate_chain()
-                assert False, "Should have raised"
-            except Exception:
-                pass
-
-    def test_auth_token_in_headers(self):
-        data = json.dumps({'certificate_chain': {'chain': 'pem'}})
-        api, client = _make_api(200, data)
-
-        api.get_certificate_chain()
-
-        call_args = client.rest_client.request.call_args
-        headers = call_args[1].get('headers', call_args[0][2] if len(call_args[0]) > 2 else {})
-        assert headers.get('X-SDS-AUTH-TOKEN') == 'test-token'
+        call_kwargs = mock_gen.object_certificate_service_set_key_certificate_pair.call_args
+        request_body = call_kwargs.kwargs.get(
+            'object_certificate_service_set_key_certificate_pair_request',
+            call_kwargs[1].get('object_certificate_service_set_key_certificate_pair_request'),
+        )
+        assert request_body is not None
+        assert request_body.key_and_certificate.private_key == SAMPLE_KEY_PEM
+        assert request_body.key_and_certificate.certificate_chain == SAMPLE_CHAIN_PEM

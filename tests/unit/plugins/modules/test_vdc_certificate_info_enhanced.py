@@ -386,7 +386,6 @@ class TestImportFailureHandling:
         """Test when objectscale_api_client import fails."""
         # This tests lines 155-156 (exception handler)
         import sys
-        import importlib
 
         # Temporarily hide the module
         original_modules = sys.modules.copy()
