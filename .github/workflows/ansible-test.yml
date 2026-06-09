@@ -6,7 +6,7 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    - cron: '0 3 * * *'
+    - cron: '0 2 * * *'
 
 jobs:
   build:
@@ -56,6 +56,8 @@ jobs:
           - stable-2.19
           - devel
         exclude:
+          - ansible: stable-2.16
+            python: '3.13'
           - ansible: stable-2.17
             python: '3.13'
           - ansible: devel
@@ -74,27 +76,41 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-
   ###
   # Sanity tests (REQUIRED)
   #
   # https://docs.ansible.com/ansible/latest/dev_guide/testing_sanity.html
 
   sanity:
-    needs: [build]
+    name: Sanity (Ⓐ${{ matrix.ansible }} with ${{ matrix.python }} python)
     runs-on: ubuntu-latest
-    steps:
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.13
+    needs: [build]
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13']
+        ansible:
+          - stable-2.17
+          - stable-2.18
+          - stable-2.19
+          - devel
+        exclude:
+          - ansible: stable-2.17
+            python: '3.13'
+          - ansible: devel
+            python: '3.11'
+          - ansible: devel
+            python: '3.12'
 
-      - name: Perform sanity testing with ansible-test
+    steps:
+      - name: Perform sanity testing
         uses: ansible-community/ansible-test-gh-action@release/v1.16
         with:
+          ansible-core-version: ${{ matrix.ansible }}
+          origin-python-version: ${{ matrix.python }}
           testing-type: sanity
-          ansible-core-version: stable-2.19
-          origin-python-version: '3.13'
+          pull-request-change-detection: true
+          coverage: never
 
   ansible-lint:
     needs: [build]
