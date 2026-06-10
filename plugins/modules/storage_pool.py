@@ -48,7 +48,6 @@ options:
     - Password for authenticating with the ObjectScale management endpoint.
     type: str
     required: true
-    no_log: true
 
   validate_certs:
     description:
