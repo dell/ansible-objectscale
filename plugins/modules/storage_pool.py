@@ -85,19 +85,21 @@ options:
 
   warning_alert_at:
     description:
-    - Threshold percent at which a warning alert is raised.
+    - Threshold percent of remaining capacity at which a warning alert is raised.
     - Valid values are from -1 to 100. Value of -1 means do not alert.
+    - Must be greater than C(error_alert_at).
     type: int
 
   error_alert_at:
     description:
-    - Threshold percent at which an error alert is raised.
+    - Threshold percent of remaining capacity at which an error alert is raised.
     - Valid values are from -1 to 100. Value of -1 means do not alert.
+    - Must be greater than C(critical_alert_at).
     type: int
 
   critical_alert_at:
     description:
-    - Threshold percent at which a critical alert is raised.
+    - Threshold percent of remaining capacity at which a critical alert is raised.
     - Valid values are from -1 to 100. Value of -1 means do not alert.
     type: int
 
@@ -133,9 +135,9 @@ EXAMPLES = r'''
     objectscale_password: "{{ objectscale_password }}"
     validate_certs: false
     storage_pool_name: "sp_default"
-    warning_alert_at: 70
-    error_alert_at: 85
-    critical_alert_at: 95
+    warning_alert_at: 80
+    error_alert_at: 60
+    critical_alert_at: 20
     state: present
 
 - name: Enable cold storage on a pool
@@ -432,17 +434,17 @@ class StoragePool(object):
                     msg="%s must be between -1 and 100, got %d." % (name, value),
                 )
 
-        if warning is not None and error is not None and warning >= error:
+        if warning is not None and error is not None and warning <= error:
             self.module.exit_json(
                 failed=True,
-                msg="warning_alert_at (%d) must be less than error_alert_at (%d)."
+                msg="warning_alert_at (%d) must be greater than error_alert_at (%d)."
                     % (warning, error),
             )
 
-        if error is not None and critical is not None and error >= critical:
+        if error is not None and critical is not None and error <= critical:
             self.module.exit_json(
                 failed=True,
-                msg="error_alert_at (%d) must be less than critical_alert_at (%d)."
+                msg="error_alert_at (%d) must be greater than critical_alert_at (%d)."
                     % (error, critical),
             )
 

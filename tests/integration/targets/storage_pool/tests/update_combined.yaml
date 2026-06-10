@@ -29,9 +29,9 @@
       dellemc.objectscale.storage_pool:
         storage_pool_name: "{{ test_pool_name }}"
         description: "FT-combined-update"
-        warning_alert_at: 60
-        error_alert_at: 80
-        critical_alert_at: 90
+        warning_alert_at: 85
+        error_alert_at: 55
+        critical_alert_at: 15
         state: present
       check_mode: true
       register: tc01_check
@@ -47,9 +47,9 @@
       dellemc.objectscale.storage_pool:
         storage_pool_name: "{{ test_pool_name }}"
         description: "FT-combined-update"
-        warning_alert_at: 60
-        error_alert_at: 80
-        critical_alert_at: 90
+        warning_alert_at: 85
+        error_alert_at: 55
+        critical_alert_at: 15
         state: present
       register: tc01_apply
 
@@ -70,9 +70,9 @@
       ansible.builtin.assert:
         that:
           - tc01_info.storage_pools[0].description == "FT-combined-update"
-          - tc01_info.storage_pools[0].warningAlertAt == 60
-          - tc01_info.storage_pools[0].errorAlertAt == 80
-          - tc01_info.storage_pools[0].criticalAlertAt == 90
+          - tc01_info.storage_pools[0].warningAlertAt == 85
+          - tc01_info.storage_pools[0].errorAlertAt == 55
+          - tc01_info.storage_pools[0].criticalAlertAt == 15
         fail_msg: "TC-01 Phase 2 FAILED: not all fields updated"
         success_msg: "TC-01 Phase 2 all fields verified"
 
@@ -80,9 +80,9 @@
       dellemc.objectscale.storage_pool:
         storage_pool_name: "{{ test_pool_name }}"
         description: "FT-combined-update"
-        warning_alert_at: 60
-        error_alert_at: 80
-        critical_alert_at: 90
+        warning_alert_at: 85
+        error_alert_at: 55
+        critical_alert_at: 15
         state: present
       check_mode: true
       register: tc01_check_idem
@@ -98,9 +98,9 @@
       dellemc.objectscale.storage_pool:
         storage_pool_name: "{{ test_pool_name }}"
         description: "FT-combined-update"
-        warning_alert_at: 60
-        error_alert_at: 80
-        critical_alert_at: 90
+        warning_alert_at: 85
+        error_alert_at: 55
+        critical_alert_at: 15
         state: present
       register: tc01_idem
 

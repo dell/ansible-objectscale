@@ -29,9 +29,9 @@
     - name: "TC-01 Phase 1 — Update alerts (check mode)"
       dellemc.objectscale.storage_pool:
         storage_pool_name: "{{ test_pool_name }}"
-        warning_alert_at: 70
-        error_alert_at: 85
-        critical_alert_at: 95
+        warning_alert_at: 80
+        error_alert_at: 60
+        critical_alert_at: 20
         state: present
       check_mode: true
       register: tc01_check
@@ -46,9 +46,9 @@
     - name: "TC-01 Phase 2 — Update alerts (apply)"
       dellemc.objectscale.storage_pool:
         storage_pool_name: "{{ test_pool_name }}"
-        warning_alert_at: 70
-        error_alert_at: 85
-        critical_alert_at: 95
+        warning_alert_at: 80
+        error_alert_at: 60
+        critical_alert_at: 20
         state: present
       register: tc01_apply
 
@@ -68,18 +68,18 @@
     - name: "TC-01 Phase 2 — Assert thresholds updated"
       ansible.builtin.assert:
         that:
-          - tc01_info.storage_pools[0].warningAlertAt == 70
-          - tc01_info.storage_pools[0].errorAlertAt == 85
-          - tc01_info.storage_pools[0].criticalAlertAt == 95
+          - tc01_info.storage_pools[0].warningAlertAt == 80
+          - tc01_info.storage_pools[0].errorAlertAt == 60
+          - tc01_info.storage_pools[0].criticalAlertAt == 20
         fail_msg: "TC-01 Phase 2 FAILED: thresholds not updated"
         success_msg: "TC-01 Phase 2 verified"
 
     - name: "TC-01 Phase 3 — Re-run (check mode, no changes expected)"
       dellemc.objectscale.storage_pool:
         storage_pool_name: "{{ test_pool_name }}"
-        warning_alert_at: 70
-        error_alert_at: 85
-        critical_alert_at: 95
+        warning_alert_at: 80
+        error_alert_at: 60
+        critical_alert_at: 20
         state: present
       check_mode: true
       register: tc01_check_idem
@@ -94,9 +94,9 @@
     - name: "TC-01 Phase 4 — Re-run (idempotence)"
       dellemc.objectscale.storage_pool:
         storage_pool_name: "{{ test_pool_name }}"
-        warning_alert_at: 70
-        error_alert_at: 85
-        critical_alert_at: 95
+        warning_alert_at: 80
+        error_alert_at: 60
+        critical_alert_at: 20
         state: present
       register: tc01_idem
 
@@ -110,10 +110,10 @@
     # ==================================================================
     # TC-02: Invalid alert thresholds (validation)
     # ==================================================================
-    - name: "TC-02 — Warning >= Error should fail"
+    - name: "TC-02 — Warning <= Error should fail"
       dellemc.objectscale.storage_pool:
         storage_pool_name: "{{ test_pool_name }}"
-        warning_alert_at: 90
+        warning_alert_at: 50
         error_alert_at: 85
         state: present
       register: tc02_invalid
@@ -123,7 +123,7 @@
       ansible.builtin.assert:
         that:
           - tc02_invalid.failed == true
-          - "'must be less than' in tc02_invalid.msg"
+          - "'must be greater than' in tc02_invalid.msg"
         fail_msg: "TC-02 FAILED: invalid thresholds should be rejected"
         success_msg: "TC-02 PASSED — validation correctly rejected"
 

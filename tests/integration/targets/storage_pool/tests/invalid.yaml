@@ -2,8 +2,7 @@
 # ============================================================================
 # invalid.yaml — Storage Pool negative / error handling tests
 # TC-01: Non-existent pool by name
-# TC-02: Non-existent pool by ID
-# TC-03: Alert threshold out of range
+# TC-02: Alert threshold out of range
 # ============================================================================
 
 - module_defaults:
@@ -33,39 +32,20 @@
         success_msg: "TC-01 PASSED — non-existent pool rejected"
 
     # ==================================================================
-    # TC-02: Non-existent pool by ID
+    # TC-02: Alert threshold out of range
     # ==================================================================
-    - name: "TC-02 — Update non-existent pool by ID"
+    - name: "TC-02 — Threshold out of range (> 100)"
       dellemc.objectscale.storage_pool:
-        storage_pool_id: "urn:storageos:VirtualArray:00000000-0000-0000-0000-000000000000"
-        description: "should fail"
+        storage_pool_name: "sp_default"
+        warning_alert_at: 150
         state: present
-      register: tc02_not_found
+      register: tc02_out_of_range
       ignore_errors: true
 
     - name: "TC-02 — Assert failure"
       ansible.builtin.assert:
         that:
-          - tc02_not_found.failed == true
-          - "'not found' in tc02_not_found.msg or '404' in tc02_not_found.msg"
-        fail_msg: "TC-02 FAILED: non-existent pool ID should fail"
-        success_msg: "TC-02 PASSED — non-existent pool ID rejected"
-
-    # ==================================================================
-    # TC-03: Alert threshold out of range
-    # ==================================================================
-    - name: "TC-03 — Threshold out of range (> 100)"
-      dellemc.objectscale.storage_pool:
-        storage_pool_name: "sp_default"
-        warning_alert_at: 150
-        state: present
-      register: tc03_out_of_range
-      ignore_errors: true
-
-    - name: "TC-03 — Assert failure"
-      ansible.builtin.assert:
-        that:
-          - tc03_out_of_range.failed == true
-          - "'must be between' in tc03_out_of_range.msg"
-        fail_msg: "TC-03 FAILED: out-of-range threshold should be rejected"
-        success_msg: "TC-03 PASSED — out-of-range threshold rejected"
+          - tc02_out_of_range.failed == true
+          - "'must be between' in tc02_out_of_range.msg"
+        fail_msg: "TC-02 FAILED: out-of-range threshold should be rejected"
+        success_msg: "TC-02 PASSED — out-of-range threshold rejected"

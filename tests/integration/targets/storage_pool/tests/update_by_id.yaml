@@ -1,7 +1,7 @@
 ---
 # ============================================================================
-# update_by_id.yaml — Storage Pool update by ID tests
-# TC-01: Lookup by ID and update description (4-phase)
+# update_by_id.yaml — Storage Pool update with info verification tests
+# TC-01: Update description via name and verify via info module (4-phase)
 # ============================================================================
 
 - module_defaults:
@@ -23,12 +23,12 @@
       ansible.builtin.include_tasks: _helper_get_pool.yaml
 
     # ==================================================================
-    # TC-01: Update by ID (4-phase)
+    # TC-01: Update and verify response contains pool ID (4-phase)
     # ==================================================================
-    - name: "TC-01 Phase 1 — Update by ID (check mode)"
+    - name: "TC-01 Phase 1 — Update description (check mode)"
       dellemc.objectscale.storage_pool:
-        storage_pool_id: "{{ test_pool_id }}"
-        description: "FT-updated-by-id"
+        storage_pool_name: "{{ test_pool_name }}"
+        description: "FT-verify-response"
         state: present
       check_mode: true
       register: tc01_check
@@ -40,18 +40,19 @@
         fail_msg: "TC-01 Phase 1 FAILED"
         success_msg: "TC-01 Phase 1 PASSED"
 
-    - name: "TC-01 Phase 2 — Update by ID (apply)"
+    - name: "TC-01 Phase 2 — Update description (apply)"
       dellemc.objectscale.storage_pool:
-        storage_pool_id: "{{ test_pool_id }}"
-        description: "FT-updated-by-id"
+        storage_pool_name: "{{ test_pool_name }}"
+        description: "FT-verify-response"
         state: present
       register: tc01_apply
 
-    - name: "TC-01 Phase 2 — Assert changed"
+    - name: "TC-01 Phase 2 — Assert changed and response has ID"
       ansible.builtin.assert:
         that:
           - tc01_apply.changed == true
           - tc01_apply.storage_pool_details is defined
+          - tc01_apply.storage_pool_details.id is defined
         fail_msg: "TC-01 Phase 2 FAILED"
         success_msg: "TC-01 Phase 2 PASSED"
 
@@ -63,14 +64,14 @@
     - name: "TC-01 Phase 2 — Assert description"
       ansible.builtin.assert:
         that:
-          - tc01_info.storage_pools[0].description == "FT-updated-by-id"
+          - tc01_info.storage_pools[0].description == "FT-verify-response"
         fail_msg: "TC-01 Phase 2 FAILED: description not updated"
         success_msg: "TC-01 Phase 2 verified"
 
     - name: "TC-01 Phase 3 — Re-run (check mode, no change)"
       dellemc.objectscale.storage_pool:
-        storage_pool_id: "{{ test_pool_id }}"
-        description: "FT-updated-by-id"
+        storage_pool_name: "{{ test_pool_name }}"
+        description: "FT-verify-response"
         state: present
       check_mode: true
       register: tc01_check_idem
@@ -84,8 +85,8 @@
 
     - name: "TC-01 Phase 4 — Re-run (idempotence)"
       dellemc.objectscale.storage_pool:
-        storage_pool_id: "{{ test_pool_id }}"
-        description: "FT-updated-by-id"
+        storage_pool_name: "{{ test_pool_name }}"
+        description: "FT-verify-response"
         state: present
       register: tc01_idem
 

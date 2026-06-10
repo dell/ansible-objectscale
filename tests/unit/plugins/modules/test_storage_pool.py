@@ -313,29 +313,29 @@ class TestValidation:
         assert kwargs['failed'] is True
         assert 'between -1 and 100' in kwargs['msg']
 
-    def test_warning_must_be_less_than_error(self):
+    def test_warning_must_be_greater_than_error(self):
         obj = make_obj()
-        obj.module.params['warning_alert_at'] = 90
+        obj.module.params['warning_alert_at'] = 50
         obj.module.params['error_alert_at'] = 85
         obj._validate_alert_thresholds()
         kwargs = obj.module.exit_json.call_args[1]
         assert kwargs['failed'] is True
-        assert 'less than error_alert_at' in kwargs['msg']
+        assert 'greater than error_alert_at' in kwargs['msg']
 
-    def test_error_must_be_less_than_critical(self):
+    def test_error_must_be_greater_than_critical(self):
         obj = make_obj()
-        obj.module.params['error_alert_at'] = 95
-        obj.module.params['critical_alert_at'] = 90
+        obj.module.params['error_alert_at'] = 20
+        obj.module.params['critical_alert_at'] = 50
         obj._validate_alert_thresholds()
         kwargs = obj.module.exit_json.call_args[1]
         assert kwargs['failed'] is True
-        assert 'less than critical_alert_at' in kwargs['msg']
+        assert 'greater than critical_alert_at' in kwargs['msg']
 
     def test_valid_alert_thresholds(self):
         obj = make_obj()
-        obj.module.params['warning_alert_at'] = 70
-        obj.module.params['error_alert_at'] = 85
-        obj.module.params['critical_alert_at'] = 95
+        obj.module.params['warning_alert_at'] = 80
+        obj.module.params['error_alert_at'] = 60
+        obj.module.params['critical_alert_at'] = 20
         obj._validate_alert_thresholds()
         # Should not call exit_json (no failure)
         obj.module.exit_json.assert_not_called()
