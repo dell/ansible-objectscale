@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 from ansible_collections.dellemc.objectscale.plugins.modules.storage_pool import StoragePool
 from ansible_collections.dellemc.objectscale.tests.unit.plugins.modules.mock_storage_pool_api import (
     SAMPLE_POOL_1,
-    SAMPLE_POOL_UPDATED,
     make_list_response,
     make_update_response,
     make_api_error,

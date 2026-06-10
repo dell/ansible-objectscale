@@ -206,11 +206,11 @@ storage_pool_details:
         }
 '''
 
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING  # noqa: E402
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.dellemc.objectscale.plugins.module_utils import utils
-from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import HAS_OBJECTSCALE_CLIENT
+from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+from ansible_collections.dellemc.objectscale.plugins.module_utils import utils  # noqa: E402
+from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import HAS_OBJECTSCALE_CLIENT  # noqa: E402
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.\
@@ -235,10 +235,10 @@ if TYPE_CHECKING:
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.\
-        objectscale_client.api.object_varray_api import ObjectVarrayApi
+        objectscale_client.api.object_varray_api import ObjectVarrayApi  # noqa: F811
     from ansible_collections.dellemc.objectscale.plugins.module_utils.\
         objectscale_client.models.\
-        object_varray_service_update_virtual_array_request import (
+        object_varray_service_update_virtual_array_request import (  # noqa: F811
             ObjectVarrayServiceUpdateVirtualArrayRequest,
         )
 except Exception:
