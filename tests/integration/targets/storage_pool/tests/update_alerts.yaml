@@ -1,0 +1,132 @@
+---
+# ============================================================================
+# update_alerts.yaml — Storage Pool alert threshold tests
+# TC-01: Update alert thresholds (4-phase)
+# TC-02: Invalid alert thresholds
+# ============================================================================
+
+- module_defaults:
+    dellemc.objectscale.storage_pool:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+    dellemc.objectscale.storage_pool_info:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+  block:
+    # Discover test pool
+    - name: "Setup — Discover pool"
+      ansible.builtin.include_tasks: _helper_get_pool.yaml
+
+    # ==================================================================
+    # TC-01: Update alert thresholds (4-phase)
+    # ==================================================================
+    - name: "TC-01 Phase 1 — Update alerts (check mode)"
+      dellemc.objectscale.storage_pool:
+        storage_pool_name: "{{ test_pool_name }}"
+        warning_alert_at: 70
+        error_alert_at: 85
+        critical_alert_at: 95
+        state: present
+      check_mode: true
+      register: tc01_check
+
+    - name: "TC-01 Phase 1 — Assert check mode reports changed"
+      ansible.builtin.assert:
+        that:
+          - tc01_check.changed == true
+        fail_msg: "TC-01 Phase 1 FAILED: check mode should report changed"
+        success_msg: "TC-01 Phase 1 PASSED"
+
+    - name: "TC-01 Phase 2 — Update alerts (apply)"
+      dellemc.objectscale.storage_pool:
+        storage_pool_name: "{{ test_pool_name }}"
+        warning_alert_at: 70
+        error_alert_at: 85
+        critical_alert_at: 95
+        state: present
+      register: tc01_apply
+
+    - name: "TC-01 Phase 2 — Assert changed"
+      ansible.builtin.assert:
+        that:
+          - tc01_apply.changed == true
+          - tc01_apply.storage_pool_details is defined
+        fail_msg: "TC-01 Phase 2 FAILED: alert update should report changed"
+        success_msg: "TC-01 Phase 2 PASSED"
+
+    - name: "TC-01 Phase 2 — Verify via info module"
+      dellemc.objectscale.storage_pool_info:
+        name: "{{ test_pool_name }}"
+      register: tc01_info
+
+    - name: "TC-01 Phase 2 — Assert thresholds updated"
+      ansible.builtin.assert:
+        that:
+          - tc01_info.storage_pools[0].warningAlertAt == 70
+          - tc01_info.storage_pools[0].errorAlertAt == 85
+          - tc01_info.storage_pools[0].criticalAlertAt == 95
+        fail_msg: "TC-01 Phase 2 FAILED: thresholds not updated"
+        success_msg: "TC-01 Phase 2 verified"
+
+    - name: "TC-01 Phase 3 — Re-run (check mode, no changes expected)"
+      dellemc.objectscale.storage_pool:
+        storage_pool_name: "{{ test_pool_name }}"
+        warning_alert_at: 70
+        error_alert_at: 85
+        critical_alert_at: 95
+        state: present
+      check_mode: true
+      register: tc01_check_idem
+
+    - name: "TC-01 Phase 3 — Assert no change"
+      ansible.builtin.assert:
+        that:
+          - tc01_check_idem.changed == false
+        fail_msg: "TC-01 Phase 3 FAILED: same thresholds should be idempotent"
+        success_msg: "TC-01 Phase 3 PASSED"
+
+    - name: "TC-01 Phase 4 — Re-run (idempotence)"
+      dellemc.objectscale.storage_pool:
+        storage_pool_name: "{{ test_pool_name }}"
+        warning_alert_at: 70
+        error_alert_at: 85
+        critical_alert_at: 95
+        state: present
+      register: tc01_idem
+
+    - name: "TC-01 Phase 4 — Assert idempotent"
+      ansible.builtin.assert:
+        that:
+          - tc01_idem.changed == false
+        fail_msg: "TC-01 Phase 4 FAILED: re-run should be idempotent"
+        success_msg: "TC-01 Phase 4 PASSED"
+
+    # ==================================================================
+    # TC-02: Invalid alert thresholds (validation)
+    # ==================================================================
+    - name: "TC-02 — Warning >= Error should fail"
+      dellemc.objectscale.storage_pool:
+        storage_pool_name: "{{ test_pool_name }}"
+        warning_alert_at: 90
+        error_alert_at: 85
+        state: present
+      register: tc02_invalid
+      ignore_errors: true
+
+    - name: "TC-02 — Assert failure"
+      ansible.builtin.assert:
+        that:
+          - tc02_invalid.failed == true
+          - "'must be less than' in tc02_invalid.msg"
+        fail_msg: "TC-02 FAILED: invalid thresholds should be rejected"
+        success_msg: "TC-02 PASSED — validation correctly rejected"
+
+  always:
+    - name: "Cleanup — Restore original values"
+      ansible.builtin.include_tasks: _helper_restore.yaml
