@@ -26,7 +26,14 @@ jobs:
           python-version: 3.13
 
       - name: Install ansible (${{ matrix.ansible-version }})
-        run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible-version }}.tar.gz --disable-pip-version-check
+        run: |
+          case "${{ matrix.ansible-version }}" in
+            stable-2.19) pip install ansible-core==2.19.0 --disable-pip-version-check ;;
+            stable-2.18) pip install ansible-core==2.18.0 --disable-pip-version-check ;;
+            stable-2.17) pip install ansible-core==2.17.0 --disable-pip-version-check ;;
+            devel) pip install git+https://github.com/ansible/ansible.git@devel --disable-pip-version-check ;;
+            *) pip install ansible-core --disable-pip-version-check ;;
+          esac
 
       - name: Build a collection tarball
         run: ansible-galaxy collection build --output-path "${GITHUB_WORKSPACE}/.cache/collection-tarballs"
