@@ -52,7 +52,7 @@ jobs:
 
   unit:
     name: Unit Tests (Ⓐ${{ matrix.ansible }} with ${{ matrix.python }} python)
-    needs: [build]
+    needs: [build, sanity]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
