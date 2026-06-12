@@ -49,28 +49,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.11', '3.12', '3.13']
+        python: ['3.13']
         ansible:
-          - stable-2.17
-          - stable-2.18
           - stable-2.19
-          - devel
-        exclude:
-          - ansible: stable-2.16
-            python: '3.13'
-          - ansible: stable-2.17
-            python: '3.13'
-          - ansible: devel
-            python: '3.11'
-          - ansible: devel
-            python: '3.12'
 
     steps:
+      - name: Cache ansible-core
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/lib/python*/site-packages/ansible*
+          key: ansible-${{ matrix.ansible }}-py${{ matrix.python }}
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ matrix.python }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-${{ matrix.python }}-
+
       - name: Perform unit testing with ansible-test
         uses: ansible-community/ansible-test-gh-action@release/v1.16
         with:
           testing-type: units
-          coverage: ${{ (matrix.python == '3.13' && matrix.ansible == 'stable-2.19') && 'always' ||  'never' }}
+          coverage: always
           ansible-core-version: ${{ matrix.ansible }}
           origin-python-version: ${{ matrix.python }}
         env:
@@ -89,19 +91,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.11', '3.12', '3.13']
+        python: ['3.13']
         ansible:
-          - stable-2.17
-          - stable-2.18
           - stable-2.19
-          - devel
-        exclude:
-          - ansible: stable-2.17
-            python: '3.13'
-          - ansible: devel
-            python: '3.11'
-          - ansible: devel
-            python: '3.12'
 
     steps:
       - name: Cache ansible-core
@@ -109,6 +101,14 @@ jobs:
         with:
           path: ~/.local/lib/python*/site-packages/ansible*
           key: ansible-${{ matrix.ansible }}-py${{ matrix.python }}
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ matrix.python }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-${{ matrix.python }}-
 
       - name: Perform sanity testing
         uses: ansible-community/ansible-test-gh-action@release/v1.16
