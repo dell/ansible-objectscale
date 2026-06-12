@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ansible-version: [stable-2.18, stable-2.19, stable-2.20]
+        ansible-version: [stable-2.20]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -63,6 +63,9 @@ jobs:
           - stable-2.18
           - stable-2.19
           - stable-2.20
+        exclude:
+          - ansible: stable-2.18
+          - ansible: stable-2.19
 
     steps:
       - name: Clean up disk space
@@ -119,6 +122,9 @@ jobs:
           - stable-2.18
           - stable-2.19
           - stable-2.20
+        exclude:
+          - ansible: stable-2.18
+          - ansible: stable-2.19
 
     steps:
       - name: Clean up disk space
