@@ -66,6 +66,8 @@ jobs:
         exclude:
           - ansible: stable-2.18
           - ansible: stable-2.19
+          - python: '3.11'
+            ansible: stable-2.20
 
     steps:
       - name: Clean up disk space
@@ -125,6 +127,8 @@ jobs:
         exclude:
           - ansible: stable-2.18
           - ansible: stable-2.19
+          - python: '3.11'
+            ansible: stable-2.20
 
     steps:
       - name: Clean up disk space
