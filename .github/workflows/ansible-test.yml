@@ -26,7 +26,14 @@ jobs:
           python-version: 3.13
 
       - name: Install ansible (${{ matrix.ansible-version }})
-        run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible-version }}.tar.gz --disable-pip-version-check
+        run: |
+          case "${{ matrix.ansible-version }}" in
+            stable-2.19) pip install ansible-core==2.19.0 --disable-pip-version-check ;;
+            stable-2.18) pip install ansible-core==2.18.0 --disable-pip-version-check ;;
+            stable-2.17) pip install ansible-core==2.17.0 --disable-pip-version-check ;;
+            devel) pip install git+https://github.com/ansible/ansible.git@devel --disable-pip-version-check ;;
+            *) pip install ansible-core --disable-pip-version-check ;;
+          esac
 
       - name: Build a collection tarball
         run: ansible-galaxy collection build --output-path "${GITHUB_WORKSPACE}/.cache/collection-tarballs"
@@ -46,6 +53,7 @@ jobs:
     name: Unit Tests (Ⓐ${{ matrix.ansible }} with ${{ matrix.python }} python)
     needs: [build]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -54,11 +62,20 @@ jobs:
           - stable-2.19
 
     steps:
+      - name: Clean up disk space
+        run: |
+          sudo rm -rf /tmp/*
+          sudo apt-get clean
+          df -h
+
       - name: Cache ansible-core
         uses: actions/cache@v4
         with:
-          path: ~/.local/lib/python*/site-packages/ansible*
+          path: ~/.local/lib/python*/site-packages/ansible_core
           key: ansible-${{ matrix.ansible }}-py${{ matrix.python }}
+          restore-keys: |
+            ansible-${{ matrix.ansible }}-
+        timeout-minutes: 5
 
       - name: Cache Python dependencies
         uses: actions/cache@v4
@@ -67,6 +84,8 @@ jobs:
           key: pip-${{ matrix.python }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
             pip-${{ matrix.python }}-
+          enableCrossOsArchive: true
+        timeout-minutes: 5
 
       - name: Perform unit testing with ansible-test
         uses: ansible-community/ansible-test-gh-action@release/v1.16
@@ -88,6 +107,7 @@ jobs:
     name: Sanity (Ⓐ${{ matrix.ansible }} with ${{ matrix.python }} python)
     runs-on: ubuntu-latest
     needs: [build]
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -96,11 +116,20 @@ jobs:
           - stable-2.19
 
     steps:
+      - name: Clean up disk space
+        run: |
+          sudo rm -rf /tmp/*
+          sudo apt-get clean
+          df -h
+
       - name: Cache ansible-core
         uses: actions/cache@v4
         with:
-          path: ~/.local/lib/python*/site-packages/ansible*
+          path: ~/.local/lib/python*/site-packages/ansible_core
           key: ansible-${{ matrix.ansible }}-py${{ matrix.python }}
+          restore-keys: |
+            ansible-${{ matrix.ansible }}-
+        timeout-minutes: 5
 
       - name: Cache Python dependencies
         uses: actions/cache@v4
@@ -109,6 +138,8 @@ jobs:
           key: pip-${{ matrix.python }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
             pip-${{ matrix.python }}-
+          enableCrossOsArchive: true
+        timeout-minutes: 5
 
       - name: Perform sanity testing
         uses: ansible-community/ansible-test-gh-action@release/v1.16
