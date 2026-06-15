@@ -46,9 +46,10 @@ jobs:
     name: Unit Tests (Ⓐ${{ matrix.ansible }} with ${{ matrix.python }} python)
     needs: [build]
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix:
         python: ['3.11', '3.12', '3.13']
         ansible:
@@ -62,11 +63,17 @@ jobs:
             python: '3.12'
 
     steps:
+      - name: Clean up disk space
+        run: |
+          sudo rm -rf /tmp/*
+          sudo apt-get clean
+          df -h
+
       - name: Perform unit testing with ansible-test
         uses: ansible-community/ansible-test-gh-action@release/v1.16
         with:
           testing-type: units
-          coverage: ${{ (matrix.python == '3.13' && matrix.ansible == 'stable-2.19') && 'always' ||  'never' }}
+          coverage: never
           ansible-core-version: ${{ matrix.ansible }}
           origin-python-version: ${{ matrix.python }}
         env:
