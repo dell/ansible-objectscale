@@ -1,0 +1,51 @@
+---
+# ============================================================================
+# invalid.yaml — Storage Pool negative / error handling tests
+# TC-01: Non-existent pool by name
+# TC-02: Alert threshold out of range
+# ============================================================================
+
+- module_defaults:
+    dellemc.objectscale.storage_pool:
+      objectscale_host: "{{ objectscale_host }}"
+      objectscale_username: "{{ objectscale_username }}"
+      objectscale_password: "{{ objectscale_password }}"
+      objectscale_port: "{{ objectscale_port }}"
+      validate_certs: "{{ validate_certs }}"
+  block:
+    # ==================================================================
+    # TC-01: Non-existent pool by name
+    # ==================================================================
+    - name: "TC-01 — Update non-existent pool by name"
+      dellemc.objectscale.storage_pool:
+        storage_pool_name: "nonexistent_pool_xyz_12345"
+        description: "should fail"
+        state: present
+      register: tc01_not_found
+      ignore_errors: true
+
+    - name: "TC-01 — Assert failure"
+      ansible.builtin.assert:
+        that:
+          - tc01_not_found.failed == true
+        fail_msg: "TC-01 FAILED: non-existent pool should fail"
+        success_msg: "TC-01 PASSED — non-existent pool rejected"
+
+    # ==================================================================
+    # TC-02: Alert threshold out of range
+    # ==================================================================
+    - name: "TC-02 — Threshold out of range (> 100)"
+      dellemc.objectscale.storage_pool:
+        storage_pool_name: "sp_default"
+        warning_alert_at: 150
+        state: present
+      register: tc02_out_of_range
+      ignore_errors: true
+
+    - name: "TC-02 — Assert failure"
+      ansible.builtin.assert:
+        that:
+          - tc02_out_of_range.failed == true
+          - "'must be between' in tc02_out_of_range.msg"
+        fail_msg: "TC-02 FAILED: out-of-range threshold should be rejected"
+        success_msg: "TC-02 PASSED — out-of-range threshold rejected"

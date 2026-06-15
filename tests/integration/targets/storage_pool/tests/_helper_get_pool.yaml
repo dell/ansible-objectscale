@@ -1,0 +1,26 @@
+---
+# Helper: Discover an existing storage pool to use for testing
+- name: "Helper — List all storage pools"
+  dellemc.objectscale.storage_pool_info:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    objectscale_port: "{{ objectscale_port }}"
+    validate_certs: "{{ validate_certs }}"
+  register: all_pools
+
+- name: "Helper — Assert at least one pool exists"
+  ansible.builtin.assert:
+    that:
+      - all_pools.storage_pools | length > 0
+    fail_msg: "No storage pools found — cannot run update tests"
+
+- name: "Helper — Set test pool facts"
+  ansible.builtin.set_fact:
+    test_pool: "{{ all_pools.storage_pools[0] }}"
+    test_pool_name: "{{ all_pools.storage_pools[0].name }}"
+    test_pool_id: "{{ all_pools.storage_pools[0].id }}"
+    original_description: "{{ all_pools.storage_pools[0].description | default('') }}"
+    original_warning: "{{ all_pools.storage_pools[0].warningAlertAt | default(-1) }}"
+    original_error: "{{ all_pools.storage_pools[0].errorAlertAt | default(-1) }}"
+    original_critical: "{{ all_pools.storage_pools[0].criticalAlertAt | default(-1) }}"

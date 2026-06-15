@@ -1,0 +1,12 @@
+---
+- name: Run Storage Pool functional integration tests
+  hosts: objectscale
+  connection: local
+  gather_facts: false
+  environment:
+    ANSIBLE_ROLES_PATH: "{{ playbook_dir }}/targets"
+
+  tasks:
+    - name: Include storage_pool role
+      ansible.builtin.include_role:
+        name: storage_pool
