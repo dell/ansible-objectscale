@@ -64,28 +64,27 @@ The modules are written in such a way that all requests are idempotent and hence
 ### List of Ansible modules for Dell ObjectScale
 
 #### Namespace Management
-* [Namespace module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/namespace.rst)
-* [Namespace Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/namespace_info.rst)
+* [Namespace module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/namespace_module.rst)
+* [Namespace Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/namespace_info_module.rst)
 
 #### Bucket Management
 * [Bucket module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/bucket.rst)
 * [Bucket Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/bucket_info.rst)
 
 #### Replication and Storage
-* [Replication Group module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/replication_group.rst)
+* [Replication Group module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/replication_group_module.rst)
 * [Replication Group Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/replication_group_info.rst)
-* [Storage Pool module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/storage_pool.rst)
 * [Storage Pool Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/storage_pool_info.rst)
 
 #### IAM User Management
-* [IAM User module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_user.rst)
-* [IAM User Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_user_info.rst)
-* [IAM User Access Key module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_user_access_key.rst)
-* [IAM User Access Key Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_user_access_key_info.rst)
+* [IAM User module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_user_module.rst)
+* [IAM User Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_user_info_module.rst)
+* [IAM User Access Key module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_user_access_key_module.rst)
+* [IAM User Access Key Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_user_access_key_info_module.rst)
 
 #### IAM Group Management
-* [IAM Group module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_group.rst)
-* [IAM Group Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_group_info.rst)
+* [IAM Group module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_group_module.rst)
+* [IAM Group Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_group_info_module.rst)
 
 #### IAM Role and Policy Management
 * [IAM Role module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_role.rst)
@@ -98,8 +97,8 @@ The modules are written in such a way that all requests are idempotent and hence
 * [IAM Inline Policy Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_inline_policy_info.rst)
 
 #### IAM Identity Provider Management
-* [IAM Identity Provider module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_identity_provider.rst)
-* [IAM Identity Provider Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_identity_provider_info.rst)
+* [IAM Identity Provider module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_identity_provider_module.rst)
+* [IAM Identity Provider Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/iam_identity_provider_info_module.rst)
 
 #### Object User Management
 * [Object User module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/object_user.rst)
@@ -116,7 +115,7 @@ The modules are written in such a way that all requests are idempotent and hence
 * [VDC Certificate Chain Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/vdc_certificate_chain_info.rst)
 
 #### VDC Information
-* [VDC Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/vdc_info.rst)
+* [VDC Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/vdc_info_module.rst)
 
 ## Support
 
