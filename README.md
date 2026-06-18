@@ -17,7 +17,6 @@ The capabilities of the Ansible modules include managing namespaces, buckets, re
 * [Support](#support)
 * [License](#license)
 * [Security](https://github.com/dell/ansible-objectscale/blob/main/docs/SECURITY.md)
-* [Prerequisites](#prerequisites)
 * [List of Ansible modules for Dell ObjectScale](#list-of-ansible-modules-for-dell-objectscale)
 * [Installation and execution of Ansible modules for Dell ObjectScale](#installation-and-execution-of-ansible-modules-for-dell-objectscale)
 * [Releasing, Maintenance and Deprecation](#releasing-maintenance-and-deprecation)
@@ -52,7 +51,7 @@ New version will be released regularly if significant changes (bug fix or new fe
 
 Released code versions are located on "release" branches with names of the form "release-x.y.z" where x.y.z corresponds to the version number.
 
-Ansible Modules for Dell Technologies ObjectScale deprecation cycle is aligned with that of [Ansible](https://docs.ansible.com/ansible/latest/dev_guide/module_lifecycle.html).
+Ansible Modules for Dell Technologies ObjectScale deprecation cycle is aligned with that of [Ansible](https://docs.ansible.com/projects/ansible/latest/reference_appendices/release_and_maintenance.html).
 
 See [change logs](https://github.com/dell/ansible-objectscale/blob/main/CHANGELOG.rst) for more information on what is new in the releases.
 
