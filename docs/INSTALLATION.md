@@ -11,7 +11,7 @@ Before installing the Ansible modules for Dell ObjectScale, ensure the following
 
 ## Installation of Dependencies
 
-The ObjectScale Ansible collection uses a vendored OpenAPI-generated client library. All required Python dependencies are specified in `requirements.txt`.
+The ObjectScale Ansible collection uses a vendored OpenAPI-generated client library. All required Python dependencies are specified in [`requirements.txt`](https://github.com/dell/ansible-objectscale/blob/main/requirements.txt).
 
 ### Install Python Dependencies
 
@@ -20,6 +20,8 @@ Install the required Python packages using pip:
 ```bash
 pip install -r requirements.txt
 ```
+
+The [`requirements.txt`](https://github.com/dell/ansible-objectscale/blob/main/requirements.txt) file contains all necessary dependencies.
 
 This will install:
 - `packaging` - Package version handling
@@ -235,6 +237,8 @@ For developers who want to contribute to the ObjectScale Ansible collection:
 ```bash
 pip install -r dev-requirements.txt
 ```
+
+The [`dev-requirements.txt`](https://github.com/dell/ansible-objectscale/blob/main/dev-requirements.txt) file contains additional development dependencies.
 
 ### Generate client library from OpenAPI spec
 
