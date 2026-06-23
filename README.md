@@ -74,6 +74,7 @@ The modules are written in such a way that all requests are idempotent and hence
 #### Replication and Storage
 * [Replication Group module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/replication_group_module.rst)
 * [Replication Group Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/replication_group_info.rst)
+* [Storage Pool module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/storage_pool.rst)
 * [Storage Pool Info module](https://github.com/dell/ansible-objectscale/blob/main/docs/modules/storage_pool_info.rst)
 
 #### IAM User Management
