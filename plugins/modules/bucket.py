@@ -68,6 +68,13 @@ options:
     description: Force delete a non-empty bucket.
     type: bool
     default: false
+  vpool:
+    description:
+    - The replication group ID (vpool) to use when creating
+      the bucket.
+    - Only used during bucket creation (state=present).
+    type: str
+    required: false
 '''
 
 EXAMPLES = r'''
