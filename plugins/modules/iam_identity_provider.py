@@ -208,7 +208,7 @@ if TYPE_CHECKING:
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.iam_api import IamApi
-except (ImportError, Exception):
+except Exception:
     IamApi = None  # type: ignore[assignment,misc]
 
 
@@ -353,6 +353,69 @@ class IamIdentityProvider(object):
     # Main orchestration
     # ------------------------------------------------------------------
 
+    def _handle_present_create(self, provider_name, namespace,
+                               saml_metadata_document, diff):
+        """Handle creation of a new identity provider."""
+        if saml_metadata_document is None:
+            self.module.exit_json(
+                failed=True,
+                msg="saml_metadata_document is required when creating a new identity provider"
+            )
+            return None, False, True
+
+        if self.module._diff:
+            diff['before'] = {}
+            diff['after'] = {'provider_name': provider_name, 'state': 'present'}
+
+        provider_details = self.create_provider(
+            provider_name, namespace, saml_metadata_document)
+        return provider_details, True, False
+
+    def _handle_present_update(self, provider_name, namespace,
+                               saml_metadata_document, current, diff):
+        """Handle update of an existing identity provider."""
+        if saml_metadata_document is None:
+            return self._strip_metadata(current), False
+
+        existing_metadata = current.get('saml_metadata_document', '')
+        if existing_metadata == saml_metadata_document:
+            return self._strip_metadata(current), False
+
+        if self.module._diff:
+            diff['before'] = {
+                'provider_name': provider_name,
+                'valid_until': current.get('valid_until', ''),
+            }
+
+        provider_details = self.update_provider(
+            provider_name, namespace, saml_metadata_document
+        )
+
+        if self.module._diff:
+            diff['after'] = {
+                'provider_name': provider_name,
+                'valid_until': provider_details.get('valid_until', '') if provider_details else '',
+            }
+        return provider_details, True
+
+    @staticmethod
+    def _strip_metadata(current):
+        """Return provider details without saml_metadata_document."""
+        return {k: v for k, v in current.items()
+                if k != 'saml_metadata_document'}
+
+    def _handle_absent(self, provider_name, namespace, current, diff):
+        """Handle deletion of an identity provider."""
+        if current is None:
+            return False
+
+        if self.module._diff:
+            diff['before'] = {'provider_name': provider_name, 'state': 'present'}
+            diff['after'] = {}
+
+        self.delete_provider(provider_name, namespace)
+        return True
+
     def perform_module_operation(self) -> None:
         """Main entry point for module execution."""
         provider_name = self.module.params['provider_name']
@@ -369,57 +432,17 @@ class IamIdentityProvider(object):
 
         if state == 'present':
             if current is None:
-                # Create
-                if saml_metadata_document is None:
-                    self.module.exit_json(
-                        failed=True,
-                        msg="saml_metadata_document is required when creating a new identity provider"
-                    )
+                provider_details, changed, exited = self._handle_present_create(
+                    provider_name, namespace, saml_metadata_document, diff)
+                if exited:
                     return
-
-                if self.module._diff:
-                    diff['before'] = {}
-                    diff['after'] = {'provider_name': provider_name, 'state': 'present'}
-
-                provider_details = self.create_provider(provider_name, namespace, saml_metadata_document)
-                changed = True
             else:
-                # Exists — check if update needed
-                if saml_metadata_document is not None:
-                    existing_metadata = current.get('saml_metadata_document', '')
-                    if existing_metadata != saml_metadata_document:
-                        if self.module._diff:
-                            diff['before'] = {
-                                'provider_name': provider_name,
-                                'valid_until': current.get('valid_until', ''),
-                            }
-
-                        provider_details = self.update_provider(
-                            provider_name, namespace, saml_metadata_document
-                        )
-                        changed = True
-
-                        if self.module._diff:
-                            diff['after'] = {
-                                'provider_name': provider_name,
-                                'valid_until': provider_details.get('valid_until', '') if provider_details else '',
-                            }
-                    else:
-                        # No change — metadata is the same
-                        provider_details = {k: v for k, v in current.items() if k != 'saml_metadata_document'}
-                else:
-                    # No metadata provided, no update needed
-                    provider_details = {k: v for k, v in current.items() if k != 'saml_metadata_document'}
-
+                provider_details, changed = self._handle_present_update(
+                    provider_name, namespace,
+                    saml_metadata_document, current, diff)
         elif state == 'absent':
-            if current is not None:
-                if self.module._diff:
-                    diff['before'] = {'provider_name': provider_name, 'state': 'present'}
-                    diff['after'] = {}
-
-                self.delete_provider(provider_name, namespace)
-                changed = True
-            # else: already absent, nothing to do
+            changed = self._handle_absent(
+                provider_name, namespace, current, diff)
 
         result = dict(
             changed=changed,

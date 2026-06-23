@@ -1,17 +1,28 @@
 ---
 # Example playbook for managing IAM SAML Identity Providers on Dell ObjectScale
-# This playbook demonstrates the full lifecycle: create, update, check mode, and delete.
+# This playbook demonstrates the full lifecycle:
+# create, update, check mode, and delete.
 
 - name: IAM Identity Provider Management
   hosts: localhost
   gather_facts: false
   vars:
-    objectscale_host: "{{ lookup('env', 'OBJECTSCALE_HOST') | default('192.168.1.100', true) }}"
-    objectscale_username: "{{ lookup('env', 'OBJECTSCALE_USERNAME') | default('admin', true) }}"
-    objectscale_password: "{{ lookup('env', 'OBJECTSCALE_PASSWORD') | default('xxxxxxx', true) }}"
-    objectscale_namespace: "{{ lookup('env', 'OBJECTSCALE_NAMESPACE') | default('ns1', true) }}"
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('192.168.1.100', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    objectscale_password: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('xxxxxxx', true) }}
+    objectscale_namespace: >-
+      {{ lookup('env', 'OBJECTSCALE_NAMESPACE')
+      | default('ns1', true) }}
     provider_name: "test-saml-idp"
-    saml_metadata: "{{ lookup('file', 'saml-metadata.xml', errors='ignore') | default(omit) }}"
+    saml_metadata: >-
+      {{ lookup('file', 'saml-metadata.xml',
+      errors='ignore') | default(omit) }}
 
   tasks:
     - name: Create a SAML identity provider

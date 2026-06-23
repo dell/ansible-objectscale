@@ -243,7 +243,7 @@ def _ensure_client_stub_compatibility():
             base_model_cls.model_dump = _model_dump
 
 
-def _read_pem_param(module, path_param, content_param, label):  # noqa: W0613
+def _read_pem_param(module, path_param, content_param):
     """Read PEM content from either a file path or inline content parameter.
 
     Returns the PEM string or calls module.fail_json on error.
@@ -270,6 +270,78 @@ def _read_pem_param(module, path_param, content_param, label):  # noqa: W0613
     module.fail_json(
         msg="FC-230: one of %s, %s is required" % (path_param, content_param),
     )
+
+
+def _empty_cert_details(fingerprint=''):
+    """Return empty certificate details dict."""
+    return {'fingerprint': fingerprint, 'chain': '', 'chain_length': 0}
+
+
+def _get_chain_metadata(chain, fallback_fp=''):
+    """Parse certificate metadata or return empty details."""
+    if chain:
+        return parse_certificate_metadata(chain)
+    return _empty_cert_details(fallback_fp)
+
+
+def _connect_keystore(module):
+    """Create API client and ObjectCertKeystoreApi, or fail."""
+    try:
+        api_client = utils.get_objectscale_connection(module.params)
+        timeout = module.params.get('timeout', 30)
+        return ObjectCertKeystoreApi(api_client, timeout=timeout)
+    except Exception as e:
+        module.fail_json(msg="Failed to connect to ObjectScale: %s" % str(e))
+        return None
+
+
+def _fetch_current_chain(module, keystore_api):
+    """Fetch current certificate chain or fail."""
+    try:
+        return keystore_api.get_certificate_chain()
+    except Exception as e:
+        status = getattr(e, 'status', None)
+        if str(status) == '401':
+            module.fail_json(msg="FC-222: authentication failed — %s" % str(e))
+        error_msg = utils.determine_error(e) if hasattr(utils, 'determine_error') else str(e)
+        module.fail_json(msg="Failed to get current Object-cert certificate chain: %s" % error_msg)
+        return None
+
+
+def _apply_certificate(module, keystore_api, private_key, certificate_chain):
+    """Apply the certificate change via PUT, or fail."""
+    try:
+        return keystore_api.set_key_certificate_pair(private_key, certificate_chain)
+    except Exception as e:
+        status = getattr(e, 'status', None)
+        if str(status) == '403':
+            module.fail_json(msg="FC-223: SECURITY_ADMIN role required to update Object-cert keystore")
+        if str(status) == '400':
+            module.fail_json(msg="FC-220: invalid PEM input — %s" % str(e))
+        if str(status) == '409':
+            module.fail_json(msg="FC-227: concurrent keystore update conflict")
+        error_msg = utils.determine_error(e) if hasattr(utils, 'determine_error') else str(e)
+        module.fail_json(msg="Failed to set Object-cert certificate: %s" % error_msg)
+        return None
+
+
+def _verify_and_get_details(module, keystore_api, desired_fp, put_response):
+    """Post-PUT verification and detail extraction."""
+    try:
+        verify = keystore_api.get_certificate_chain()
+        verify_chain = verify.get('chain', '')
+        verify_fp = fingerprint_chain(verify_chain) if verify_chain else ''
+        if verify_fp != desired_fp:
+            module.fail_json(
+                msg="FC-235: post-PUT chain fingerprint mismatch (expected %s, got %s)"
+                    % (desired_fp, verify_fp),
+            )
+            return None
+        return parse_certificate_metadata(verify_chain)
+    except Exception:
+        # Verification fetch failed — use PUT response
+        new_chain = put_response.get('chain', '')
+        return _get_chain_metadata(new_chain, desired_fp)
 
 
 def main():
@@ -307,10 +379,10 @@ def main():
 
     # --- Read PEM inputs ---
     private_key = _read_pem_param(
-        module, 'private_key_path', 'private_key_content', 'private key',
+        module, 'private_key_path', 'private_key_content',
     )
     certificate_chain = _read_pem_param(
-        module, 'certificate_chain_path', 'certificate_chain_content', 'certificate chain',
+        module, 'certificate_chain_path', 'certificate_chain_content',
     )
 
     # --- Validate PEM format ---
@@ -320,24 +392,10 @@ def main():
         module.fail_json(msg="FC-232: certificate_chain contains no PEM blocks")
 
     # --- Connect ---
-    try:
-        api_client = utils.get_objectscale_connection(module.params)
-        timeout = module.params.get('timeout', 30)
-        keystore_api = ObjectCertKeystoreApi(api_client, timeout=timeout)
-    except Exception as e:
-        module.fail_json(msg="Failed to connect to ObjectScale: %s" % str(e))
-        return
+    keystore_api = _connect_keystore(module)
 
     # --- Fetch current chain for idempotency ---
-    try:
-        current = keystore_api.get_certificate_chain()
-    except Exception as e:
-        status = getattr(e, 'status', None)
-        if str(status) == '401':
-            module.fail_json(msg="FC-222: authentication failed — %s" % str(e))
-        error_msg = utils.determine_error(e) if hasattr(utils, 'determine_error') else str(e)
-        module.fail_json(msg="Failed to get current Object-cert certificate chain: %s" % error_msg)
-        return
+    current = _fetch_current_chain(module, keystore_api)
 
     current_chain = current.get('chain', '')
     desired_fp = fingerprint_chain(certificate_chain)
@@ -348,11 +406,7 @@ def main():
     result = {'changed': False}
 
     if not needs_change:
-        # Idempotent — no change needed
-        details = parse_certificate_metadata(current_chain) if current_chain else {
-            'fingerprint': '', 'chain': '', 'chain_length': 0,
-        }
-        result['vdc_certificate_chain_details'] = details
+        result['vdc_certificate_chain_details'] = _get_chain_metadata(current_chain)
         module.exit_json(**result)
         return
 
@@ -364,46 +418,17 @@ def main():
                 'before': {'fingerprint': current_fp},
                 'after': {'fingerprint': desired_fp},
             }
-        current_details = parse_certificate_metadata(current_chain) if current_chain else {
-            'fingerprint': '', 'chain': '', 'chain_length': 0,
-        }
-        result['vdc_certificate_chain_details'] = current_details
+        result['vdc_certificate_chain_details'] = _get_chain_metadata(current_chain)
         module.exit_json(**result)
         return
 
     # --- Apply change ---
-    try:
-        put_response = keystore_api.set_key_certificate_pair(private_key, certificate_chain)
-    except Exception as e:
-        status = getattr(e, 'status', None)
-        if str(status) == '403':
-            module.fail_json(msg="FC-223: SECURITY_ADMIN role required to update Object-cert keystore")
-        if str(status) == '400':
-            module.fail_json(msg="FC-220: invalid PEM input — %s" % str(e))
-        if str(status) == '409':
-            module.fail_json(msg="FC-227: concurrent keystore update conflict")
-        error_msg = utils.determine_error(e) if hasattr(utils, 'determine_error') else str(e)
-        module.fail_json(msg="Failed to set Object-cert certificate: %s" % error_msg)
-        return
+    put_response = _apply_certificate(
+        module, keystore_api, private_key, certificate_chain)
 
     # --- Post-PUT verification ---
-    try:
-        verify = keystore_api.get_certificate_chain()
-        verify_chain = verify.get('chain', '')
-        verify_fp = fingerprint_chain(verify_chain) if verify_chain else ''
-        if verify_fp != desired_fp:
-            module.fail_json(
-                msg="FC-235: post-PUT chain fingerprint mismatch (expected %s, got %s)"
-                    % (desired_fp, verify_fp),
-            )
-            return
-        details = parse_certificate_metadata(verify_chain)
-    except Exception:
-        # Verification fetch failed — use PUT response
-        new_chain = put_response.get('chain', '')
-        details = parse_certificate_metadata(new_chain) if new_chain else {
-            'fingerprint': desired_fp, 'chain': '', 'chain_length': 0,
-        }
+    details = _verify_and_get_details(
+        module, keystore_api, desired_fp, put_response)
 
     result['changed'] = True
     result['vdc_certificate_chain_details'] = details
