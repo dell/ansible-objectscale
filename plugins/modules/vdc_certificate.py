@@ -187,8 +187,6 @@ diff:
     returned: when diff mode enabled and changed is true
 '''
 
-import os  # noqa: E402
-
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 from ansible_collections.dellemc.objectscale.plugins.module_utils import utils  # noqa: E402
 from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import (  # noqa: E402
@@ -197,86 +195,51 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import (
 from ansible_collections.dellemc.objectscale.plugins.module_utils.vdc_keystore_api import (  # noqa: E402
     VdcKeystoreApi,
     fingerprint_chain,
-    parse_certificate_metadata,
     validate_pem_certificate,
     validate_pem_private_key,
 )
+from ansible_collections.dellemc.objectscale.plugins.module_utils.vdc_cert_common import (  # noqa: E402, E501
+    ensure_client_stub_compatibility,
+    read_pem_param,
+    get_chain_metadata,
+    connect_keystore,
+    fetch_current_chain,
+    apply_certificate,
+    verify_and_get_details,
+)
 
-try:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import (  # noqa: E402
-        api_client as objectscale_api_client,
-    )
-except Exception:
-    objectscale_api_client = None
+# Keep module-level alias so existing tests that import
+# ``_ensure_client_stub_compatibility`` from this module
+# continue to work.
+_ensure_client_stub_compatibility = ensure_client_stub_compatibility
 
-try:
-    from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client import (  # noqa: E402
-        _stubs as objectscale_client_stubs,
-    )
-except Exception:
-    objectscale_client_stubs = None
-
-
-def _ensure_client_stub_compatibility():
-    """Patch generated stubs for runtime compatibility when pydantic is absent."""
-    if objectscale_api_client is not None:
-        secret_str_cls = getattr(objectscale_api_client, 'SecretStr', None)
-        if secret_str_cls is str:
-            class _CompatSecretStr(str):
-                def get_secret_value(self):
-                    return str(self)
-            objectscale_api_client.SecretStr = _CompatSecretStr
-
-    if objectscale_client_stubs is not None:
-        base_model_cls = getattr(objectscale_client_stubs, 'BaseModel', None)
-        if base_model_cls is not None and not hasattr(base_model_cls, 'model_dump'):
-            def _model_dump(self, *args, **kwargs):  # noqa: W0613
-                data = getattr(self, '__dict__', None)
-                if isinstance(data, dict):
-                    return dict(data)
-                return {}
-            base_model_cls.model_dump = _model_dump
-
-
-def _read_pem_param(module, path_param, content_param, label):  # noqa: W0613
-    """Read PEM content from either a file path or inline content parameter.
-
-    Returns the PEM string or calls module.fail_json on error.
-    """
-    path_val = module.params.get(path_param)
-    content_val = module.params.get(content_param)
-
-    if content_val:
-        return content_val
-
-    if path_val:
-        if not os.path.isfile(path_val):
-            module.fail_json(
-                msg="FC-221: file '%s' not readable: No such file" % path_val,
-            )
-        try:
-            with open(path_val, 'r') as fh:
-                return fh.read()
-        except OSError as err:
-            module.fail_json(
-                msg="FC-221: file '%s' not readable: %s" % (path_val, str(err)),
-            )
-
-    module.fail_json(
-        msg="FC-230: one of %s, %s is required" % (path_param, content_param),
-    )
+_LABEL = "VDC"
+_DETAILS_KEY = "vdc_certificate_details"
 
 
 def main():
     _ensure_client_stub_compatibility()
 
-    module_params = utils.get_objectscale_management_host_parameters()
+    module_params = (
+        utils.get_objectscale_management_host_parameters()
+    )
     module_params.update(
-        state=dict(type='str', choices=['present'], default='present'),
-        private_key_path=dict(type='path', required=False, no_log=False),
-        private_key_content=dict(type='str', required=False, no_log=True),
-        certificate_chain_path=dict(type='path', required=False, no_log=False),
-        certificate_chain_content=dict(type='str', required=False, no_log=False),
+        state=dict(
+            type='str', choices=['present'],
+            default='present',
+        ),
+        private_key_path=dict(
+            type='path', required=False, no_log=False,
+        ),
+        private_key_content=dict(
+            type='str', required=False, no_log=True,
+        ),
+        certificate_chain_path=dict(
+            type='path', required=False, no_log=False,
+        ),
+        certificate_chain_content=dict(
+            type='str', required=False, no_log=False,
+        ),
     )
 
     module = AnsibleModule(
@@ -284,70 +247,79 @@ def main():
         supports_check_mode=True,
         mutually_exclusive=[
             ('private_key_path', 'private_key_content'),
-            ('certificate_chain_path', 'certificate_chain_content'),
+            (
+                'certificate_chain_path',
+                'certificate_chain_content',
+            ),
         ],
         required_one_of=[
             ('private_key_path', 'private_key_content'),
-            ('certificate_chain_path', 'certificate_chain_content'),
+            (
+                'certificate_chain_path',
+                'certificate_chain_content',
+            ),
         ],
     )
 
     if not HAS_OBJECTSCALE_CLIENT:
         module.exit_json(
             failed=True,
-            msg="The objectscale_client Python package is required. "
-                "Install it with: pip install pydantic urllib3 python-dateutil",
+            msg=(
+                "The objectscale_client Python package is "
+                "required. Install it with: pip install "
+                "pydantic urllib3 python-dateutil"
+            ),
         )
         return
 
     # --- Read PEM inputs ---
-    private_key = _read_pem_param(
-        module, 'private_key_path', 'private_key_content', 'private key',
+    private_key = read_pem_param(
+        module,
+        'private_key_path',
+        'private_key_content',
     )
-    certificate_chain = _read_pem_param(
-        module, 'certificate_chain_path', 'certificate_chain_content', 'certificate chain',
+    certificate_chain = read_pem_param(
+        module,
+        'certificate_chain_path',
+        'certificate_chain_content',
     )
 
     # --- Validate PEM format ---
     if not validate_pem_private_key(private_key):
-        module.fail_json(msg="FC-236: private_key contains no PEM block")
+        module.fail_json(
+            msg="FC-236: private_key contains no PEM block",
+        )
     if not validate_pem_certificate(certificate_chain):
-        module.fail_json(msg="FC-232: certificate_chain contains no PEM blocks")
+        module.fail_json(
+            msg="FC-232: certificate_chain contains "
+            "no PEM blocks",
+        )
 
     # --- Connect ---
-    try:
-        api_client = utils.get_objectscale_connection(module.params)
-        timeout = module.params.get('timeout', 30)
-        keystore_api = VdcKeystoreApi(api_client, timeout=timeout)
-    except Exception as e:
-        module.fail_json(msg="Failed to connect to ObjectScale: %s" % str(e))
-        return
+    keystore_api = connect_keystore(
+        module, VdcKeystoreApi,
+    )
 
     # --- Fetch current chain for idempotency ---
-    try:
-        current = keystore_api.get_certificate_chain()
-    except Exception as e:
-        status = getattr(e, 'status', None)
-        if str(status) == '401':
-            module.fail_json(msg="FC-222: authentication failed — %s" % str(e))
-        error_msg = utils.determine_error(e) if hasattr(utils, 'determine_error') else str(e)
-        module.fail_json(msg="Failed to get current VDC certificate chain: %s" % error_msg)
-        return
+    current = fetch_current_chain(
+        module, keystore_api, _LABEL,
+    )
 
     current_chain = current.get('chain', '')
     desired_fp = fingerprint_chain(certificate_chain)
-    current_fp = fingerprint_chain(current_chain) if current_chain else ''
+    current_fp = (
+        fingerprint_chain(current_chain)
+        if current_chain else ''
+    )
 
     needs_change = desired_fp != current_fp
 
     result = {'changed': False}
 
     if not needs_change:
-        # Idempotent — no change needed
-        details = parse_certificate_metadata(current_chain) if current_chain else {
-            'fingerprint': '', 'chain': '', 'chain_length': 0,
-        }
-        result['vdc_certificate_details'] = details
+        result[_DETAILS_KEY] = get_chain_metadata(
+            current_chain,
+        )
         module.exit_json(**result)
         return
 
@@ -359,54 +331,34 @@ def main():
                 'before': {'fingerprint': current_fp},
                 'after': {'fingerprint': desired_fp},
             }
-        current_details = parse_certificate_metadata(current_chain) if current_chain else {
-            'fingerprint': '', 'chain': '', 'chain_length': 0,
-        }
-        result['vdc_certificate_details'] = current_details
+        result[_DETAILS_KEY] = get_chain_metadata(
+            current_chain,
+        )
         module.exit_json(**result)
         return
 
     # --- Apply change ---
-    try:
-        put_response = keystore_api.set_key_certificate_pair(private_key, certificate_chain)
-    except Exception as e:
-        status = getattr(e, 'status', None)
-        if str(status) == '403':
-            module.fail_json(msg="FC-223: SECURITY_ADMIN role required to update VDC keystore")
-        if str(status) == '400':
-            module.fail_json(msg="FC-220: invalid PEM input — %s" % str(e))
-        if str(status) == '409':
-            module.fail_json(msg="FC-227: concurrent keystore update conflict")
-        error_msg = utils.determine_error(e) if hasattr(utils, 'determine_error') else str(e)
-        module.fail_json(msg="Failed to set VDC certificate: %s" % error_msg)
-        return
+    put_response = apply_certificate(
+        module, keystore_api,
+        private_key, certificate_chain, _LABEL,
+    )
 
     # --- Post-PUT verification ---
-    try:
-        verify = keystore_api.get_certificate_chain()
-        verify_chain = verify.get('chain', '')
-        verify_fp = fingerprint_chain(verify_chain) if verify_chain else ''
-        if verify_fp != desired_fp:
-            module.fail_json(
-                msg="FC-235: post-PUT chain fingerprint mismatch (expected %s, got %s)"
-                    % (desired_fp, verify_fp),
-            )
-            return
-        details = parse_certificate_metadata(verify_chain)
-    except Exception:
-        # Verification fetch failed — use PUT response
-        new_chain = put_response.get('chain', '')
-        details = parse_certificate_metadata(new_chain) if new_chain else {
-            'fingerprint': desired_fp, 'chain': '', 'chain_length': 0,
-        }
+    details = verify_and_get_details(
+        module, keystore_api, desired_fp, put_response,
+    )
 
     result['changed'] = True
-    result['vdc_certificate_details'] = details
+    result[_DETAILS_KEY] = details
 
     if module._diff:
         result['diff'] = {
             'before': {'fingerprint': current_fp},
-            'after': {'fingerprint': details.get('fingerprint', desired_fp)},
+            'after': {
+                'fingerprint': details.get(
+                    'fingerprint', desired_fp,
+                ),
+            },
         }
 
     module.exit_json(**result)

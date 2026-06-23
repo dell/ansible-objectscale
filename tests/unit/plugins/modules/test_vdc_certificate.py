@@ -654,7 +654,8 @@ class TestEnsureClientStubCompatibility:
         mock_client = MagicMock()
         mock_client.SecretStr = str
 
-        with patch(f'{MODULE}.objectscale_api_client', mock_client):
+        _COMMON = 'ansible_collections.dellemc.objectscale.plugins.module_utils.vdc_cert_common'
+        with patch(f'{_COMMON}.objectscale_api_client', mock_client):
             _ensure_client_stub_compatibility()
 
         assert mock_client.SecretStr is not str
@@ -668,8 +669,9 @@ class TestEnsureClientStubCompatibility:
         mock_stubs = MagicMock()
         mock_stubs.BaseModel = FakeModel
 
-        with patch(f'{MODULE}.objectscale_api_client', None), \
-             patch(f'{MODULE}.objectscale_client_stubs', mock_stubs):
+        _COMMON = 'ansible_collections.dellemc.objectscale.plugins.module_utils.vdc_cert_common'
+        with patch(f'{_COMMON}.objectscale_api_client', None), \
+             patch(f'{_COMMON}.objectscale_client_stubs', mock_stubs):
             _ensure_client_stub_compatibility()
 
         inst = FakeModel()
