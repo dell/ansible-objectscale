@@ -136,12 +136,19 @@ def _validate_bucket_params(module, name, namespace):
         module.fail_json(msg="'InvalidBucketName': Bucket name is invalid.")
 
 
-def _handle_present(module, bucket_api, name, namespace, versioning, current_bucket, result):
+def _handle_present(
+    module, bucket_api, name, namespace,
+    versioning, current_bucket, result,
+    vpool=None,
+):
     """Handle state=present logic for bucket module."""
     if not current_bucket:
         result['changed'] = True
         if not module.check_mode:
-            bucket_api.create_bucket({'name': name, 'namespace': namespace})
+            create_payload = {'name': name, 'namespace': namespace}
+            if vpool:
+                create_payload['vpool'] = vpool
+            bucket_api.create_bucket(create_payload)
     elif versioning is not None and \
             current_bucket.get('versioning_status', '').lower() \
             != ('enabled' if versioning else 'suspended'):
@@ -180,6 +187,7 @@ def main():
         state=dict(type='str', required=True, choices=['present', 'absent']),
         versioning=dict(type='bool', required=False),
         force=dict(type='bool', default=False),
+        vpool=dict(type='str', required=False),
     )
 
     module = AnsibleModule(
@@ -194,6 +202,7 @@ def main():
     state = module.params['state']
     versioning = module.params.get('versioning')
     force = module.params['force']
+    vpool = module.params.get('vpool')
 
     _validate_bucket_params(module, name, namespace)
 
@@ -204,7 +213,11 @@ def main():
         current_bucket = bucket_api.get_bucket(name, namespace)
 
         if state == 'present':
-            _handle_present(module, bucket_api, name, namespace, versioning, current_bucket, result)
+            _handle_present(
+                module, bucket_api, name, namespace,
+                versioning, current_bucket, result,
+                vpool=vpool,
+            )
         elif state == 'absent':
             _handle_absent(module, bucket_api, name, namespace, force, current_bucket, result)
 
