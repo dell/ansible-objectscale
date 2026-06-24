@@ -1,0 +1,113 @@
+---
+- name: Storage Pool Management Examples
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('objectscale.example.com', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    objectscale_password: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('password', true) }}
+    validate_certs: false
+    storage_pool_name: sp_default
+
+  tasks:
+    # -------------------------------------------------------------------
+    # 1. Gather current state (info module)
+    # -------------------------------------------------------------------
+    - name: Get storage pool info before update
+      dellemc.objectscale.storage_pool_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        name: "{{ storage_pool_name }}"
+      register: sp_before
+
+    - name: Display current storage pool
+      ansible.builtin.debug:
+        var: sp_before.storage_pools
+
+    # -------------------------------------------------------------------
+    # 2. Update description
+    # -------------------------------------------------------------------
+    - name: Update storage pool description
+      dellemc.objectscale.storage_pool:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        storage_pool_name: "{{ storage_pool_name }}"
+        description: "Managed by Ansible automation"
+        state: present
+      register: sp_updated
+
+    - name: Display update result
+      ansible.builtin.debug:
+        var: sp_updated
+
+    # -------------------------------------------------------------------
+    # 3. Update alert thresholds
+    # -------------------------------------------------------------------
+    - name: Update alert thresholds
+      dellemc.objectscale.storage_pool:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        storage_pool_name: "{{ storage_pool_name }}"
+        warning_alert_at: 70
+        error_alert_at: 85
+        critical_alert_at: 95
+        state: present
+      register: sp_alerts
+
+    - name: Display alert update result
+      ansible.builtin.debug:
+        var: sp_alerts
+
+    # -------------------------------------------------------------------
+    # 4. Idempotency verification (no change expected on repeat)
+    # -------------------------------------------------------------------
+    - name: Re-apply same alert thresholds (idempotency check)
+      dellemc.objectscale.storage_pool:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        storage_pool_name: "{{ storage_pool_name }}"
+        warning_alert_at: 70
+        error_alert_at: 85
+        critical_alert_at: 95
+        state: present
+      register: sp_idem
+
+    - name: Verify idempotency
+      ansible.builtin.assert:
+        that:
+          - not sp_idem.changed
+        fail_msg: "Expected no change on repeat apply"
+
+    # -------------------------------------------------------------------
+    # 5. Check mode preview
+    # -------------------------------------------------------------------
+    - name: Preview update in check mode
+      dellemc.objectscale.storage_pool:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: "{{ validate_certs }}"
+        storage_pool_name: "{{ storage_pool_name }}"
+        description: "Check mode preview"
+        state: present
+      check_mode: true
+      register: sp_check
+
+    - name: Display check mode result
+      ansible.builtin.debug:
+        var: sp_check

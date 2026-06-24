@@ -172,7 +172,7 @@ from ansible_collections.dellemc.objectscale.plugins.module_utils.utils import H
 
 try:
     from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api.iam_api import IamApi
-except (ImportError, Exception):
+except Exception:
     IamApi = None  # type: ignore[assignment,misc]
 
 
@@ -362,70 +362,48 @@ class IamUserAccessKey(object):
     # Main orchestrator
     # ------------------------------------------------------------------
 
-    def perform_module_operation(self):
-        """Perform different actions based on parameters chosen in playbook."""
-        result = dict(changed=False)
-
-        user_name = self.module.params['user_name']
-        access_key_id = self.module.params.get('access_key_id')
-        desired_status = self.module.params.get('status')
-        state = self.module.params['state']
-
-        if state == 'absent':
-            # access_key_id is required_if state=absent
-            existing = self.find_access_key(user_name, access_key_id)
-
-            if existing is None:
-                # Idempotent no-op; return empty diff
-                if self.module._diff:
-                    result['diff'] = {'before': {}, 'after': {}}
-                self.module.exit_json(**result)
-                return
-
-            before = self._sanitize_for_diff(existing)
-
-            if not self.module.check_mode:
-                self.delete_access_key(user_name, access_key_id)
-
-            result['changed'] = True
+    def _handle_absent(self, user_name, access_key_id, result):
+        """Handle state=absent for access key deletion."""
+        existing = self.find_access_key(user_name, access_key_id)
+        if existing is None:
             if self.module._diff:
-                result['diff'] = {'before': before, 'after': {}}
-
-            self.module.exit_json(**result)
+                result['diff'] = {'before': {}, 'after': {}}
             return
 
-        # state == 'present'
-        if access_key_id is None:
-            # No id supplied -> create a new access key
-            if self.module.check_mode:
-                result['changed'] = True
-                if self.module._diff:
-                    result['diff'] = {
-                        'before': {},
-                        'after': {
-                            'AccessKeyId': '<WILL_BE_GENERATED>',
-                            'UserName': user_name,
-                            'Status': 'Active',
-                            'SecretAccessKey': NEW_SECRET_MARKER,
-                        },
-                    }
-                self.module.exit_json(**result)
-                return
+        before = self._sanitize_for_diff(existing)
+        if not self.module.check_mode:
+            self.delete_access_key(user_name, access_key_id)
+        result['changed'] = True
+        if self.module._diff:
+            result['diff'] = {'before': before, 'after': {}}
 
-            created = self.create_access_key(user_name)
+    def _handle_create(self, user_name, result):
+        """Handle creating a new access key."""
+        if self.module.check_mode:
             result['changed'] = True
-            result['access_key'] = created
-
             if self.module._diff:
                 result['diff'] = {
                     'before': {},
-                    'after': self._sanitize_for_diff(created, secret_marker=NEW_SECRET_MARKER),
+                    'after': {
+                        'AccessKeyId': '<WILL_BE_GENERATED>',
+                        'UserName': user_name,
+                        'Status': 'Active',
+                        'SecretAccessKey': NEW_SECRET_MARKER,
+                    },
                 }
-
-            self.module.exit_json(**result)
             return
 
-        # state == 'present' and access_key_id is supplied
+        created = self.create_access_key(user_name)
+        result['changed'] = True
+        result['access_key'] = created
+        if self.module._diff:
+            result['diff'] = {
+                'before': {},
+                'after': self._sanitize_for_diff(created, secret_marker=NEW_SECRET_MARKER),
+            }
+
+    def _handle_update(self, user_name, access_key_id, desired_status, result):
+        """Handle updating an existing access key's status."""
         existing = self.find_access_key(user_name, access_key_id)
         if existing is None:
             self._fail(
@@ -440,22 +418,32 @@ class IamUserAccessKey(object):
         before = self._sanitize_for_diff(existing)
 
         if desired_status is not None and existing.get('Status') != desired_status:
+            existing = dict(existing)
+            existing['Status'] = desired_status
             if not self.module.check_mode:
                 self.update_access_key_status(user_name, access_key_id, desired_status)
-                # Reflect the change in the returned key metadata
-                existing = dict(existing)
-                existing['Status'] = desired_status
-            else:
-                existing = dict(existing)
-                existing['Status'] = desired_status
-
             result['changed'] = True
 
         after = self._sanitize_for_diff(existing)
         result['access_key'] = {k: v for k, v in existing.items() if k != 'SecretAccessKey'}
-
         if self.module._diff:
             result['diff'] = {'before': before, 'after': after}
+
+    def perform_module_operation(self):
+        """Perform different actions based on parameters chosen in playbook."""
+        result = dict(changed=False)
+
+        user_name = self.module.params['user_name']
+        access_key_id = self.module.params.get('access_key_id')
+        desired_status = self.module.params.get('status')
+        state = self.module.params['state']
+
+        if state == 'absent':
+            self._handle_absent(user_name, access_key_id, result)
+        elif access_key_id is None:
+            self._handle_create(user_name, result)
+        else:
+            self._handle_update(user_name, access_key_id, desired_status, result)
 
         self.module.exit_json(**result)
 

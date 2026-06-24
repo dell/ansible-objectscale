@@ -1,0 +1,16 @@
+---
+# Helper: Restore original pool values after testing
+- name: "Restore — Revert pool to original values"
+  dellemc.objectscale.storage_pool:
+    objectscale_host: "{{ objectscale_host }}"
+    objectscale_username: "{{ objectscale_username }}"
+    objectscale_password: "{{ objectscale_password }}"
+    objectscale_port: "{{ objectscale_port }}"
+    validate_certs: "{{ validate_certs }}"
+    storage_pool_name: "{{ test_pool_name }}"
+    description: "{{ original_description }}"
+    warning_alert_at: "{{ original_warning | int }}"
+    error_alert_at: "{{ original_error | int }}"
+    critical_alert_at: "{{ original_critical | int }}"
+    state: present
+  ignore_errors: true

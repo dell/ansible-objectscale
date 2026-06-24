@@ -86,16 +86,26 @@ class BucketApi:
             raise
 
     def create_bucket(self, payload: Dict[str, Any]) -> bool:
-        """Creates a new bucket."""
+        """Creates a new bucket.
+
+        The ObjectScale management API requires the namespace to be passed as
+        the ``x-emc-namespace`` HTTP header rather than (or in addition to) a
+        field in the JSON body.  The generated client only puts it in the body,
+        which causes a 500 Server Error on some ObjectScale versions.  We work
+        around this by injecting the header via ``_headers``.
+        """
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.api import bucket_api as generated_bucket_api
         from ansible_collections.dellemc.objectscale.plugins.module_utils.objectscale_client.models import bucket_service_create_bucket_request as create_req
         api = generated_bucket_api.BucketApi(self.api_client)
-        create_request = create_req.BucketServiceCreateBucketRequest(
+        kwargs = dict(
             name=payload['name'],
-            namespace=payload['namespace']
         )
+        if payload.get('vpool'):
+            kwargs['vpool'] = payload['vpool']
+        create_request = create_req.BucketServiceCreateBucketRequest(**kwargs)
         api.bucket_service_create_bucket(
-            bucket_service_create_bucket_request=create_request
+            bucket_service_create_bucket_request=create_request,
+            _headers={'x-emc-namespace': payload['namespace']}
         )
         return True
 

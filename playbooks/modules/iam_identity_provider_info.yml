@@ -1,0 +1,56 @@
+---
+# Example playbook for retrieving IAM SAML Identity
+# Provider information on Dell ObjectScale
+
+- name: IAM Identity Provider Info
+  hosts: localhost
+  gather_facts: false
+  vars:
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('192.168.1.100', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    objectscale_password: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('xxxxxxx', true) }}
+    objectscale_namespace: >-
+      {{ lookup('env', 'OBJECTSCALE_NAMESPACE')
+      | default('ns1', true) }}
+
+  tasks:
+    - name: List all SAML identity providers in namespace
+      dellemc.objectscale.iam_identity_provider_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        namespace: "{{ objectscale_namespace }}"
+      register: all_providers
+
+    - name: Display all providers
+      ansible.builtin.debug:
+        var: all_providers.identity_providers
+
+    - name: Display provider count
+      ansible.builtin.debug:
+        msg: >-
+          Found {{ all_providers.identity_providers
+          | length }} identity provider(s)
+
+    - name: Get details of a specific provider (if any exist)
+      dellemc.objectscale.iam_identity_provider_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        provider_name: "{{ all_providers.identity_providers[0].provider_name }}"
+        namespace: "{{ objectscale_namespace }}"
+      register: provider_details
+      when: all_providers.identity_providers | length > 0
+
+    - name: Display provider details
+      ansible.builtin.debug:
+        var: provider_details.identity_providers
+      when: provider_details is defined and provider_details is not skipped

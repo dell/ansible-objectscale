@@ -1,0 +1,93 @@
+---
+# Example playbook for managing IAM SAML Identity Providers on Dell ObjectScale
+# This playbook demonstrates the full lifecycle:
+# create, update, check mode, and delete.
+
+- name: IAM Identity Provider Management
+  hosts: localhost
+  gather_facts: false
+  vars:
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('192.168.1.100', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    objectscale_password: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('xxxxxxx', true) }}
+    objectscale_namespace: >-
+      {{ lookup('env', 'OBJECTSCALE_NAMESPACE')
+      | default('ns1', true) }}
+    provider_name: "test-saml-idp"
+    saml_metadata: >-
+      {{ lookup('file', 'saml-metadata.xml',
+      errors='ignore') | default(omit) }}
+
+  tasks:
+    - name: Create a SAML identity provider
+      dellemc.objectscale.iam_identity_provider:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        provider_name: "{{ provider_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        saml_metadata_document: "{{ saml_metadata }}"
+        state: present
+      register: create_result
+      when: saml_metadata is defined
+
+    - name: Display create result
+      ansible.builtin.debug:
+        var: create_result
+      when: create_result is defined
+
+    - name: Check mode - preview identity provider creation (idempotency)
+      dellemc.objectscale.iam_identity_provider:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        provider_name: "{{ provider_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        saml_metadata_document: "{{ saml_metadata }}"
+        state: present
+      check_mode: true
+      register: check_result
+      when: saml_metadata is defined
+
+    - name: Display check mode result
+      ansible.builtin.debug:
+        msg: "Check mode changed={{ check_result.changed }}"
+      when: check_result is defined
+
+    - name: Delete the SAML identity provider
+      dellemc.objectscale.iam_identity_provider:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        provider_name: "{{ provider_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: absent
+      register: delete_result
+
+    - name: Display delete result
+      ansible.builtin.debug:
+        var: delete_result
+
+    - name: Delete again (idempotent - should be changed=false)
+      dellemc.objectscale.iam_identity_provider:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ objectscale_password }}"
+        validate_certs: false
+        provider_name: "{{ provider_name }}"
+        namespace: "{{ objectscale_namespace }}"
+        state: absent
+      register: delete_again
+
+    - name: Display idempotent delete result
+      ansible.builtin.debug:
+        msg: "Idempotent delete changed={{ delete_again.changed }}"

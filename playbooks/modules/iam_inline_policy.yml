@@ -1,0 +1,131 @@
+---
+# Example playbook for dellemc.objectscale.iam_inline_policy module
+# Demonstrates managing IAM inline policies on users, groups, and roles.
+
+- name: Manage IAM Inline Policies on Dell ObjectScale
+  hosts: localhost
+  gather_facts: false
+  vars:
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('10.0.0.1', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    os_credential: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('changeme', true) }}
+    os_namespace: "my-namespace"
+
+  tasks:
+    - name: Set inline policies on an IAM user
+      dellemc.objectscale.iam_inline_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        user_name: "userTest1"
+        policies:
+          - name: "readOnlyPolicy"
+            document: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["iam:Get*", "iam:List*"],
+                    "Resource": "*"
+                  }
+                ]
+              }
+          - name: "s3ReadPolicy"
+            document: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:ListBucket"],
+                    "Resource": "*"
+                  }
+                ]
+              }
+        state: present
+      register: user_inline_result
+
+    - name: Show user inline policy result
+      ansible.builtin.debug:
+        var: user_inline_result
+
+    - name: Set inline policy on an IAM group
+      dellemc.objectscale.iam_inline_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        group_name: "developers"
+        policies:
+          - name: "s3FullAccess"
+            document: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": "s3:*",
+                    "Resource": "*"
+                  }
+                ]
+              }
+        state: present
+
+    - name: Set inline policy on an IAM role
+      dellemc.objectscale.iam_inline_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        role_name: "admin-role"
+        policies:
+          - name: "fullAccess"
+            document: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": "*",
+                    "Resource": "*"
+                  }
+                ]
+              }
+        state: present
+
+    - name: Remove all inline policies from user
+      dellemc.objectscale.iam_inline_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        user_name: "userTest1"
+        state: absent
+
+    - name: Preview inline policy changes in check mode
+      dellemc.objectscale.iam_inline_policy:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        user_name: "userTest1"
+        policies:
+          - name: "readOnlyPolicy"
+            document: >-
+              {"Version":"2012-10-17","Statement":[{"Effect":
+              "Allow","Action":["iam:Get*"],"Resource":"*"}]}
+        state: present
+      check_mode: true

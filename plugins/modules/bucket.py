@@ -68,6 +68,13 @@ options:
     description: Force delete a non-empty bucket.
     type: bool
     default: false
+  vpool:
+    description:
+    - The replication group ID (vpool) to use when creating
+      the bucket.
+    - Only used during bucket creation (state=present).
+    type: str
+    required: false
 '''
 
 EXAMPLES = r'''
@@ -126,6 +133,58 @@ def _ensure_client_stub_compatibility() -> None:
             objectscale_client.SecretStr = _CompatSecretStr
 
 
+def _validate_bucket_params(module, name, namespace):
+    """Validate bucket module parameters."""
+    if not name:
+        module.fail_json(msg="missing required arguments: name")
+    if not namespace:
+        module.fail_json(msg="missing required arguments: namespace")
+    if any(c.isupper() for c in name) or len(name) > 63:
+        module.fail_json(msg="'InvalidBucketName': Bucket name is invalid.")
+
+
+def _handle_present(
+    module, bucket_api, name, namespace,
+    versioning, current_bucket, result,
+    vpool=None,
+):
+    """Handle state=present logic for bucket module."""
+    if not current_bucket:
+        result['changed'] = True
+        if not module.check_mode:
+            create_payload = {'name': name, 'namespace': namespace}
+            if vpool:
+                create_payload['vpool'] = vpool
+            bucket_api.create_bucket(create_payload)
+    elif versioning is not None and \
+            current_bucket.get('versioning_status', '').lower() \
+            != ('enabled' if versioning else 'suspended'):
+        result['changed'] = True
+        if not module.check_mode:
+            bucket_api.update_bucket_versioning(name, namespace, versioning)
+
+    if not module.check_mode:
+        bucket_details = bucket_api.get_bucket(name, namespace)
+        if bucket_details:
+            result['bucket_details'] = bucket_details
+
+
+def _handle_absent(module, bucket_api, name, namespace, force, current_bucket, result):
+    """Handle state=absent logic for bucket module."""
+    if not current_bucket:
+        return
+    result['changed'] = True
+    if not module.check_mode:
+        try:
+            bucket_api.delete_bucket(name, namespace, force=force)
+        except ApiException as e:
+            if 'BucketNotEmpty' in str(e):
+                module.fail_json(
+                    msg="'BucketNotEmpty': The bucket"
+                    " you tried to delete is not empty.")
+            raise
+
+
 def main():
     _ensure_client_stub_compatibility()
     module_params = utils.get_objectscale_management_host_parameters()
@@ -135,6 +194,7 @@ def main():
         state=dict(type='str', required=True, choices=['present', 'absent']),
         versioning=dict(type='bool', required=False),
         force=dict(type='bool', default=False),
+        vpool=dict(type='str', required=False),
     )
 
     module = AnsibleModule(
@@ -149,15 +209,9 @@ def main():
     state = module.params['state']
     versioning = module.params.get('versioning')
     force = module.params['force']
+    vpool = module.params.get('vpool')
 
-    if not name:
-        module.fail_json(msg="missing required arguments: name")
-    if not namespace:
-        module.fail_json(msg="missing required arguments: namespace")
-
-    # Basic name validation
-    if any(c.isupper() for c in name) or len(name) > 63:
-        module.fail_json(msg="'InvalidBucketName': Bucket name is invalid.")
+    _validate_bucket_params(module, name, namespace)
 
     try:
         api_client = utils.get_objectscale_connection(module.params)
@@ -166,43 +220,13 @@ def main():
         current_bucket = bucket_api.get_bucket(name, namespace)
 
         if state == 'present':
-            if not current_bucket:
-                result['changed'] = True
-                if not module.check_mode:
-                    bucket_api.create_bucket(
-                        {'name': name, 'namespace': namespace}
-                    )
-            else:
-                if versioning is not None and \
-                        current_bucket.get('versioning_status', '').lower() \
-                        != ('enabled' if versioning else 'suspended'):
-                    result['changed'] = True
-                    if not module.check_mode:
-                        bucket_api.update_bucket_versioning(
-                            name, namespace, versioning
-                        )
-
-            if not module.check_mode:
-                bucket_details = bucket_api.get_bucket(name, namespace)
-                if bucket_details:
-                    result['bucket_details'] = bucket_details
-
+            _handle_present(
+                module, bucket_api, name, namespace,
+                versioning, current_bucket, result,
+                vpool=vpool,
+            )
         elif state == 'absent':
-            if current_bucket:
-                result['changed'] = True
-                if not module.check_mode:
-                    try:
-                        bucket_api.delete_bucket(
-                            name, namespace, force=force
-                        )
-                    except ApiException as e:
-                        if 'BucketNotEmpty' in str(e):
-                            module.fail_json(
-                                msg="'BucketNotEmpty': The bucket"
-                                " you tried to delete is not"
-                                " empty."
-                            )
-                        raise
+            _handle_absent(module, bucket_api, name, namespace, force, current_bucket, result)
 
     except ApiException as e:
         module.fail_json(msg=f"Module failed: {str(e)}")

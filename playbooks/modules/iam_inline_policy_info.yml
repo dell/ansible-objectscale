@@ -1,0 +1,61 @@
+---
+# Example playbook for dellemc.objectscale.iam_inline_policy_info module
+# Demonstrates listing inline IAM policies for users, groups, and roles.
+
+- name: Gather IAM Inline Policy Info from Dell ObjectScale
+  hosts: localhost
+  gather_facts: false
+  vars:
+    objectscale_host: >-
+      {{ lookup('env', 'OBJECTSCALE_HOST')
+      | default('10.0.0.1', true) }}
+    objectscale_username: >-
+      {{ lookup('env', 'OBJECTSCALE_USERNAME')
+      | default('admin', true) }}
+    os_credential: >-
+      {{ lookup('env', 'OBJECTSCALE_PASSWORD')
+      | default('changeme', true) }}
+    os_namespace: "my-namespace"
+
+  tasks:
+    - name: Get inline policies for an IAM user
+      dellemc.objectscale.iam_inline_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        user_name: "userTest1"
+      register: user_inline_policies
+
+    - name: Show user inline policies
+      ansible.builtin.debug:
+        var: user_inline_policies
+
+    - name: Get inline policies for an IAM group
+      dellemc.objectscale.iam_inline_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        group_name: "developers"
+      register: group_inline_policies
+
+    - name: Show group inline policies
+      ansible.builtin.debug:
+        var: group_inline_policies
+
+    - name: Get inline policies for an IAM role
+      dellemc.objectscale.iam_inline_policy_info:
+        objectscale_host: "{{ objectscale_host }}"
+        objectscale_username: "{{ objectscale_username }}"
+        objectscale_password: "{{ os_credential }}"
+        validate_certs: false
+        namespace: "{{ os_namespace }}"
+        role_name: "admin-role"
+      register: role_inline_policies
+
+    - name: Show role inline policies
+      ansible.builtin.debug:
+        var: role_inline_policies

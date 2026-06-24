@@ -45,7 +45,8 @@
         objectscale_password: "{{ objectscale_password }}"
         validate_certs: "{{ validate_certs }}"
         namespace_name: "{{ namespace_name }}"
-        policy_arn: "urn:ecs:iam::{{ namespace_name }}:policy/ExampleS3ReadOnlyPolicy"
+        policy_arn: >-
+          urn:ecs:iam::{{ namespace_name }}:policy/ExampleS3ReadOnlyPolicy
       register: policy_by_arn
 
     - name: Display policy by ARN
