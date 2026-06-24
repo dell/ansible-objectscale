@@ -32,7 +32,7 @@ Table 1. Revision history
 
 Product Description
 -------------------
-The Ansible modules for Dell ObjectScale are used to automate and orchestrate the deployment, configuration, and management of Dell ObjectScale object storage systems. The capabilities of Ansible modules are managing Buckets, IAM users, IAM groups, IAM roles, IAM policies, IAM user access keys, IAM policy attachments, Namespaces, Replication groups, and obtaining high-level information about an ObjectScale system. The options available are list, show, create, delete, and modify.
+The Ansible modules for Dell ObjectScale are used to automate and orchestrate the deployment, configuration, and management of Dell ObjectScale object storage systems. The capabilities of Ansible modules are managing Buckets, IAM users, IAM groups, IAM roles, IAM policies, IAM inline policies, IAM identity providers, IAM user access keys, IAM policy attachments, Namespaces, Replication groups, Storage pools, VDC information, VDC certificates, VDC certificate chains, Management users, Object users, and obtaining high-level information about an ObjectScale system. The options available are list, show, create, delete, and modify.
 
 New features & enhancements
 ---------------------------
@@ -41,9 +41,12 @@ This section describes the features or enhancements of the Ansible Modules for D
 The Ansible Modules for Dell ObjectScale release 1.0.0 provides the following features:
 
 - Bucket Management modules for object storage operations
-- Identity & Access Management modules for IAM operations
+- Identity & Access Management modules for IAM operations (users, groups, roles, policies, inline policies, identity providers, access keys, policy attachments)
 - Namespace Management modules for namespace operations
 - Replication modules for replication group management
+- Storage Pool Management modules for storage pool operations
+- VDC Management modules (VDC info, certificates, certificate chains)
+- Management User and Object User modules
 - Comprehensive info modules for gathering system information
 - Standardized structure following Dell Ansible collection patterns
 - Idempotency support for all operations
