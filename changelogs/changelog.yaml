@@ -1,0 +1,116 @@
+ancestor: null
+releases:
+  1.0.0:
+    changes:
+      minor_changes:
+        - Initial release of Dell ObjectScale Ansible Collection
+        - Comprehensive module set for ObjectScale management
+        - Bucket Management modules for object storage operations
+        - Identity & Access Management modules for IAM operations
+        - Namespace Management modules for namespace operations
+        - Replication modules for replication group management
+        - Storage Pool Management modules for storage pool operations
+        - VDC Management modules for Virtual Data Center operations
+        - VDC Certificate Management modules for certificate lifecycle
+        - Management User and Object User modules
+    modules:
+      - description: Manage ObjectScale buckets
+        name: bucket
+        namespace: ''
+      - description: Get bucket information
+        name: bucket_info
+        namespace: ''
+      - description: Manage IAM groups
+        name: iam_group
+        namespace: ''
+      - description: Get IAM group information
+        name: iam_group_info
+        namespace: ''
+      - description: Manage IAM SAML identity providers
+        name: iam_identity_provider
+        namespace: ''
+      - description: Get IAM identity provider information
+        name: iam_identity_provider_info
+        namespace: ''
+      - description: Manage IAM inline policies
+        name: iam_inline_policy
+        namespace: ''
+      - description: Get IAM inline policy information
+        name: iam_inline_policy_info
+        namespace: ''
+      - description: Manage IAM policies
+        name: iam_policy
+        namespace: ''
+      - description: Get IAM policy information
+        name: iam_policy_info
+        namespace: ''
+      - description: Manage IAM policy attachments
+        name: iam_policy_attachment
+        namespace: ''
+      - description: Get IAM policy attachment information
+        name: iam_policy_attachment_info
+        namespace: ''
+      - description: Manage IAM roles
+        name: iam_role
+        namespace: ''
+      - description: Get IAM role information
+        name: iam_role_info
+        namespace: ''
+      - description: Manage IAM users
+        name: iam_user
+        namespace: ''
+      - description: Get IAM user information
+        name: iam_user_info
+        namespace: ''
+      - description: Manage IAM user access keys
+        name: iam_user_access_key
+        namespace: ''
+      - description: Get IAM user access key information
+        name: iam_user_access_key_info
+        namespace: ''
+      - description: Manage management users
+        name: management_user
+        namespace: ''
+      - description: Get management user information
+        name: management_user_info
+        namespace: ''
+      - description: Manage namespaces
+        name: namespace
+        namespace: ''
+      - description: Get namespace information
+        name: namespace_info
+        namespace: ''
+      - description: Manage object users
+        name: object_user
+        namespace: ''
+      - description: Get object user information
+        name: object_user_info
+        namespace: ''
+      - description: Manage replication groups
+        name: replication_group
+        namespace: ''
+      - description: Get replication group information
+        name: replication_group_info
+        namespace: ''
+      - description: Manage storage pools
+        name: storage_pool
+        namespace: ''
+      - description: Get storage pool information
+        name: storage_pool_info
+        namespace: ''
+      - description: Manage VDC certificates
+        name: vdc_certificate
+        namespace: ''
+      - description: Manage VDC certificate chains
+        name: vdc_certificate_chain
+        namespace: ''
+      - description: Get VDC certificate chain information
+        name: vdc_certificate_chain_info
+        namespace: ''
+      - description: Get VDC certificate information
+        name: vdc_certificate_info
+        namespace: ''
+      - description: Get VDC information
+        name: vdc_info
+        namespace: ''
+    release_date: '2026-06-22'
